@@ -1,0 +1,52 @@
+# 3lc-plugin-timm — fine-tune timm image classifiers as an isolated venv plugin.
+#
+# Distribution `3lc-plugin-timm`, import package `tlc_plugin_timm`. This is a real
+# installable package (unlike the old in-tree `package = false` form): once the plugin
+# left the monorepo, `tlc_compute.plugins.timm` no longer exists, so the worker imports
+# `tlc_plugin_timm` from this venv's site-packages. The compute-service reads the plugin's
+# metadata from plugin.toml WITHOUT importing it, then provisions this venv (uv sync) and
+# runs the entrypoint in a worker subprocess.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "3lc-plugin-timm"
+version = "1.0.0"
+description = "Fine-tune 1,000+ pretrained image classifiers from timm with per-sample metrics and embeddings."
+requires-python = ">=3.10"
+# The contract is the SDK (brings 3lc + uvicorn + litestar). The heavy ML stack is this
+# plugin's own — isolated in this venv, never in the host venv.
+dependencies = [
+    "3lc-plugin-sdk>=0.2.0,<0.3.0",
+    "timm>=1.0",
+    "torch",
+    "torchvision",
+    "numpy",
+    "pacmap>=0.8",
+    "umap-learn>=0.5",
+    "pillow",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tlc_plugin_timm"]
+
+# Pull torch/torchvision from the CUDA 12.6 index on Linux (mirrors the host).
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+# 3lc private releases index — 3lc versions not yet on public PyPI.
+[[tool.uv.index]]
+name = "3lc-releases"
+url = "https://pypi.3lc.ai/public/repositories/releases-public"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
+torchvision = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
+3lc = { index = "3lc-releases" }
+# DEV-ONLY (build-out): the SDK is unpublished, so resolve it from the sibling checkout.
+# Drop this line once 3lc-plugin-sdk is on the index.
+3lc-plugin-sdk = { path = "../../../3lc-plugin-sdk", editable = true }
