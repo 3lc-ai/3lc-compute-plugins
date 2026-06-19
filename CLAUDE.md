@@ -1,22 +1,35 @@
 # 3lc-compute-plugins — agent & contributor orientation
 
-This repo is the **public, first-party plugin collection** for the 3LC compute service. Each
-`plugins/<name>/` is a standalone package built against the public
+This repo is the **public, first-party plugin collection** for the 3LC compute service, packaged as
+a single **umbrella distribution** `3lc-compute-plugins` built against the public
 [`3lc-plugin-sdk`](https://github.com/3lc-ai/3lc-plugin-sdk). Extracted from the private
-`3lc-insights` monorepo (where the host runtime + the design docs live).
+`3lc-insights` monorepo (where the host runtime + the design docs live). (The umbrella is this repo's
+packaging choice — the host discovers plugins by entry point, so single-plugin and multi-dist repos
+are equally valid elsewhere.)
 
-## Layout (per plugin)
+## Layout
 
 ```
-plugins/<name>/
-  plugin.toml              # manifest — host reads it WITHOUT importing (id, ui, runtime.*)
-  pyproject.toml           # distribution 3lc-plugin-<name>; deps = 3lc-plugin-sdk + this plugin's own
-  src/tlc_plugin_<name>/   # the package (import name tlc_plugin_<name>); data files (ui.html) live here
+pyproject.toml             # the one distribution: 3lc-compute-plugins
+src/
+  tlc_plugin_<name>/       # one package per plugin (import name tlc_plugin_<name>)
+    __init__.py            # the plugin class — behavior only
+    plugin.toml            # manifest — host reads it WITHOUT importing (id, ui, runtime.*)
+    ui.html, ...           # data files live inside the package (bundled in the wheel)
 ```
 
-`plugin.toml` `runtime.entrypoint = "tlc_plugin_<name>:SomePlugin"` is resolved by the worker from
-the provisioned venv's site-packages — these are **real installable packages**, not the old flat
-`package = false` + cwd-on-sys.path form (that constraint is gone once the code is a proper package).
+One `pyproject.toml` declares **all** plugins:
+- **base `dependencies`** = `3lc-plugin-sdk` + the light deps the in-process (**host-mode**) plugins
+  need; these install into the host venv via `3lc-compute[plugins]`.
+- **per-venv-plugin extras** (`[timm]`/`[sam3]`/`[yolo]`) = each one's heavy stack (torch, …),
+  installed ONLY into that plugin's provisioned venv.
+- **`[project.entry-points."tlc_compute.plugins"]`** = one entry per plugin (value = its import
+  package). The host iterates this group to discover every plugin, then reads each bundled
+  `plugin.toml`. For host-mode it imports the entrypoint in-process; for venv it registers the
+  plugin and provisions a venv installing the `provision_extra` named in the manifest.
+
+These are **real installable packages** (resolved from site-packages), not the old flat
+`package = false` + cwd-on-sys.path form.
 
 ## The rules — do not break these
 
@@ -34,20 +47,21 @@ the provisioned venv's site-packages — these are **real installable packages**
 
 ## Versioning
 
-Each plugin versions independently (its `pyproject.toml` / `plugin.toml` `version`). It pins the
-contract via `3lc-plugin-sdk>=X,<Y` and declares `min_service_version` / `min_frontend_version`
-floors in its manifest. SemVer.
+The **distribution** versions as a whole (`[project] version` in the umbrella `pyproject.toml`).
+Each plugin still declares its own `plugin.toml` `version` + `min_service_version` /
+`min_frontend_version` floors — that's the compatibility contract the host reads. The dist pins the
+SDK via `3lc-plugin-sdk>=X,<Y`. SemVer throughout.
 
 ## Dev setup (build-out)
 
-`3lc-plugin-sdk` is unpublished during the build-out, so each plugin resolves it from a sibling
-checkout via a **dev-only** `[tool.uv.sources] 3lc-plugin-sdk = { path = "../../../3lc-plugin-sdk" }`.
+`3lc-plugin-sdk` is unpublished during the build-out, so the umbrella resolves it from a sibling
+checkout via a **dev-only** `[tool.uv.sources] 3lc-plugin-sdk = { path = "../3lc-plugin-sdk" }`.
 torch comes from the cu126 index; 3lc from the 3lc-releases index. These dev sources revert to
 index/git pins before any real publish.
 
 ```bash
-cd plugins/<name>
-uv sync                 # provision this plugin's venv (SDK + its deps)
+uv sync                       # base: host-mode plugins' light deps + SDK
+uv sync --extra timm          # add a venv plugin's heavy stack (what provisioning installs into its venv)
 uv run ruff check .
 ```
 

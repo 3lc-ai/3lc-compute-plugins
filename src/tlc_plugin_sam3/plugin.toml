@@ -21,4 +21,7 @@ quick_action_description = "Use SAM3 to detect and segment objects by text promp
 [runtime]
 isolation = "venv"
 entrypoint = "tlc_plugin_sam3:SAM3Plugin"
+# Heavy stack lives behind this extra of the providing distribution; the host
+# installs it ONLY into this plugin's provisioned venv, never the host venv.
+provision_extra = "sam3"
 requires_gpu = true

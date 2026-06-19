@@ -1,46 +1,48 @@
 # 3lc-compute-plugins
 
-The open, first-party plugins for the [3LC](https://3lc.ai) compute service. A monorepo
-of standalone plugin packages, each built against the public
+The open, first-party plugins for the [3LC](https://3lc.ai) compute service, packaged as a single
+distribution `3lc-compute-plugins` built against the public
 [`3lc-plugin-sdk`](https://github.com/3lc-ai/3lc-plugin-sdk).
 
 ```
-plugins/
-  # venv (own venv, provisioned out-of-process; heavy/GPU deps)
-  timm/              # 3lc-plugin-timm — fine-tune timm image classifiers
-  sam3/              # 3lc-plugin-sam3 — auto-label with SAM3
-  yolo/              # 3lc-plugin-yolo — fine-tune YOLO models
+pyproject.toml         # the one distribution (base deps + per-venv-plugin extras + entry-points)
+src/
+  # venv (own venv, provisioned out-of-process; heavy/GPU deps behind an extra)
+  tlc_plugin_timm/              # fine-tune timm image classifiers     ([timm] extra)
+  tlc_plugin_sam3/              # auto-label with SAM3                  ([sam3] extra)
+  tlc_plugin_yolo/              # fine-tune YOLO models                 ([yolo] extra)
   # host-mode (light; installed into the host venv via 3lc-compute[plugins], runs in-process)
-  importer/          # 3lc-plugin-importer — import CSV/Parquet/COCO/…
-  exporter/          # 3lc-plugin-exporter — export CSV/XLSX/YOLO/COCO/…
-  merger/            # 3lc-plugin-merger — merge two tables
-  splitter/          # 3lc-plugin-splitter — train/val/test splits
-  table_statistics/  # 3lc-plugin-table-statistics — per-column stats + thumbnails
-  image_metrics/     # 3lc-plugin-image-metrics — image-quality metric columns
+  tlc_plugin_importer/          # import CSV/Parquet/COCO/…
+  tlc_plugin_exporter/          # export CSV/XLSX/YOLO/COCO/…
+  tlc_plugin_merger/            # merge two tables
+  tlc_plugin_splitter/          # train/val/test splits
+  tlc_plugin_table_statistics/  # per-column stats + thumbnails
+  tlc_plugin_image_metrics/     # image-quality metric columns
 ```
 
-Each `plugins/<name>/` is its own package: a `pyproject.toml` (distribution `3lc-plugin-<name>`,
-import `tlc_plugin_<name>`), a `plugin.toml` manifest the host reads **without importing**, and the
-code under `src/tlc_plugin_<name>/`.
+Each `src/tlc_plugin_<name>/` bundles its own `plugin.toml` manifest (the host reads it **without
+importing**) and advertises a `tlc_compute.plugins` entry point. One umbrella `pyproject.toml`
+declares them all; single-plugin or multi-dist repos are equally valid — the host discovers by
+entry point, not by repo shape.
 
 ## Isolation tiers
 
 A plugin declares `runtime.isolation` in its manifest:
 
 - **`venv`** (e.g. timm, sam3, yolo) — heavy/conflicting deps; the host provisions a dedicated venv
-  from the package and runs it out-of-process. Its deps never touch the host venv.
+  installing the plugin's heavy extra (`3lc-compute-plugins[timm]`) and runs it out-of-process. Its
+  deps never touch the host venv. Only the plugin's light code + manifest sit in the base.
 - **`host`** (e.g. importer, exporter, the light ones) — deps are light and compatible with the host
-  venv; runs in-process. Delivered as a light dependency of the host's `[plugins]` extra.
+  venv; runs in-process. Delivered as part of the host's `[plugins]` extra (base deps).
 
-The rule: **anything installed into the host venv must be light.** Heavy plugins are always `venv`.
+The rule: **anything installed into the host venv must be light.** A venv plugin's heavy stack lives
+only behind its extra, installed into its own venv.
 
 ## Develop
 
-Each plugin is provisioned/run by the compute service. To work on one directly:
-
 ```bash
-cd plugins/timm
-uv sync          # builds this plugin's venv (SDK + its own deps)
+uv sync                  # base: host-mode plugins' light deps + the SDK
+uv sync --extra timm     # add a venv plugin's heavy stack (what the host provisions into its venv)
 uv run ruff check .
 ```
 

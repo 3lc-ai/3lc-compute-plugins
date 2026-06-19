@@ -1,0 +1,114 @@
+# 3lc-compute-plugins — the open, first-party plugins for the 3LC compute service,
+# packaged as ONE distribution (an umbrella; single-plugin and multi-dist repos are equally
+# valid elsewhere — the host discovers by entry point, not by repo shape).
+#
+# The host installs the BASE (every plugin's light code + its bundled plugin.toml manifest +
+# the host-mode plugins' light deps) via `3lc-compute[plugins]`, discovers all plugins through
+# the `tlc_compute.plugins` entry-point group, runs the host-mode ones in-process, and reads
+# (without importing) the venv ones. Each venv plugin's heavy stack is an extra below; the host
+# installs it ONLY into that plugin's provisioned venv (selected by the manifest's
+# runtime.provision_extra) — never the host venv. That is the whole "manifest in the host,
+# heavy code in the venv" split.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "3lc-compute-plugins"
+version = "0.1.0"
+description = "Open, first-party plugins for the 3LC compute service (host-mode + venv)."
+requires-python = ">=3.10"
+# Base = the contract SDK + the light deps the in-process (host-mode) plugins need in the host
+# venv. NO heavy ML deps here — those are the per-venv-plugin extras below.
+dependencies = [
+    "3lc-plugin-sdk>=0.2.0,<0.3.0",
+    "openpyxl>=3.1",        # importer, exporter
+    "pyyaml",               # importer
+    "datasets",             # importer (HuggingFace import)
+    "transformers",         # importer (HuggingFace import)
+    "pyarrow",              # table_statistics
+    "numpy",                # importer / splitter / table_statistics / image_metrics
+    "pillow",               # image_metrics
+]
+
+# Per-venv-plugin heavy stacks — installed ONLY into that plugin's provisioned venv.
+# Provisioning opts into the extra named by the plugin manifest's runtime.provision_extra.
+[project.optional-dependencies]
+timm = [
+    "timm>=1.0",
+    "torch",
+    "torchvision",
+    "pacmap>=0.8",
+    "umap-learn>=0.5",
+]
+sam3 = [
+    "sam3",
+    "torch",
+    "torchvision",
+    "umap-learn>=0.5",
+]
+yolo = [
+    "3lc-ultralytics",
+    "torch",
+    "torchvision",
+]
+
+# Every plugin advertises itself here; the host iterates this group to discover them all.
+# Value = the import package; its bundled plugin.toml drives id/ui/runtime (and, for venv
+# plugins, the provision extra).
+[project.entry-points."tlc_compute.plugins"]
+timm = "tlc_plugin_timm"
+sam3 = "tlc_plugin_sam3"
+yolo = "tlc_plugin_yolo"
+importer = "tlc_plugin_importer"
+exporter = "tlc_plugin_exporter"
+merger = "tlc_plugin_merger"
+splitter = "tlc_plugin_splitter"
+table_statistics = "tlc_plugin_table_statistics"
+image_metrics = "tlc_plugin_image_metrics"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/tlc_plugin_timm",
+    "src/tlc_plugin_sam3",
+    "src/tlc_plugin_yolo",
+    "src/tlc_plugin_importer",
+    "src/tlc_plugin_exporter",
+    "src/tlc_plugin_merger",
+    "src/tlc_plugin_splitter",
+    "src/tlc_plugin_table_statistics",
+    "src/tlc_plugin_image_metrics",
+]
+
+# torch/torchvision from the CUDA 12.6 index on Linux — used only when a heavy extra is
+# selected during venv provisioning (not on a bare/host install).
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+# 3lc private releases index — 3lc versions not yet on public PyPI.
+[[tool.uv.index]]
+name = "3lc-releases"
+url = "https://pypi.3lc.ai/public/repositories/releases-public"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
+torchvision = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
+3lc = { index = "3lc-releases" }
+3lc-ultralytics = { git = "https://github.com/3lc-ai/3lc-ultralytics.git", branch = "feature/fred/instance-level-embeddings-3.0" }
+# DEV-ONLY (build-out): the SDK is unpublished, so resolve it from the sibling checkout.
+# Drop this line once 3lc-plugin-sdk is on the index.
+3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
+
+# The 3lc-ultralytics branch's own pyproject points 3lc → ../tlc-monorepo (its local dev
+# layout). Override its metadata so uv resolves 3lc from the index instead.
+[[tool.uv.dependency-metadata]]
+name = "3lc-ultralytics"
+version = "0.3.0"
+requires-dist = [
+    "3lc>=3.0.0,<4.0.0",
+    "pacmap>=0.8.0",
+    "ultralytics>=8.4.0,<8.4.7",
+]

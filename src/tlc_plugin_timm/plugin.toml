@@ -24,5 +24,8 @@ quick_action_description = "Fine-tune a timm image classifier on your data with 
 [runtime]
 isolation = "venv"
 entrypoint = "tlc_plugin_timm:TimmPlugin"
+# Heavy stack lives behind this extra of the providing distribution; the host
+# installs it ONLY into this plugin's provisioned venv, never the host venv.
+provision_extra = "timm"
 requires_gpu = true
 training = true

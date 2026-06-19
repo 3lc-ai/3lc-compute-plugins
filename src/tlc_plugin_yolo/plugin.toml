@@ -24,5 +24,8 @@ quick_action_description = "Fine-tune a YOLO model on your data with live metric
 [runtime]
 isolation = "venv"
 entrypoint = "tlc_plugin_yolo:YoloPlugin"
+# Heavy stack lives behind this extra of the providing distribution; the host
+# installs it ONLY into this plugin's provisioned venv, never the host venv.
+provision_extra = "yolo"
 requires_gpu = true
 training = true
