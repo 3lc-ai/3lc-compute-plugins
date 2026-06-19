@@ -1,0 +1,1505 @@
+<!--
+-- <copyright>
+-- Copyright (c) 2026 3LC Inc. All rights reserved.
+--
+-- All rights are reserved. Reproduction or transmission in whole or in part, in
+-- any form or by any means, electronic, mechanical or otherwise, is prohibited
+-- without the prior written permission of the copyright owner.
+-- </copyright>
+-->
+<!-- YOLO — self-contained plugin UI fragment -->
+<style>
+/* ── YOLO-specific styles ── */
+/* Uses shared classes from plugin-common.css: plugin-dot, plugin-task-badge,
+   plugin-param-group, plugin-queue-item, plugin-mono, etc. */
+
+/* Config bar — horizontal dropdown replacing sidebar */
+.tr-config-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 14px; padding: 10px 14px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 8px);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.tr-config-bar select {
+  flex: 1; max-width: 320px; font-size: 12px; font-weight: 500;
+}
+.tr-config-bar .bar-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.3px; color: var(--text-muted); white-space: nowrap;
+}
+
+/* Metrics container */
+.tr-metrics { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+/* Log area override: fixed height */
+.tr-log-area { height: 140px; max-height: none; }
+.tr-log-area div { padding: 1px 0; }
+
+/* Queue status badge */
+.tr-queue-status { font-size: 9px; font-weight: 600; letter-spacing: 0.3px; padding: 1px 7px; border-radius: 3px; }
+
+/* Queue job info */
+.tr-job-info { font-size: 9px; color: var(--text-muted); }
+</style>
+
+<div class="plugin-page">
+<!-- ── Hero ───────────────────────────────────────────────── -->
+<div class="plugin-hero" style="padding:20px 24px">
+      <h2 style="margin-bottom:6px">Ultralytics YOLO Training</h2>
+      <p style="font-size:13px;color:var(--text);line-height:1.6;margin:0">
+        Train <a href="https://docs.ultralytics.com/" target="_blank" style="color:var(--accent)">Ultralytics YOLO</a> models on your 3LC tables with automatic task detection,
+        per-sample loss tracking, and embedding collection for data debugging and fixing.
+      </p>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px">
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M10 2v4M10 14v4M2 10h4M14 10h4"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">Auto-detect</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Task type detected from your table schema automatically</div>
+    </div>
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 3 4-2 6 5"/><path d="M3 17h14"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">Per-sample loss</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Track individual sample losses to find mislabeled or hard examples</div>
+    </div>
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="7" r="1.5" fill="currentColor" stroke="none"/><circle cx="9" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="14" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="7" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="11" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.5" fill="currentColor" stroke="none"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">Embeddings</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Collect embeddings for visual clustering in the Dashboard</div>
+    </div>
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3a7 7 0 0 1 0 14"/><path d="M6 17A7 7 0 0 1 6 3"/><path d="M14 7V3h4M6 13v4H2"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">Collect mode</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Run inference-only to collect metrics without training</div>
+    </div>
+  </div>
+    <div class="plugin-workflow" style="margin-top:10px">
+      <div class="plugin-workflow-step"><span class="num">1</span> Select tables</div>
+      <div class="plugin-workflow-step"><span class="num">2</span> Configure model</div>
+      <div class="plugin-workflow-step"><span class="num">3</span> Train</div>
+    </div>
+</div>
+
+<!-- ── Config bar (replaces sidebar) ──────────────────────── -->
+<div class="tr-config-bar">
+  <span class="bar-label">Config</span>
+  <select id="tr-config-select" class="form-control" onchange="trOnConfigSelect(this.value)">
+    <option value="">New config</option>
+  </select>
+  <button class="btn btn-ghost btn-sm" onclick="trNewProject()">+ New</button>
+  <button class="btn btn-secondary btn-sm" id="tr-save-new-btn" onclick="trSaveAsNew()" style="display:none">Save New</button>
+  <button class="btn btn-danger btn-sm" id="tr-delete-btn" onclick="trDeleteProject()" style="display:none">Delete</button>
+</div>
+
+    <!-- ── Input Tables ──────────────────────────────────── -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <div class="card-title"><span class="plugin-section-number">1</span> Input Tables</div>
+      </div>
+      <div class="card-body">
+
+        <!-- Config Name -->
+        <div class="form-group">
+          <label class="form-label" for="tr-project-name">Config Name</label>
+          <input type="text" id="tr-project-name" class="form-control" placeholder="e.g. MenWomen ResNet run 1">
+        </div>
+
+        <!-- Tables -->
+        <div class="form-group">
+          <label class="form-label" for="tr-train-url">Train Table URL</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="tr-train-url" class="form-control plugin-mono"
+                   placeholder="Paste URL or click Browse..."
+                   oninput="trOnTrainTableChange()">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openTablePicker('tr-train-url')">Browse</button>
+          </div>
+          <div class="form-help">Select your training data table. The task type (detection, segmentation, classification) is auto-detected from the table schema.</div>
+        </div>
+        <div style="display:flex;justify-content:center">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="trSwapUrls()" title="Swap train / val URLs"
+                  style="font-size:13px;padding:1px 6px;line-height:1">&#x21C5;</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tr-val-url">Validation Table URL <span class="text-muted">(optional — validation skipped if empty)</span></label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="tr-val-url" class="form-control plugin-mono"
+                   placeholder="Paste URL or click Browse...">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openTablePicker('tr-val-url')">Browse</button>
+          </div>
+          <div class="form-help">Optional validation set for tracking metrics during training. If empty, validation is skipped (val=False).</div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <input type="checkbox" id="tr-use-latest">
+          <label for="tr-use-latest" style="cursor:pointer;font-size:10px">
+            Use <code>.latest()</code> at train time
+            <span class="text-muted">(resolve to newest table revision)</span>
+          </label>
+        </div>
+
+        <!-- Alias Override -->
+        <div id="tr-alias-override-area"></div>
+
+        <!-- Detected Task -->
+        <div class="form-group">
+          <label class="form-label">Detected Task</label>
+          <div>
+            <span id="tr-task-badge" class="plugin-task-badge">--</span>
+            <span id="tr-task-detail" class="text-sm text-muted" style="margin-left:6px"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Step 3: YOLO Settings ─────────────────────────── -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <div class="card-title"><span class="plugin-section-number">2</span> Ultralytics YOLO Settings</div>
+      </div>
+      <div class="card-body">
+
+        <!-- Model + Mode — side by side -->
+        <div class="plugin-form-grid">
+          <div class="form-group">
+            <label class="form-label" for="tr-model-select">Model</label>
+            <select id="tr-model-select" class="form-select" onchange="trOnModelChange()">
+              <option value="">-- Select a model --</option>
+            </select>
+            <div class="form-help">Choose a YOLO model size. Larger models are more accurate but slower to train. Nano (n) is great for testing.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mode</label>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn btn-sm btn-primary" id="tr-mode-train"
+                      onclick="trSetMode('train')">Train</button>
+              <button type="button" class="btn btn-sm btn-secondary" id="tr-mode-collect"
+                      onclick="trSetMode('collect')">Collect</button>
+            </div>
+            <div class="text-sm text-muted" id="tr-mode-help" style="margin-top:3px">
+              Train a YOLO model with 3LC metrics collection.
+            </div>
+          </div>
+        </div>
+
+        <!-- Pretrained Model URL (fine-tune from existing checkpoint) -->
+        <div class="form-group" style="margin-top:8px">
+          <label class="form-label" for="tr-pretrained-url">Pretrained Model URL <span class="text-muted">(optional — fine-tune from existing checkpoint)</span></label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="tr-pretrained-url" class="form-control plugin-mono"
+                   placeholder="Path to .pt checkpoint (leave empty for default pretrained)">
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <input type="checkbox" id="tr-copy-model" checked>
+          <label for="tr-copy-model" style="cursor:pointer;font-size:10px">
+            Copy best model to run folder
+            <span class="text-muted">(store checkpoint alongside run data)</span>
+          </label>
+        </div>
+
+        <div class="form-group" style="margin-bottom:10px">
+          <label class="form-label" for="tr-workers">Worker Threads</label>
+          <input type="number" id="tr-workers" class="form-control" value="8" min="0" max="32" style="width:80px">
+          <div class="form-help">Number of dataloader worker threads. 0 = main thread only. Higher values speed up data loading on multi-core machines.</div>
+        </div>
+
+        <!-- Dynamic model params (YOLO Settings group renders here) -->
+        <div id="tr-params-container"></div>
+      </div>
+    </div>
+
+    <!-- ── Step 4: 3LC Settings ──────────────────────────── -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <div class="card-title"><span class="plugin-section-number">3</span> 3LC Settings</div>
+      </div>
+      <div class="card-body">
+
+        <div class="plugin-form-grid">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="tr-3lc-project">3LC Project</label>
+            <input type="text" id="tr-3lc-project" class="form-control" placeholder="Project from train table">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="tr-run-name">Run Name</label>
+            <input type="text" id="tr-run-name" class="form-control" placeholder="Auto-generated if empty">
+          </div>
+        </div>
+
+        <!-- Dynamic 3LC Settings params render here -->
+        <div id="tr-3lc-settings"></div>
+
+        <!-- Actions -->
+        <div class="plugin-action-bar">
+          <button class="btn btn-primary" id="tr-train-btn" onclick="trStartTraining()">Start Ultralytics YOLO Training</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Queue & Progress ─────────────────────────────── -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <div class="card-title">Queue &amp; Progress</div>
+      </div>
+      <div class="card-body">
+
+        <!-- Current job -->
+        <div id="tr-current-job" style="display:none">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span id="tr-current-label" class="text-sm" style="font-weight:600">--</span>
+            <span id="tr-current-status" class="tr-queue-status plugin-status-running">running</span>
+            <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+              <span id="tr-current-open-link"></span>
+              <button class="btn btn-danger btn-sm" id="tr-stop-btn" style="display:none" onclick="trStopCurrentJob()">Stop</button>
+            </span>
+          </div>
+          <div id="tr-current-info" class="tr-job-info" style="margin-bottom:6px"></div>
+          <div style="margin-bottom:4px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+              <span id="tr-epoch-label" class="text-sm">Epoch 0/0</span>
+              <span id="tr-pct-label" class="text-sm" style="font-weight:600">0%</span>
+            </div>
+            <div class="plugin-progress-wrap">
+              <div id="tr-epoch-bar" class="plugin-progress-bar" style="width:0%"></div>
+            </div>
+          </div>
+          <div id="tr-timing" class="text-sm text-muted" style="margin-bottom:6px"></div>
+          <div id="tr-current-metrics" class="tr-metrics"></div>
+        </div>
+        <div id="tr-no-current" class="text-sm text-muted">No active job.</div>
+
+        <!-- Pending queue -->
+        <div id="tr-queue-section" style="display:none;margin-top:14px">
+          <div class="text-sm" style="font-weight:600;margin-bottom:6px">Pending</div>
+          <div id="tr-queue-list"></div>
+        </div>
+
+        <!-- Recent completed -->
+        <div id="tr-completed-section" style="display:none;margin-top:14px">
+          <div class="text-sm" style="font-weight:600;margin-bottom:6px">Recent</div>
+          <div id="tr-completed-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Log ──────────────────────────────────────────── -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <div class="card-title">Log</div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div id="tr-log" class="plugin-log-area tr-log-area"></div>
+      </div>
+    </div>
+
+</div>
+
+<script>
+// Training — SocketIO handlers, form logic, project management
+// Communicates with Compute Service for all API + SocketIO
+
+// ── State ─────────────────────────────────────────────────────
+var socket = null;
+var currentProjectId = null;
+var modelsCache = null;       // [{name, display_name, supported_tasks}]
+var modelParamsCache = {};    // {modelName: [field, ...]}
+var detectedTask = null;
+var _autoSaveTimer = null;
+var _currentJobId = null;
+var currentMode = "train";    // "train" or "collect"
+var _savedSnapshot = null;    // snapshot of form data at last save/load
+
+var _STORAGE_KEY = "yolo_selected_project";
+
+// Compute Service URL from PLUGIN_API bridge
+var COMPUTE_URL = PLUGIN_API.getConfig("compute_service_url");
+
+// ── Helpers ───────────────────────────────────────────────────
+function _trFetch(path, opts) {
+  return PLUGIN_API.authFetch(COMPUTE_URL + path, opts);
+}
+
+function _trFetchJson(path, opts) {
+  return _trFetch(path, opts).then(function(r) { return r.json(); });
+}
+
+function _trPost(path, body) {
+  return _trFetchJson(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+// ── SocketIO Connection ──────────────────────────────────────
+function trInitSocket() {
+  var io = PLUGIN_API.libs.io;
+  if (!io) {
+    trLog("SocketIO not available — real-time updates disabled.");
+    return;
+  }
+
+  socket = io(COMPUTE_URL + "/yolo", {
+    transports: ["websocket", "polling"],
+    reconnection: true,
+    reconnectionDelay: 2000,
+  });
+
+  socket.on("connect", function() {
+    trLog("Connected to Compute Service");
+  });
+
+  socket.on("disconnect", function() {
+    trLog("Disconnected from Compute Service");
+  });
+
+  socket.on("connect_error", function() {
+  });
+
+  // Progress events
+  socket.on("epoch_progress", function(data) {
+    trShowCurrentJob(data.job_id);
+    var m = data.metrics || {};
+    var batch = m.batch || 0;
+    var totalBatches = m.total_batches || 0;
+    var phase = m.phase || "";
+    var timing = data.timing || {};
+
+    var overallPct, label;
+    if (phase === "collect") {
+      overallPct = totalBatches > 0 ? (batch / totalBatches) * 100 : 0;
+      label = batch && totalBatches ? "Collecting " + batch + "/" + totalBatches : "Collecting...";
+    } else {
+      var epochFraction = totalBatches > 0 ? (batch / totalBatches) : 1;
+      overallPct = ((data.epoch - 1 + epochFraction) / data.total_epochs) * 100;
+      if (batch && totalBatches && phase) {
+        var phaseLabel = phase === "val" ? "Val" : "Train";
+        label = "Epoch " + data.epoch + "/" + data.total_epochs + " · " + phaseLabel + " batch " + batch + "/" + totalBatches;
+      } else {
+        label = "Epoch " + data.epoch + "/" + data.total_epochs;
+      }
+    }
+    overallPct = Math.max(0, Math.min(overallPct, 100));
+    document.getElementById("tr-epoch-bar").style.width = overallPct.toFixed(1) + "%";
+    document.getElementById("tr-pct-label").textContent = Math.round(overallPct) + "%";
+    document.getElementById("tr-epoch-label").textContent = label;
+
+    // Timing info
+    var parts = [];
+    if (timing.elapsed_s !== undefined) parts.push("Elapsed: " + _trFmtDuration(timing.elapsed_s));
+    if (timing.eta_s !== undefined) parts.push("ETA: " + _trFmtDuration(timing.eta_s));
+    if (timing.avg_epoch_s !== undefined) parts.push("Per epoch: " + _trFmtDuration(timing.avg_epoch_s));
+    document.getElementById("tr-timing").innerHTML = parts.join(' &nbsp;|&nbsp; ');
+
+    trRenderMetrics(m);
+  });
+
+  socket.on("job_status", function(data) {
+    trShowCurrentJob(data.job_id);
+    trLog("[" + data.job_id.slice(0, 8) + "] " + data.status + ": " + data.message);
+  });
+
+  socket.on("job_completed", function(data) {
+    trLog("Job completed! Run: " + (data.run_url || "(no run)"));
+    if (data.final_metrics) {
+      trRenderMetrics(data.final_metrics);
+    }
+    trFinishCurrentJob("completed", data.project_name);
+    trLoadProjects();
+  });
+
+  socket.on("job_failed", function(data) {
+    trLog("Job FAILED: " + data.error);
+    trFinishCurrentJob("failed", null);
+  });
+
+  socket.on("queue_update", function(data) {
+    trRenderQueue(data);
+  });
+}
+
+// ── Logging ──────────────────────────────────────────────────
+function trLog(msg) {
+  var el = document.getElementById("tr-log");
+  if (!el) return;
+  var line = document.createElement("div");
+  line.textContent = "[" + new Date().toLocaleTimeString() + "] " + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Save bar (dirty tracking) ───────────────────────────────
+function trTakeSnapshot() {
+  _savedSnapshot = JSON.stringify(trCollectFormData());
+}
+
+function trCheckDirty() {
+  if (!currentProjectId) return;
+  var current = JSON.stringify(trCollectFormData());
+  var dirty = current !== _savedSnapshot;
+  var btn = document.getElementById("tr-save-new-btn");
+  if (btn) {
+    btn.style.display = dirty ? "" : "none";
+  }
+}
+
+function trScheduleAutoSave() {
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(trCheckDirty, 300);
+}
+
+function trSaveAsNew() {
+  var data = trCollectFormData();
+  data.id = "";
+  if (!data.name.trim()) {
+    alert("Please enter a config name.");
+    return;
+  }
+
+  _trPost("/api/plugins/yolo/projects", data)
+    .then(function(resp) {
+      if (resp.error) { alert("Error: " + resp.error); return; }
+      currentProjectId = resp.id;
+      localStorage.setItem(_STORAGE_KEY, currentProjectId);
+      document.getElementById("tr-delete-btn").style.display = "";
+      trTakeSnapshot();
+      trCheckDirty();
+      trLoadProjects();
+      trLog("Saved as new config.");
+    })
+    .catch(function(e) { alert("Save failed: " + e); });
+}
+
+function trAttachAutoSave() {
+  var ids = ["tr-project-name", "tr-train-url", "tr-val-url", "tr-use-latest",
+             "tr-model-select", "tr-3lc-project", "tr-run-name"];
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("input", trScheduleAutoSave);
+    el.addEventListener("change", trScheduleAutoSave);
+  });
+  var paramsContainer = document.getElementById("tr-params-container");
+  if (paramsContainer) {
+    paramsContainer.addEventListener("input", trScheduleAutoSave);
+    paramsContainer.addEventListener("change", trScheduleAutoSave);
+  }
+}
+
+// ── Mode Toggle ─────────────────────────────────────────────
+function trSetMode(mode) {
+  currentMode = mode;
+  var trainBtn = document.getElementById("tr-mode-train");
+  var collectBtn = document.getElementById("tr-mode-collect");
+  var helpEl = document.getElementById("tr-mode-help");
+  var startBtn = document.getElementById("tr-train-btn");
+
+  if (mode === "collect") {
+    trainBtn.className = "btn btn-sm btn-secondary";
+    collectBtn.className = "btn btn-sm btn-primary";
+    helpEl.textContent = "Collect metrics on an existing Ultralytics YOLO model (no training).";
+    startBtn.textContent = "Start Collection";
+  } else {
+    trainBtn.className = "btn btn-sm btn-primary";
+    collectBtn.className = "btn btn-sm btn-secondary";
+    helpEl.textContent = "Train a model with 3LC metrics collection.";
+    startBtn.textContent = "Start Ultralytics YOLO Training";
+  }
+
+  trApplyModeVisibility();
+  trScheduleAutoSave();
+}
+
+function trApplyModeVisibility() {
+  var trainOnlyIds = ["epochs", "lr0", "lrf", "optimizer", "patience"];
+  var params = document.querySelectorAll("#tr-params-container [data-param-id]");
+  for (var i = 0; i < params.length; i++) {
+    var el = params[i];
+    var wrap = el.closest(".form-group") || el.parentElement;
+    if (trainOnlyIds.indexOf(el.dataset.paramId) !== -1) {
+      wrap.style.display = currentMode === "collect" ? "none" : "";
+    }
+  }
+}
+
+// ── Projects ─────────────────────────────────────────────────
+function trLoadProjects() {
+  _trFetchJson("/api/plugins/yolo/projects")
+    .then(function(data) {
+      if (data.error) { trLog("Error loading configs: " + data.error); return; }
+      trRenderProjectsList(Array.isArray(data) ? data : []);
+    })
+    .catch(function(e) {
+      trLog("Error loading configs: " + String(e));
+    });
+}
+
+function trRenderProjectsList(projects) {
+  var sel = document.getElementById("tr-config-select");
+  var currentVal = currentProjectId || "";
+  sel.innerHTML = '<option value="">New config</option>';
+  projects.forEach(function(p) {
+    var opt = document.createElement("option");
+    opt.value = p.id;
+    var modelLabel = (p.params && p.params.model) ? p.params.model.replace(/\.pt$/, "") : (p.model_name || "?");
+    opt.textContent = (p.name || "Untitled") + " — " + modelLabel + " · " + (p.task_type || "?");
+    if (p.id === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  // Show/hide delete button based on whether a config is selected
+  document.getElementById("tr-delete-btn").style.display = currentVal ? "" : "none";
+}
+
+function trOnConfigSelect(val) {
+  if (val) {
+    trLoadProject(val);
+  } else {
+    trNewProject();
+  }
+}
+
+function trNewProject() {
+  currentProjectId = null;
+  localStorage.removeItem(_STORAGE_KEY);
+  document.getElementById("tr-config-select").value = "";
+  document.getElementById("tr-project-name").value = "";
+  document.getElementById("tr-run-name").value = "";
+  document.getElementById("tr-3lc-project").value = "";
+  document.getElementById("tr-train-url").value = "";
+  document.getElementById("tr-val-url").value = "";
+  document.getElementById("tr-use-latest").checked = false;
+  document.getElementById("tr-task-badge").textContent = "--";
+  document.getElementById("tr-task-detail").textContent = "";
+  document.getElementById("tr-model-select").value = "";
+  document.getElementById("tr-params-container").innerHTML = "";
+  detectedTask = null;
+  trSetMode("train");
+  document.getElementById("tr-save-new-btn").style.display = "none";
+  document.getElementById("tr-delete-btn").style.display = "none";
+  trTakeSnapshot();
+  trCheckDirty();
+  trLoadProjects();
+}
+
+function trLoadProject(projectId) {
+  _trFetchJson("/api/plugins/yolo/projects/" + projectId)
+    .then(function(p) {
+      if (p.error) { trLog("Error: " + p.error); return; }
+      currentProjectId = p.id;
+      localStorage.setItem(_STORAGE_KEY, p.id);
+      document.getElementById("tr-project-name").value = p.name || "";
+      document.getElementById("tr-run-name").value = p.run_name || "";
+      document.getElementById("tr-3lc-project").value = p.project_name || "";
+      document.getElementById("tr-train-url").value = p.train_table_url || "";
+      document.getElementById("tr-val-url").value = p.val_table_url || "";
+      document.getElementById("tr-use-latest").checked = !!p.use_latest;
+
+      trSetMode(p.mode || "train");
+
+      detectedTask = p.task_type || null;
+      document.getElementById("tr-task-badge").textContent = p.task_type || "--";
+
+      trPopulateModelDropdown(p.task_type, function() {
+        document.getElementById("tr-model-select").value = p.model_name || "";
+        trLoadModelParams(p.model_name, p.params || {});
+      });
+
+      // Restore pretrained model and copy checkbox
+      var savedParams = p.params || {};
+      document.getElementById("tr-pretrained-url").value = savedParams.pretrained_model_url || "";
+      document.getElementById("tr-copy-model").checked = savedParams.copy_model_to_run !== false;
+      document.getElementById("tr-workers").value = savedParams.workers != null ? savedParams.workers : 8;
+
+      document.getElementById("tr-config-select").value = p.id;
+      document.getElementById("tr-save-new-btn").style.display = "";
+      document.getElementById("tr-delete-btn").style.display = "";
+
+      // Fetch alias overrides for loaded config's train URL
+      if (p.train_table_url) {
+        var computeUrl = window.PLUGIN_API.getConfig("compute_service_url");
+        var auth = window.PLUGIN_API.getAuthHeader ? window.PLUGIN_API.getAuthHeader() : "";
+        _tlcFetchAndPopulateOverrides("tr", p.train_table_url, computeUrl, auth,
+          (p.params || {})._alias_overrides || null);
+      }
+
+      setTimeout(function() { trTakeSnapshot(); trCheckDirty(); }, 100);
+      trLoadProjects();
+    })
+    .catch(function(e) { trLog("Error loading project: " + e); });
+}
+
+function trDeleteProject() {
+  if (!currentProjectId) return;
+  if (!confirm("Delete this YOLO config?")) return;
+
+  _trPost("/api/plugins/yolo/projects/" + currentProjectId + "/delete", {})
+    .then(function() {
+      trLog("Project deleted.");
+      trNewProject();
+    })
+    .catch(function(e) { trLog("Error: " + e); });
+}
+
+function trCollectFormData() {
+  var params = {};
+  var paramEls = document.querySelectorAll("#tr-params-container [data-param-id]");
+  for (var i = 0; i < paramEls.length; i++) {
+    var el = paramEls[i];
+    params[el.dataset.paramId] = el.type === "checkbox" ? el.checked : el.value;
+  }
+  // Also collect dynamic 3LC fields
+  var tlcEls = document.querySelectorAll("#tr-3lc-settings [data-param-id]");
+  for (var j = 0; j < tlcEls.length; j++) {
+    var tlcEl = tlcEls[j];
+    params[tlcEl.dataset.paramId] = tlcEl.type === "checkbox" ? tlcEl.checked : tlcEl.value;
+  }
+
+  // Store alias overrides inside params (so they persist with the config)
+  var _trAliasOv = _tlcGetAliasOverrides("tr");
+  if (_trAliasOv.enabled && _trAliasOv.overrides.length) params._alias_overrides = _trAliasOv;
+
+  // Model fine-tuning and checkpoint params
+  var pretrainedUrl = document.getElementById("tr-pretrained-url").value.trim();
+  if (pretrainedUrl) params.pretrained_model_url = pretrainedUrl;
+  params.copy_model_to_run = document.getElementById("tr-copy-model").checked;
+  params.workers = parseInt(document.getElementById("tr-workers").value, 10);
+  if (isNaN(params.workers) || params.workers < 0) params.workers = 8;
+
+  return {
+    id: currentProjectId || "",
+    name: document.getElementById("tr-project-name").value.trim(),
+    run_name: document.getElementById("tr-run-name").value.trim(),
+    project_name: document.getElementById("tr-3lc-project").value.trim(),
+    model_name: document.getElementById("tr-model-select").value,
+    mode: currentMode,
+    task_type: detectedTask || "",
+    train_table_url: document.getElementById("tr-train-url").value.trim(),
+    val_table_url: document.getElementById("tr-val-url").value.trim(),
+    use_latest: document.getElementById("tr-use-latest").checked,
+    params: params,
+  };
+}
+
+// ── Task Detection ───────────────────────────────────────────
+var _detectDebounce = null;
+
+function trOnTrainTableChange() {
+  trScheduleAutoSave();
+  clearTimeout(_detectDebounce);
+  _detectDebounce = setTimeout(function() {
+    var url = document.getElementById("tr-train-url").value.trim();
+    if (!url) {
+      document.getElementById("tr-task-badge").textContent = "--";
+      document.getElementById("tr-task-detail").textContent = "";
+      detectedTask = null;
+      return;
+    }
+    document.getElementById("tr-task-badge").textContent = "detecting...";
+    document.getElementById("tr-task-detail").textContent = "";
+
+    _trPost("/api/plugins/yolo/detect-task", { url: url })
+      .then(function(data) {
+        if (data.error) {
+          document.getElementById("tr-task-badge").textContent = "error";
+          document.getElementById("tr-task-detail").textContent = data.error;
+          return;
+        }
+        detectedTask = data.task;
+        document.getElementById("tr-task-badge").textContent = data.task;
+        document.getElementById("tr-task-detail").textContent = data.details || "";
+        var projInput = document.getElementById("tr-3lc-project");
+        if (data.project_name && !projInput.value.trim()) {
+          projInput.value = data.project_name;
+        }
+        trPopulateModelDropdown(data.task);
+        // Re-render params to filter checkpoint options by detected task
+        var curModel = document.getElementById("tr-model-select").value;
+        if (curModel) trLoadModelParams(curModel, trCollectFormData().params || {});
+      })
+      .catch(function(e) {
+        document.getElementById("tr-task-badge").textContent = "error";
+        document.getElementById("tr-task-detail").textContent = String(e);
+      });
+  }, 500);
+}
+
+// ── Models ───────────────────────────────────────────────────
+function trLoadModels(callback) {
+  if (modelsCache !== null) { callback(modelsCache); return; }
+  _trFetchJson("/api/plugins/yolo/models")
+    .then(function(data) {
+      modelsCache = Array.isArray(data) ? data : [];
+      callback(modelsCache);
+    })
+    .catch(function() { callback([]); });
+}
+
+function trPopulateModelDropdown(taskType, onReady) {
+  trLoadModels(function(models) {
+    var select = document.getElementById("tr-model-select");
+    var prev = select.value;
+    select.innerHTML = '<option value="">-- Select a model --</option>';
+
+    var compatible = [];
+    models.forEach(function(m) {
+      if (!taskType || taskType === "unknown" || m.supported_tasks.indexOf(taskType) !== -1) {
+        var opt = document.createElement("option");
+        opt.value = m.name;
+        opt.textContent = m.display_name;
+        select.appendChild(opt);
+        compatible.push(m.name);
+      }
+    });
+
+    // Restore previous selection, or auto-select if exactly one match
+    if (prev && compatible.indexOf(prev) !== -1) {
+      select.value = prev;
+    } else if (compatible.length === 1) {
+      select.value = compatible[0];
+      trOnModelChange();
+    }
+
+    if (onReady) onReady();
+  });
+}
+
+function trOnModelChange() {
+  var name = document.getElementById("tr-model-select").value;
+  if (!name) {
+    document.getElementById("tr-params-container").innerHTML = "";
+    return;
+  }
+  trLoadModelParams(name, {});
+  trScheduleAutoSave();
+}
+
+function trLoadModelParams(modelName, savedValues) {
+  if (!modelName) {
+    document.getElementById("tr-params-container").innerHTML = "";
+    return;
+  }
+
+  var renderFromCache = function() {
+    var fields = modelParamsCache[modelName];
+    if (!fields) return;
+    trRenderParamFields(fields, savedValues);
+  };
+
+  if (modelParamsCache[modelName]) {
+    renderFromCache();
+    return;
+  }
+
+  _trFetchJson("/api/plugins/yolo/models/" + modelName + "/params")
+    .then(function(fields) {
+      modelParamsCache[modelName] = Array.isArray(fields) ? fields : [];
+      renderFromCache();
+    })
+    .catch(function() {
+      document.getElementById("tr-params-container").innerHTML =
+        '<div class="text-sm text-muted">Could not load parameters.</div>';
+    });
+}
+
+function trRenderParamFields(fields, savedValues) {
+  var container = document.getElementById("tr-params-container");
+  container.innerHTML = "";
+
+  // Group fields — skip "3LC Settings" as those render in their own card
+  var groups = {};
+  fields.forEach(function(f) {
+    var g = f.group || "Parameters";
+    if (g === "3LC Settings") return;
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(f);
+  });
+
+  Object.keys(groups).forEach(function(groupName) {
+    var groupFields = groups[groupName];
+    var groupDiv = document.createElement("div");
+
+    var regularFields = groupFields.filter(function(f) { return f.type !== "checkbox" && !f.wide; });
+    var wideFields = groupFields.filter(function(f) { return f.type !== "checkbox" && f.wide; });
+    var checkboxFields = groupFields.filter(function(f) { return f.type === "checkbox"; });
+
+    // Regular fields in a 4-column CSS grid
+    if (regularFields.length > 0) {
+      var grid = document.createElement("div");
+      grid.style.cssText = "display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px";
+
+      regularFields.forEach(function(f) {
+        var wrap = document.createElement("div");
+        wrap.className = "form-group";
+        wrap.style.marginBottom = "0";
+
+        var lbl = document.createElement("label");
+        lbl.className = "form-label";
+        lbl.textContent = f.label;
+        wrap.appendChild(lbl);
+
+        var input;
+        var val = savedValues[f.id] !== undefined ? savedValues[f.id] : f["default"];
+
+        if (f.type === "select" && f.options) {
+          input = document.createElement("select");
+          input.className = "form-control";
+          f.options.forEach(function(opt) {
+            // Filter by detected task if option has a task tag
+            if (opt.task && detectedTask && opt.task !== detectedTask) return;
+            var o = document.createElement("option");
+            o.value = opt.value;
+            o.textContent = opt.label;
+            if (String(opt.value) === String(val)) o.selected = true;
+            input.appendChild(o);
+          });
+        } else if (f.type === "number") {
+          input = document.createElement("input");
+          input.type = "number";
+          input.className = "form-control";
+          if (f.min !== undefined) input.min = f.min;
+          if (f.max !== undefined) input.max = f.max;
+          if (f.step !== undefined) input.step = f.step;
+          input.value = val !== undefined ? val : "";
+        } else {
+          input = document.createElement("input");
+          input.type = "text";
+          input.className = "form-control";
+          input.placeholder = f.placeholder || "";
+          input.value = val !== undefined ? val : "";
+        }
+
+        input.dataset.paramId = f.id;
+        input.addEventListener("input", trScheduleAutoSave);
+        input.addEventListener("change", trScheduleAutoSave);
+        wrap.appendChild(input);
+
+        if (f.help) {
+          var help = document.createElement("div");
+          help.className = "form-help";
+          help.textContent = f.help;
+          wrap.appendChild(help);
+        }
+
+        grid.appendChild(wrap);
+      });
+
+      groupDiv.appendChild(grid);
+    }
+
+    // Wide fields — full width below the grid
+    wideFields.forEach(function(f) {
+      var wrap = document.createElement("div");
+      wrap.className = "form-group";
+      wrap.style.marginBottom = "8px";
+
+      var lbl = document.createElement("label");
+      lbl.className = "form-label";
+      lbl.textContent = f.label;
+      wrap.appendChild(lbl);
+
+      var input = document.createElement("input");
+      input.type = "text";
+      input.className = "form-control";
+      input.placeholder = f.help || "";
+      var val = savedValues[f.id] !== undefined ? savedValues[f.id] : f["default"];
+      input.value = val !== undefined ? val : "";
+      input.dataset.paramId = f.id;
+      input.addEventListener("input", trScheduleAutoSave);
+      input.addEventListener("change", trScheduleAutoSave);
+      wrap.appendChild(input);
+
+      groupDiv.appendChild(wrap);
+    });
+
+    // Checkboxes in a compact row
+    if (checkboxFields.length > 0) {
+      var cbRow = document.createElement("div");
+      cbRow.style.cssText = "display:flex;gap:14px;flex-wrap:wrap;align-items:center";
+
+      checkboxFields.forEach(function(f) {
+        var wrap = document.createElement("div");
+        wrap.style.cssText = "display:flex;align-items:center;gap:5px";
+
+        var val = savedValues[f.id] !== undefined ? savedValues[f.id] : f["default"];
+        var input = document.createElement("input");
+        input.type = "checkbox";
+        input.style.cssText = "accent-color:var(--btn-primary-bg,#2a4a61);width:15px;height:15px";
+        input.checked = val === true || val === "true" || val === "1";
+        input.dataset.paramId = f.id;
+        input.addEventListener("change", trScheduleAutoSave);
+        wrap.appendChild(input);
+
+        var cbLabel = document.createElement("label");
+        cbLabel.className = "text-sm";
+        cbLabel.style.cursor = "pointer";
+        cbLabel.textContent = f.label;
+        cbLabel.onclick = function() { input.checked = !input.checked; input.dispatchEvent(new Event("change")); };
+        wrap.appendChild(cbLabel);
+        if (f.help) cbLabel.title = f.help;
+
+        cbRow.appendChild(wrap);
+      });
+
+      groupDiv.appendChild(cbRow);
+    }
+
+    container.appendChild(groupDiv);
+  });
+
+  // Apply mode visibility to newly rendered fields
+  trApplyModeVisibility();
+
+  // Render any 3LC Settings params into the dedicated section
+  var tlcFields = fields.filter(function(f) { return f.group === "3LC Settings"; });
+  var tlcSection = document.getElementById("tr-3lc-settings");
+  tlcSection.innerHTML = "";
+
+  // Disable GT instance embeddings checkbox when instance_embeddings_dim is 0
+  var _syncGtCheckbox = function() {
+    var dim = tlcSection.querySelector('[data-param-id="instance_embeddings_dim"]');
+    var gt = tlcSection.querySelector('[data-param-id="ground_truth_instance_embeddings"]');
+    if (!dim || !gt) return;
+    var disabled = parseInt(dim.value, 10) === 0;
+    gt.disabled = disabled;
+    if (disabled && gt.checked) {
+      gt.checked = false;
+      trScheduleAutoSave();
+    }
+    var gtWrap = gt.parentNode;
+    if (gtWrap) gtWrap.style.opacity = disabled ? '0.5' : '';
+  };
+  tlcSection.addEventListener('change', function(e) {
+    if (e.target && e.target.dataset && e.target.dataset.paramId === 'instance_embeddings_dim') {
+      _syncGtCheckbox();
+    }
+  });
+
+  if (tlcFields.length > 0) {
+    var tlcRegular = tlcFields.filter(function(f) { return f.type !== "checkbox"; });
+    var tlcCheckboxes = tlcFields.filter(function(f) { return f.type === "checkbox"; });
+
+    if (tlcRegular.length > 0) {
+      var grid = document.createElement("div");
+      grid.style.cssText = "display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px";
+
+      tlcRegular.forEach(function(f) {
+        var wrap = document.createElement("div");
+        wrap.className = "form-group";
+        wrap.style.marginBottom = "0";
+        var val = savedValues[f.id] !== undefined ? savedValues[f.id] : f["default"];
+        var input;
+
+        var lbl = document.createElement("label");
+        lbl.className = "form-label";
+        lbl.textContent = f.label;
+        wrap.appendChild(lbl);
+
+        if (f.type === "select" && f.options) {
+          input = document.createElement("select");
+          input.className = "form-control";
+          f.options.forEach(function(opt) {
+            // Filter by detected task if option has a task tag
+            if (opt.task && detectedTask && opt.task !== detectedTask) return;
+            var o = document.createElement("option");
+            o.value = opt.value;
+            o.textContent = opt.label;
+            if (String(opt.value) === String(val)) o.selected = true;
+            input.appendChild(o);
+          });
+          input.dataset.paramId = f.id;
+          input.addEventListener("change", trScheduleAutoSave);
+        } else if (f.type === "number") {
+          input = document.createElement("input");
+          input.type = "number";
+          input.className = "form-control";
+          if (f.min !== undefined) input.min = f.min;
+          if (f.max !== undefined) input.max = f.max;
+          if (f.step !== undefined) input.step = f.step;
+          input.value = val !== undefined ? val : "";
+          input.dataset.paramId = f.id;
+          input.addEventListener("input", trScheduleAutoSave);
+          input.addEventListener("change", trScheduleAutoSave);
+        } else {
+          input = document.createElement("input");
+          input.type = "text";
+          input.className = "form-control";
+          input.value = val !== undefined ? val : "";
+          input.dataset.paramId = f.id;
+          input.addEventListener("input", trScheduleAutoSave);
+          input.addEventListener("change", trScheduleAutoSave);
+        }
+
+        wrap.appendChild(input);
+        if (f.help) {
+          var help = document.createElement("div");
+          help.className = "form-help";
+          help.textContent = f.help;
+          wrap.appendChild(help);
+        }
+        grid.appendChild(wrap);
+      });
+      tlcSection.appendChild(grid);
+
+      // Wire reducer → dim field switching (PCA uses number inputs, UMAP/PaCMAP use dropdowns)
+      var reducerEl = grid.querySelector('[data-param-id="image_embeddings_reducer"]');
+      if (reducerEl) {
+        var _dimIds = ['image_embeddings_dim', 'instance_embeddings_dim'];
+        function _switchDimFields() {
+          var isPca = reducerEl.value === 'pca';
+          _dimIds.forEach(function(pid) {
+            var old = grid.querySelector('[data-param-id="' + pid + '"]');
+            if (!old) return;
+            var wrap = old.parentNode;
+            var curVal = old.value;
+            if (isPca && old.tagName === 'SELECT') {
+              var num = document.createElement('input');
+              num.type = 'number'; num.className = 'form-control';
+              num.min = 0; num.max = 512; num.step = 1;
+              num.value = parseInt(curVal, 10) || 2;
+              num.dataset.paramId = pid;
+              num.addEventListener('input', trScheduleAutoSave);
+              num.addEventListener('change', trScheduleAutoSave);
+              wrap.replaceChild(num, old);
+            } else if (!isPca && old.tagName === 'INPUT') {
+              var f = tlcRegular.find(function(x) { return x.id === pid; });
+              if (!f || !f.options) return;
+              var sel = document.createElement('select');
+              sel.className = 'form-control'; sel.dataset.paramId = pid;
+              var numVal = parseInt(curVal, 10);
+              var matched = false;
+              f.options.forEach(function(opt) {
+                var o = document.createElement('option');
+                o.value = opt.value; o.textContent = opt.label;
+                if (parseInt(opt.value, 10) === numVal) { o.selected = true; matched = true; }
+                sel.appendChild(o);
+              });
+              if (!matched) sel.value = f['default'];
+              sel.addEventListener('change', trScheduleAutoSave);
+              wrap.replaceChild(sel, old);
+            }
+          });
+          trScheduleAutoSave();
+          _syncGtCheckbox();
+        }
+        reducerEl.addEventListener('change', _switchDimFields);
+        _switchDimFields(); // apply on initial render
+      }
+    }
+
+    if (tlcCheckboxes.length > 0) {
+      var cbRow = document.createElement("div");
+      cbRow.style.cssText = "display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px";
+
+      tlcCheckboxes.forEach(function(f) {
+        var wrap = document.createElement("div");
+        wrap.style.cssText = "display:flex;align-items:center;gap:5px";
+
+        var val = savedValues[f.id] !== undefined ? savedValues[f.id] : f["default"];
+        var input = document.createElement("input");
+        input.type = "checkbox";
+        input.style.cssText = "accent-color:var(--btn-primary-bg,#2a4a61);width:15px;height:15px";
+        input.checked = val === true || val === "true" || val === "1";
+        input.dataset.paramId = f.id;
+        input.addEventListener("change", trScheduleAutoSave);
+        wrap.appendChild(input);
+
+        var cbLabel = document.createElement("label");
+        cbLabel.className = "text-sm";
+        cbLabel.style.cursor = "pointer";
+        cbLabel.textContent = f.label;
+        cbLabel.onclick = function() { input.checked = !input.checked; input.dispatchEvent(new Event("change")); };
+        wrap.appendChild(cbLabel);
+        if (f.help) cbLabel.title = f.help;
+
+        cbRow.appendChild(wrap);
+      });
+      tlcSection.appendChild(cbRow);
+    }
+  }
+
+  _syncGtCheckbox();
+}
+
+// ── Training ─────────────────────────────────────────────────
+function trStartTraining() {
+  var data = trCollectFormData();
+  if (!data.train_table_url.trim()) {
+    alert("Please select a train table.");
+    return;
+  }
+  if (!data.model_name) {
+    alert("Please select a model.");
+    return;
+  }
+  if (!data.name.trim()) {
+    var d = new Date();
+    var dateStr = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    var model = (data.model_name || "yolo").split("/").pop().replace(/\.pt$/, "");
+    var task = data.task_type || "train";
+    data.name = dateStr + " " + model + " " + task;
+  }
+
+  // Save project, then start training
+  _trPost("/api/plugins/yolo/projects", data)
+    .then(function(resp) {
+      if (resp.error) { trLog("Error saving: " + resp.error); return; }
+      currentProjectId = resp.id;
+      localStorage.setItem(_STORAGE_KEY, currentProjectId);
+      trLoadProjects();
+
+      // Start training (host-managed via the unified run_job contract)
+      _trPost("/api/plugins/yolo/run", { project_id: resp.id })
+        .then(function(trainResp) {
+          if (trainResp.error) {
+            trLog("Error: " + trainResp.error);
+            return;
+          }
+          trLog("YOLO job submitted: " + trainResp.job_id);
+          trShowCurrentJob(trainResp.job_id, _trJobLabel(data));
+        })
+        .catch(function(e) { trLog("Error starting training: " + e); });
+    })
+    .catch(function(e) { trLog("Error: " + e); });
+}
+
+// ── Queue Rendering ──────────────────────────────────────────
+// Job state is host-managed (generic Queue & Progress panel) and pushed live over
+// SocketIO (epoch_progress / job_status / job_completed / job_failed). The plugin
+// no longer owns a /queue endpoint, so this is a no-op kept only as a call-site stub.
+function trLoadQueue() {}
+
+// Build a human label for the current-job panel from the submitted form data.
+function _trJobLabel(data) {
+  var modeLabel = data.mode === "collect" ? "Collect" : "Train";
+  var name = (data.name || data.run_name || "Job").trim();
+  var model = (data.model_name || "yolo").split("/").pop().replace(/\.pt$/, "");
+  return name + " (" + model + " · " + modeLabel + ")";
+}
+
+// Reveal the current-job panel. The backend no longer emits the legacy
+// queue_update event (removed in the run_job migration), so the live
+// epoch_progress / job_status socket handlers drive visibility instead — each
+// of those events carries data.job_id.
+function trShowCurrentJob(jobId, label) {
+  if (jobId) { _currentJobId = jobId; }
+  var currentDiv = document.getElementById("tr-current-job");
+  var noCurrentDiv = document.getElementById("tr-no-current");
+  var firstReveal = currentDiv.style.display === "none" || currentDiv.style.display === "";
+  if (firstReveal) {
+    currentDiv.style.display = "block";
+    noCurrentDiv.style.display = "none";
+    var statusEl = document.getElementById("tr-current-status");
+    statusEl.textContent = "running";
+    statusEl.className = "tr-queue-status plugin-status-running";
+    document.getElementById("tr-stop-btn").style.display = "inline-block";
+  }
+  if (label) { document.getElementById("tr-current-label").textContent = label; }
+}
+
+// Mark the current-job panel terminal (completed / failed / cancelled).
+function trFinishCurrentJob(status, projectName) {
+  var statusEl = document.getElementById("tr-current-status");
+  statusEl.textContent = status;
+  statusEl.className = "tr-queue-status plugin-status-" + status;
+  document.getElementById("tr-stop-btn").style.display = "none";
+  var openEl = document.getElementById("tr-current-open-link");
+  if (openEl) {
+    openEl.innerHTML = projectName
+      ? '<a href="/projects/' + encodeURIComponent(projectName) + '" class="btn btn-sm btn-secondary">Open</a>'
+      : "";
+  }
+  _currentJobId = null;
+}
+
+function _jobInfoHtml(j) {
+  if (j.tlc_project_name) return _esc(j.tlc_project_name);
+  return "";
+}
+
+function _jobModelLabel(j) {
+  var ckpt = j.checkpoint || "";
+  if (ckpt) return ckpt.split("/").pop().replace(/\.pt$/, "");
+  return j.model_name || "";
+}
+
+function _openProjectLink(j) {
+  var projectName = j.tlc_project_name || "";
+  if (!projectName) return "";
+  return '<a href="/projects/' + encodeURIComponent(projectName) + '" class="btn btn-sm btn-secondary">Open</a>';
+}
+
+function trRenderQueue(data) {
+  var currentDiv = document.getElementById("tr-current-job");
+  var noCurrentDiv = document.getElementById("tr-no-current");
+  var stopBtn = document.getElementById("tr-stop-btn");
+
+  if (data.current) {
+    currentDiv.style.display = "block";
+    noCurrentDiv.style.display = "none";
+    if (_currentJobId !== data.current.id) trClearMetrics();
+    _currentJobId = data.current.id;
+    var modeLabel = data.current.mode === "collect" ? "Collect" : "Train";
+    document.getElementById("tr-current-label").textContent =
+      (data.current.tlc_run_name || data.current.project_name || "Job") + " (" + _jobModelLabel(data.current) + " · " + modeLabel + ")";
+    var statusEl = document.getElementById("tr-current-status");
+    statusEl.textContent = data.current.status;
+    statusEl.className = "tr-queue-status plugin-status-" + data.current.status;
+
+    stopBtn.style.display = data.current.status === "running" ? "inline-block" : "none";
+
+    var infoEl = document.getElementById("tr-current-info");
+    infoEl.innerHTML = _jobInfoHtml(data.current);
+
+    document.getElementById("tr-current-open-link").innerHTML = _openProjectLink(data.current);
+
+    if (data.current.progress) {
+      var pm = data.current.progress.metrics || {};
+      var pPhase = pm.phase || "";
+      var pBatch = pm.batch || 0;
+      var pTotalBatches = pm.total_batches || 0;
+      var pBatchFrac = pm.batch_frac || 0;
+      var pct, pLabel;
+      if (pPhase === "collect") {
+        pct = pTotalBatches > 0 ? (pBatch / pTotalBatches) * 100 : 0;
+        pLabel = pBatch && pTotalBatches ? "Collecting " + pBatch + "/" + pTotalBatches : "Collecting...";
+      } else if (data.current.progress.epoch) {
+        var epochFrac = pTotalBatches > 0 ? (pBatch / pTotalBatches) : 1;
+        pct = ((data.current.progress.epoch - 1 + epochFrac) / data.current.progress.total_epochs) * 100;
+        pLabel = "Epoch " + data.current.progress.epoch + "/" + data.current.progress.total_epochs;
+      } else {
+        pct = 0;
+        pLabel = "Starting...";
+      }
+      pct = Math.max(0, Math.min(pct, 100));
+      document.getElementById("tr-epoch-label").textContent = pLabel;
+      document.getElementById("tr-epoch-bar").style.width = Math.round(pct) + "%";
+      document.getElementById("tr-pct-label").textContent = Math.round(pct) + "%";
+      if (pm) trRenderMetrics(pm);
+    }
+  } else {
+    currentDiv.style.display = "none";
+    noCurrentDiv.style.display = "block";
+    _currentJobId = null;
+    stopBtn.style.display = "none";
+    trClearMetrics();
+    document.getElementById("tr-timing").innerHTML = "";
+    document.getElementById("tr-pct-label").textContent = "0%";
+    document.getElementById("tr-epoch-bar").style.width = "0%";
+    document.getElementById("tr-epoch-label").textContent = "Epoch 0/0";
+  }
+
+  // Queued jobs
+  var queueSection = document.getElementById("tr-queue-section");
+  var queueList = document.getElementById("tr-queue-list");
+  if (data.queued && data.queued.length > 0) {
+    queueSection.style.display = "block";
+    queueList.innerHTML = "";
+    data.queued.forEach(function(j) {
+      var item = document.createElement("div");
+      item.className = "tr-queue-item";
+      var info = _jobInfoHtml(j);
+      var jModeLabel = j.mode === "collect" ? "Collect" : "Train";
+      item.innerHTML =
+        '<span class="tr-queue-status plugin-status-queued">queued</span>' +
+        '<span style="flex:1">' +
+          '<div>' + _esc(j.tlc_run_name || j.project_name) + ' (' + _esc(_jobModelLabel(j)) + ' · ' + jModeLabel + ')</div>' +
+          (info ? '<div class="tr-job-info">' + info + '</div>' : '') +
+        '</span>' +
+        '<button class="btn btn-ghost btn-sm" onclick="trCancelJob(\'' + j.id + '\')" style="color:var(--danger-color)">Cancel</button>';
+      queueList.appendChild(item);
+    });
+  } else {
+    queueSection.style.display = "none";
+  }
+
+  // Completed jobs
+  var completedSection = document.getElementById("tr-completed-section");
+  var completedList = document.getElementById("tr-completed-list");
+  if (data.completed && data.completed.length > 0) {
+    completedSection.style.display = "block";
+    completedList.innerHTML = "";
+    var reversed = data.completed.slice().reverse();
+    reversed.forEach(function(j) {
+      var item = document.createElement("div");
+      item.className = "tr-queue-item";
+      var info = _jobInfoHtml(j);
+      var openLink = _openProjectLink(j);
+      var extra = openLink;
+      if (j.status === "failed" && j.error) {
+        extra = '<span class="text-sm" style="color:var(--danger-color)" title="' + _esc(j.error) + '">Error</span>';
+      }
+      var cModeLabel = j.mode === "collect" ? "Collect" : "Train";
+      item.innerHTML =
+        '<span class="tr-queue-status plugin-status-' + j.status + '">' + j.status + '</span>' +
+        '<span style="flex:1">' +
+          '<div>' + _esc(j.tlc_run_name || j.project_name) + ' (' + _esc(_jobModelLabel(j)) + ' · ' + cModeLabel + ')</div>' +
+          (info ? '<div class="tr-job-info">' + info + '</div>' : '') +
+        '</span>' +
+        extra;
+      completedList.appendChild(item);
+    });
+  } else {
+    completedSection.style.display = "none";
+  }
+}
+
+var _METRIC_SKIP_KEYS = { phase: 1, batch: 1, total_batches: 1, batch_frac: 1 };
+
+function _trFmtDuration(s) {
+  if (s === undefined || s === null) return '--';
+  s = Math.round(s);
+  if (s < 60) return s + 's';
+  var m = Math.floor(s / 60);
+  var sec = s % 60;
+  if (m < 60) return m + 'm ' + (sec < 10 ? '0' : '') + sec + 's';
+  var h = Math.floor(m / 60);
+  m = m % 60;
+  return h + 'h ' + (m < 10 ? '0' : '') + m + 'm';
+}
+
+var _trMetricEls = {}; // key -> { container, valueEl }
+
+function trRenderMetrics(metrics) {
+  var container = document.getElementById("tr-current-metrics");
+  if (!container) return;
+
+  var keys = Object.keys(metrics);
+  var activeKeys = {};
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    var val = metrics[key];
+    if (_METRIC_SKIP_KEYS[key]) continue;
+    if (typeof val !== "number") continue;
+    activeKeys[key] = true;
+
+    if (_trMetricEls[key]) {
+      // Update value in place — no DOM rebuild
+      _trMetricEls[key].valueEl.textContent = val.toFixed(4);
+    } else {
+      // Create new card
+      var div = document.createElement("div");
+      div.className = "plugin-metric-card";
+      div.setAttribute("data-metric-key", key);
+      var labelDiv = document.createElement("div");
+      labelDiv.className = "plugin-metric-label";
+      labelDiv.textContent = key.replace(/_/g, " ");
+      var valueDiv = document.createElement("div");
+      valueDiv.className = "plugin-metric-value";
+      valueDiv.textContent = val.toFixed(4);
+      div.appendChild(labelDiv);
+      div.appendChild(valueDiv);
+      container.appendChild(div);
+      _trMetricEls[key] = { container: div, valueEl: valueDiv };
+    }
+  }
+
+  // Remove cards for metrics no longer present
+  var existing = Object.keys(_trMetricEls);
+  for (var j = 0; j < existing.length; j++) {
+    if (!activeKeys[existing[j]]) {
+      _trMetricEls[existing[j]].container.remove();
+      delete _trMetricEls[existing[j]];
+    }
+  }
+}
+
+function trClearMetrics() {
+  var container = document.getElementById("tr-current-metrics");
+  if (container) container.innerHTML = "";
+  _trMetricEls = {};
+}
+
+function trStopCurrentJob() {
+  if (!_currentJobId) { console.warn("trStopCurrentJob: no _currentJobId"); return; }
+  CancelJob.show(_currentJobId, {
+    pluginId: 'yolo',
+    onDone: function(result) {
+      trLog(result.deleted ? "Job stopped and run deleted." : "Job stopped.");
+      trLoadQueue();
+    }
+  });
+}
+
+function trCancelJob(jobId) {
+  _trPost("/api/plugins/jobs/" + jobId + "/cancel", {})
+    .then(function(data) {
+      trLog(data.cancelled ? "Job cancelled." : "Could not cancel job.");
+      trLoadQueue();
+    })
+    .catch(function(e) { trLog("Error: " + e); });
+}
+
+// ── Utils ────────────────────────────────────────────────────
+function _esc(s) {
+  var el = document.createElement("span");
+  el.textContent = s || "";
+  return el.innerHTML;
+}
+
+// ── Swap train / val URLs ────────────────────────────────────
+function trSwapUrls() {
+  var train = document.getElementById("tr-train-url");
+  var val = document.getElementById("tr-val-url");
+  var tmp = train.value;
+  train.value = val.value;
+  val.value = tmp;
+  trOnTrainTableChange();
+}
+
+// ── Alias Override Init ───────────────────────────────────────
+(function() {
+  document.getElementById("tr-alias-override-area").innerHTML =
+    _tlcAliasOverrideHtml("tr");
+  _tlcBindAliasOverrideToggle("tr");
+
+  // Fetch aliases when train table URL changes
+  var _trAliasDebounce = null;
+  var _origTrainChange = window.trOnTrainTableChange;
+  window.trOnTrainTableChange = function() {
+    _origTrainChange();
+    clearTimeout(_trAliasDebounce);
+    _trAliasDebounce = setTimeout(function() {
+      var url = document.getElementById("tr-train-url").value.trim();
+      var computeUrl = window.PLUGIN_API.getConfig("compute_service_url");
+      var auth = window.PLUGIN_API.getAuthHeader ? window.PLUGIN_API.getAuthHeader() : "";
+      _tlcFetchAndPopulateOverrides("tr", url, computeUrl, auth);
+    }, 500);
+  };
+})();
+
+// ── Init ─────────────────────────────────────────────────────
+(function() {
+  trInitSocket();
+  trLoadProjects();
+  trLoadQueue();
+  trLoadModels(function() {});
+  trAttachAutoSave();
+  setTimeout(trTakeSnapshot, 500);
+
+  // Pre-fill from context (action buttons pass table URLs via query params)
+  var _ctx = (typeof PLUGIN_API !== 'undefined' && PLUGIN_API.context) ? PLUGIN_API.context : {};
+  var _ctxUrls = _ctx.resourceUrls || [];
+  var _urlParams = new URLSearchParams(window.location.search);
+
+  if (_urlParams.has("train") || _urlParams.has("val")) {
+    // Direct train/val params (e.g. from DAG "Train" link)
+    var trainUrl = _urlParams.get("train") || "";
+    var valUrl = _urlParams.get("val") || "";
+    document.getElementById("tr-train-url").value = trainUrl;
+    document.getElementById("tr-val-url").value = valUrl;
+    if (trainUrl) trOnTrainTableChange();
+  } else if (_ctxUrls.length > 0) {
+    // Action button context (table=url1&table=url2)
+    document.getElementById("tr-train-url").value = _ctxUrls[0];
+    if (_ctxUrls.length >= 2) document.getElementById("tr-val-url").value = _ctxUrls[1];
+    if (_ctx.projectName) document.getElementById("tr-project-name").value = _ctx.projectName;
+    trOnTrainTableChange();
+  } else {
+    var savedProjectId = localStorage.getItem(_STORAGE_KEY);
+    if (savedProjectId) {
+      trLoadProject(savedProjectId);
+    }
+  }
+})();
+</script>
