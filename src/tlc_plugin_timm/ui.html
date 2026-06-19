@@ -868,9 +868,7 @@ function tmLoadConfig(configId) {
 
       // Fetch alias overrides for loaded config's train URL
       if (c.train_table_url) {
-        var _cUrl = window.PLUGIN_API.getConfig("compute_service_url");
-        var _cAuth = window.PLUGIN_API.getAuthHeader ? window.PLUGIN_API.getAuthHeader() : "";
-        _tlcFetchAndPopulateOverrides("tm", c.train_table_url, _cUrl, _cAuth,
+        _tlcFetchAndPopulateOverrides("tm", c.train_table_url,
           (c.params || {})._alias_overrides || null);
       }
 
@@ -1293,9 +1291,7 @@ function _tmBindAutoSave() {
     clearTimeout(_tmAliasDebounce);
     _tmAliasDebounce = setTimeout(function() {
       var url = document.getElementById("tm-train-url").value.trim();
-      var computeUrl = window.PLUGIN_API.getConfig("compute_service_url");
-      var auth = window.PLUGIN_API.getAuthHeader ? window.PLUGIN_API.getAuthHeader() : "";
-      _tlcFetchAndPopulateOverrides("tm", url, computeUrl, auth);
+      _tlcFetchAndPopulateOverrides("tm", url);
     }, 500);
   };
 })();

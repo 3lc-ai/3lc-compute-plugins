@@ -617,9 +617,7 @@ function trLoadProject(projectId) {
 
       // Fetch alias overrides for loaded config's train URL
       if (p.train_table_url) {
-        var computeUrl = window.PLUGIN_API.getConfig("compute_service_url");
-        var auth = window.PLUGIN_API.getAuthHeader ? window.PLUGIN_API.getAuthHeader() : "";
-        _tlcFetchAndPopulateOverrides("tr", p.train_table_url, computeUrl, auth,
+        _tlcFetchAndPopulateOverrides("tr", p.train_table_url,
           (p.params || {})._alias_overrides || null);
       }
 
@@ -1461,9 +1459,7 @@ function trSwapUrls() {
     clearTimeout(_trAliasDebounce);
     _trAliasDebounce = setTimeout(function() {
       var url = document.getElementById("tr-train-url").value.trim();
-      var computeUrl = window.PLUGIN_API.getConfig("compute_service_url");
-      var auth = window.PLUGIN_API.getAuthHeader ? window.PLUGIN_API.getAuthHeader() : "";
-      _tlcFetchAndPopulateOverrides("tr", url, computeUrl, auth);
+      _tlcFetchAndPopulateOverrides("tr", url);
     }, 500);
   };
 })();
