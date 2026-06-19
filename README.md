@@ -6,9 +6,17 @@ of standalone plugin packages, each built against the public
 
 ```
 plugins/
-  timm/          # 3lc-plugin-timm — fine-tune timm image classifiers (venv, GPU)
-  …              # (sam3, yolo, importer, exporter, merger, splitter,
-                 #  table_statistics, image_metrics migrate here next)
+  # venv (own venv, provisioned out-of-process; heavy/GPU deps)
+  timm/              # 3lc-plugin-timm — fine-tune timm image classifiers
+  sam3/              # 3lc-plugin-sam3 — auto-label with SAM3
+  yolo/              # 3lc-plugin-yolo — fine-tune YOLO models
+  # host-mode (light; installed into the host venv via 3lc-compute[plugins], runs in-process)
+  importer/          # 3lc-plugin-importer — import CSV/Parquet/COCO/…
+  exporter/          # 3lc-plugin-exporter — export CSV/XLSX/YOLO/COCO/…
+  merger/            # 3lc-plugin-merger — merge two tables
+  splitter/          # 3lc-plugin-splitter — train/val/test splits
+  table_statistics/  # 3lc-plugin-table-statistics — per-column stats + thumbnails
+  image_metrics/     # 3lc-plugin-image-metrics — image-quality metric columns
 ```
 
 Each `plugins/<name>/` is its own package: a `pyproject.toml` (distribution `3lc-plugin-<name>`,
