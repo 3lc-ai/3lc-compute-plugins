@@ -1,0 +1,38 @@
+# 3lc-plugin-table_statistics — a light in-process (host-mode) plugin for the 3LC Compute Service.
+#
+# Distribution `3lc-plugin-table_statistics`, import package `tlc_plugin_table_statistics`. Host-mode: its
+# deps are light enough to live in the host venv, so it is delivered by being
+# pip-installed there via `3lc-compute[plugins]` rather than provisioned into its own
+# venv. The host discovers it through the `tlc_compute.plugins` entry point below, reads
+# the `plugin.toml` bundled inside the package, and imports the entrypoint in-process.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "3lc-plugin-table_statistics"
+version = "1.0.0"
+description = "Compute per-column statistics and serve image thumbnails for tables."
+requires-python = ">=3.10"
+dependencies = [
+    "3lc-plugin-sdk>=0.2.0,<0.3.0",
+    "pyarrow",
+    "numpy",
+]
+
+[project.entry-points."tlc_compute.plugins"]
+table_statistics = "tlc_plugin_table_statistics"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tlc_plugin_table_statistics"]
+
+[[tool.uv.index]]
+name = "3lc-releases"
+url = "https://pypi.3lc.ai/public/repositories/releases-public"
+explicit = true
+
+[tool.uv.sources]
+3lc = { index = "3lc-releases" }
+# DEV-ONLY (build-out): the SDK is unpublished, so resolve it from the sibling checkout.
+# Drop this line once 3lc-plugin-sdk is on the index.
+3lc-plugin-sdk = { path = "../../../3lc-plugin-sdk", editable = true }

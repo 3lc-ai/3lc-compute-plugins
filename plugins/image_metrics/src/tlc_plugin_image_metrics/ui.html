@@ -1,0 +1,757 @@
+<!--
+-- <copyright>
+-- Copyright (c) 2026 3LC Inc. All rights reserved.
+--
+-- All rights are reserved. Reproduction or transmission in whole or in part, in
+-- any form or by any means, electronic, mechanical or otherwise, is prohibited
+-- without the prior written permission of the copyright owner.
+-- </copyright>
+-->
+<!-- Image Metrics — self-contained plugin UI fragment -->
+<style>
+/* ── Image Metrics-specific styles ── */
+
+/* Metric grid — responsive card grid */
+.im-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+/* Metric card — selectable */
+.im-metric-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius, 6px);
+  border: 1.5px solid var(--border);
+  background: var(--bg-card); cursor: pointer;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+  user-select: none;
+}
+.im-metric-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 1px 4px rgba(42,74,97,.12);
+}
+.im-metric-card.selected {
+  border-color: var(--btn-primary-bg);
+  background: var(--accent-light, rgba(42,74,97,.06));
+  box-shadow: 0 0 0 1px var(--btn-primary-bg);
+}
+.im-metric-card .icon {
+  font-size: 20px; flex-shrink: 0; margin-top: 1px;
+}
+.im-metric-card .info { flex: 1; min-width: 0; }
+.im-metric-card .name {
+  font-size: 11px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 5px;
+}
+.im-metric-card .name .check {
+  width: 14px; height: 14px; border-radius: 3px;
+  border: 1.5px solid var(--border); display: inline-flex;
+  align-items: center; justify-content: center;
+  font-size: 9px; color: transparent; transition: all .15s;
+  flex-shrink: 0;
+}
+.im-metric-card.selected .name .check {
+  background: var(--btn-primary-bg); border-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+.im-metric-card .desc {
+  font-size: 10px; color: var(--text-muted); line-height: 1.45;
+  margin-top: 3px;
+}
+
+/* Category header */
+.im-category {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+  text-transform: uppercase; color: var(--btn-primary-bg);
+  margin: 16px 0 8px; padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-light);
+}
+.im-category:first-child { margin-top: 0; }
+
+/* Selection bar */
+.im-select-bar {
+  display: flex; gap: 8px; align-items: center;
+  margin-bottom: 12px; font-size: 10px;
+}
+.im-select-bar .count {
+  font-weight: 700; color: var(--text);
+}
+.im-select-bar button {
+  padding: 2px 8px; font-size: 9px;
+}
+
+/* Table list */
+.im-table-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-bottom: 1px solid var(--border-light);
+  font-size: 10px;
+}
+.im-table-row:last-child { border-bottom: none; }
+.im-table-row .url {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--text);
+}
+.im-table-row .cols {
+  font-size: 9px; color: var(--text-muted); white-space: nowrap;
+}
+.im-table-row .remove {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; opacity: .5;
+}
+.im-table-row .remove:hover { opacity: 1; color: var(--error); }
+
+/* Image columns chips */
+.im-col-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 6px; border-radius: 3px;
+  font-size: 9px; font-weight: 500;
+  background: var(--accent-light, rgba(42,74,97,.08));
+  border: 1px solid var(--border); color: var(--text);
+}
+
+/* Log area override */
+.im-log-area { height: 120px; max-height: none; }
+.im-log-area div { padding: 1px 0; }
+
+/* Result banner */
+.im-result-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-radius: var(--radius, 6px);
+  background: var(--success-bg); border: 1px solid rgba(34,197,94,.2);
+  margin-top: 12px;
+}
+.im-result-banner .icon { font-size: 20px; }
+.im-result-banner .info { flex: 1; }
+.im-result-banner .title { font-size: 12px; font-weight: 700; color: var(--text); }
+.im-result-banner .detail { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+</style>
+
+<div class="plugin-page">
+<!-- ── Hero ───────────────────────────────────────────────── -->
+<div class="plugin-hero" style="padding:20px 24px">
+      <h2 style="margin-bottom:6px">Image Metrics</h2>
+      <p style="font-size:13px;color:var(--text);line-height:1.6;margin:0">
+        Compute per-image quality metrics and add them as columns to your table.
+        Cross-plot metrics in the <strong>Dashboard</strong> to find outliers — dark, blurry, or noisy images that degrade training.
+        Especially powerful after a training run: correlate image quality with per-sample loss, false positives, and embeddings to understand <em>why</em> your model struggles on certain images.
+      </p>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px">
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/><path d="M10 10l3-5"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">15 Metrics</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Brightness, sharpness, noise, contrast, entropy &amp; more</div>
+    </div>
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12l-2 2a2.83 2.83 0 1 1-4-4l2-2a2.83 2.83 0 0 1 4 0M12 8l2-2a2.83 2.83 0 1 1 4 4l-2 2a2.83 2.83 0 0 1-4 0"/><path d="M7 13l6-6"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">Full Lineage</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Results stored as EditedTable columns preserving table history</div>
+    </div>
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/><path d="M10 10l3-5"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">Parallel I/O</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Multi-threaded image loading for fast processing</div>
+    </div>
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17V3M3 17h14"/><circle cx="7" cy="13" r="1.5" fill="currentColor" stroke="none"/><circle cx="11" cy="8" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="5" r="1.5" fill="currentColor" stroke="none"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">Cross-plot</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Correlate quality with training loss, FPs, and embeddings</div>
+    </div>
+  </div>
+    <div class="plugin-workflow" style="margin-top:10px">
+      <div class="plugin-workflow-step"><span class="num">1</span> Select tables</div>
+      <div class="plugin-workflow-step"><span class="num">2</span> Choose metrics</div>
+      <div class="plugin-workflow-step"><span class="num">3</span> Compute</div>
+    </div>
+</div>
+
+<!-- ── Config Bar ─────────────────────────────────────────── -->
+<div class="plugin-config-bar">
+  <span class="bar-label">Config</span>
+  <select id="im-config-select" class="form-control" onchange="imCfg.onSelect(this.value)">
+    <option value="">New config</option>
+  </select>
+  <button class="btn btn-ghost btn-sm" onclick="imCfg.newConfig()">+ New</button>
+  <button class="btn btn-secondary btn-sm" id="im-save-new-btn" onclick="imCfg.saveAsNew()" style="display:none">Save New</button>
+  <button class="btn btn-danger btn-sm" id="im-delete-btn" onclick="imCfg.deleteConfig()" style="display:none">Delete</button>
+</div>
+
+<!-- ── Config name (shown when editing) ────────────────────── -->
+<div style="margin-bottom:14px">
+  <label class="form-label" style="font-size:10px">Config Name</label>
+  <input type="text" id="im-config-name" class="form-control" placeholder="e.g. Quality Check, Full Analysis" style="font-size:11px;max-width:320px" oninput="imCfg.scheduleAutoSave()">
+</div>
+
+<!-- ── Table Selection ──────────────────────────────────────── -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+    <h3 style="margin:0;font-size:13px;font-weight:700">
+      <span class="plugin-section-number">1</span> Select Tables
+    </h3>
+    <button class="btn btn-xs btn-secondary" onclick="imAddTable()" title="Add another table">+ Add Table</button>
+  </div>
+  <div class="card-body" style="padding:8px 16px">
+    <div id="im-table-list"></div>
+    <div id="im-no-tables" style="padding:12px 0;text-align:center;font-size:11px;color:var(--text-muted)">
+      No tables selected. Use the action button on a table, or click <strong>+ Add Table</strong> above.
+    </div>
+    <div class="form-help" style="margin-top:6px">Add one or more tables to compute metrics on. You can also launch this from the action button on any table page.</div>
+    <div id="im-table-error" style="display:none;margin-top:8px;font-size:10px;color:var(--error)"></div>
+    <!-- Hidden input for table picker -->
+    <input type="hidden" id="im-picker-target">
+  </div>
+</div>
+
+<!-- ── Metric Selection ─────────────────────────────────────── -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+    <h3 style="margin:0;font-size:13px;font-weight:700">
+      <span class="plugin-section-number">2</span> Choose Metrics
+    </h3>
+  </div>
+  <div class="card-body" style="padding:12px 16px">
+    <div class="im-select-bar">
+      <span class="count"><span id="im-selected-count">0</span> selected</span>
+      <button class="btn btn-xs btn-secondary" onclick="imSelectAll()">Select All</button>
+      <button class="btn btn-xs btn-secondary" onclick="imSelectNone()">Clear</button>
+      <button class="btn btn-xs btn-secondary" onclick="imSelectRecommended()">Recommended</button>
+    </div>
+    <div class="form-help" style="margin-bottom:8px">Click <strong>Recommended</strong> for a quick start, or select individual metrics. Results are stored as new columns on an EditedTable.</div>
+    <div id="im-metrics-container"></div>
+  </div>
+</div>
+
+<!-- ── Output Config ────────────────────────────────────────── -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header">
+    <h3 style="margin:0;font-size:13px;font-weight:700">
+      <span class="plugin-section-number">3</span> Output
+    </h3>
+  </div>
+  <div class="card-body" style="padding:12px 16px">
+    <div class="plugin-form-grid">
+      <div>
+        <label class="form-label">Output Table Name Suffix</label>
+        <input type="text" id="im-output-name" class="form-control" placeholder="metrics (appended to each table name)" style="font-size:11px" value="metrics" oninput="imCfg.scheduleAutoSave()">
+        <div class="form-help">The suffix is appended to each input table name to create the output table (e.g. "train" becomes "train-metrics").</div>
+      </div>
+    </div>
+    <div class="plugin-action-bar">
+      <button id="im-run-btn" class="btn btn-primary" onclick="imRunMetrics()" disabled>
+        Compute Metrics
+      </button>
+      <button id="im-cancel-btn" class="btn btn-secondary" onclick="imCancelJob()" style="display:none">
+        Cancel
+      </button>
+      <span id="im-status-text" class="status-text"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Progress ──────────────────────────────────────────────── -->
+<div id="im-progress-card" class="card" style="margin-bottom:16px;display:none">
+  <div class="card-header">
+    <h3 style="margin:0;font-size:13px;font-weight:700">Progress</h3>
+  </div>
+  <div class="card-body" style="padding:12px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span id="im-progress-label" style="font-size:10px;font-weight:600;color:var(--text)">Processing...</span>
+      <span id="im-progress-pct" style="font-size:10px;font-weight:700;color:var(--accent)">0%</span>
+    </div>
+    <div class="plugin-progress-wrap">
+      <div id="im-progress-bar" class="plugin-progress-bar" style="width:0%"></div>
+    </div>
+    <div id="im-log" class="plugin-log-area im-log-area" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ── Results ───────────────────────────────────────────────── -->
+<div id="im-result-card" style="display:none"></div>
+
+</div><!-- /plugin-page -->
+
+<script>
+(function() {
+  'use strict';
+
+  /* ── State ── */
+  var COMPUTE_URL = '';
+  var selectedMetrics = {};
+  var allMetrics = [];
+  var tableEntries = [];  // [{url, name, imageCols, rowCount}]
+  var currentJobId = null;
+  var socket = null;
+
+  /* ── Recommended metrics for "quick start" ── */
+  var RECOMMENDED = ['brightness', 'sharpness', 'contrast', 'noise_estimate', 'entropy', 'saturation'];
+
+  /* ── Shared config manager ── */
+  var imCfg = _tlcPluginConfig({
+    prefix: 'im',
+    apiPath: '/api/plugins/image-metrics/configs',
+    storageKey: 'im_selected_config',
+    collectFn: function() {
+      return {
+        name: (document.getElementById('im-config-name').value || '').trim(),
+        metric_ids: Object.keys(selectedMetrics),
+        output_name_suffix: (document.getElementById('im-output-name').value || 'metrics').trim(),
+      };
+    },
+    populateFn: function(c) {
+      document.getElementById('im-config-name').value = c.name || '';
+      document.getElementById('im-output-name').value = c.output_name_suffix || 'metrics';
+      selectedMetrics = {};
+      (c.metric_ids || []).forEach(function(id) { selectedMetrics[id] = true; });
+      _refreshCards();
+    },
+    labelFn: function(c) {
+      var n = c.metric_ids ? c.metric_ids.length : 0;
+      return c.name + ' \u2014 ' + n + ' metric' + (n !== 1 ? 's' : '');
+    },
+    onNew: function() {
+      document.getElementById('im-config-name').value = '';
+      document.getElementById('im-output-name').value = 'metrics';
+      imSelectRecommended();
+    },
+  });
+  window.imCfg = imCfg;
+
+  /* ── Init ── */
+  function init() {
+    COMPUTE_URL = (typeof PLUGIN_API !== 'undefined')
+      ? PLUGIN_API.getConfig('compute_service_url') : '';
+
+    if (!COMPUTE_URL) {
+      return;
+    }
+
+    _loadMetrics();
+    _connectSocket();
+    _checkUrlParams();
+
+    // Listen for hidden picker input
+    var picker = document.getElementById('im-picker-target');
+    if (picker) {
+      picker.addEventListener('input', function() {
+        if (picker.value) {
+          _addTableUrl(picker.value);
+          picker.value = '';
+        }
+      });
+    }
+  }
+
+  /* ── Load metric definitions from backend ── */
+  function _loadMetrics() {
+    _apiFetch('/api/plugins/image-metrics/metrics')
+      .then(function(metrics) {
+        allMetrics = metrics;
+        _renderMetricGrid(metrics);
+        // Init config manager after metrics are available so populateFn can select them
+        imCfg.init();
+        // If no config was loaded, default to recommended
+        setTimeout(function() {
+          if (!imCfg.getCurrentId() && Object.keys(selectedMetrics).length === 0) {
+            imSelectRecommended();
+          }
+        }, 300);
+      })
+      .catch(function(err) { console.error('Failed to load metrics:', err); });
+  }
+
+  /* ── Render metric selection grid grouped by category ── */
+  function _renderMetricGrid(metrics) {
+    var container = document.getElementById('im-metrics-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    var categories = {};
+    metrics.forEach(function(m) {
+      if (!categories[m.category]) categories[m.category] = [];
+      categories[m.category].push(m);
+    });
+
+    Object.keys(categories).forEach(function(cat) {
+      var header = document.createElement('div');
+      header.className = 'im-category';
+      header.textContent = cat;
+      container.appendChild(header);
+
+      var grid = document.createElement('div');
+      grid.className = 'im-metric-grid';
+
+      categories[cat].forEach(function(m) {
+        var card = document.createElement('div');
+        card.className = 'im-metric-card' + (selectedMetrics[m.id] ? ' selected' : '');
+        card.dataset.metricId = m.id;
+        card.onclick = function() { _toggleMetric(m.id, card); };
+        card.innerHTML =
+          '<div class="icon">' + m.icon + '</div>' +
+          '<div class="info">' +
+            '<div class="name"><span class="check">&#x2713;</span> ' + _esc(m.name) +
+              (m.unit ? ' <span style="font-size:9px;color:var(--text-muted);font-weight:400">(' + _esc(m.unit) + ')</span>' : '') +
+            '</div>' +
+            '<div class="desc">' + _esc(m.description) + '</div>' +
+          '</div>';
+        grid.appendChild(card);
+      });
+
+      container.appendChild(grid);
+    });
+  }
+
+  /* ── Toggle a metric selection ── */
+  function _toggleMetric(id, card) {
+    if (selectedMetrics[id]) {
+      delete selectedMetrics[id];
+      card.classList.remove('selected');
+    } else {
+      selectedMetrics[id] = true;
+      card.classList.add('selected');
+    }
+    _updateState();
+    imCfg.scheduleAutoSave();
+  }
+
+  function _updateState() {
+    var count = Object.keys(selectedMetrics).length;
+    var el = document.getElementById('im-selected-count');
+    if (el) el.textContent = count;
+    var btn = document.getElementById('im-run-btn');
+    if (btn) btn.disabled = count === 0 || tableEntries.length === 0;
+  }
+
+  /* ── Selection helpers ── */
+  window.imSelectAll = function() {
+    selectedMetrics = {};
+    allMetrics.forEach(function(m) { selectedMetrics[m.id] = true; });
+    _refreshCards();
+    imCfg.scheduleAutoSave();
+  };
+
+  window.imSelectNone = function() {
+    selectedMetrics = {};
+    _refreshCards();
+    imCfg.scheduleAutoSave();
+  };
+
+  window.imSelectRecommended = function() {
+    selectedMetrics = {};
+    RECOMMENDED.forEach(function(id) { selectedMetrics[id] = true; });
+    _refreshCards();
+    imCfg.scheduleAutoSave();
+  };
+
+  function _refreshCards() {
+    var cards = document.querySelectorAll('.im-metric-card');
+    cards.forEach(function(card) {
+      var id = card.dataset.metricId;
+      if (selectedMetrics[id]) {
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+    });
+    _updateState();
+  }
+
+  /* ═════════════════════════════════════════════════════════════
+     Multi-table management
+     ═════════════════════════════════════════════════════════════ */
+
+  window.imAddTable = function() {
+    if (typeof openTablePicker === 'function') {
+      openTablePicker('im-picker-target');
+    }
+  };
+
+  function _addTableUrl(url) {
+    // Skip duplicates
+    for (var i = 0; i < tableEntries.length; i++) {
+      if (tableEntries[i].url === url) return;
+    }
+
+    var entry = { url: url, name: _tableNameFromUrl(url), imageCols: [], rowCount: '?' };
+    tableEntries.push(entry);
+    _renderTableList();
+    _updateState();
+
+    // Detect image columns
+    _apiFetch('/api/plugins/image-metrics/detect-columns?url=' + encodeURIComponent(url))
+      .then(function(data) {
+        entry.imageCols = data.image_columns || [];
+        if (entry.imageCols.length === 0) {
+          // Remove if no image columns
+          tableEntries = tableEntries.filter(function(e) { return e !== entry; });
+          _renderTableList();
+          _updateState();
+          _showTableError('Table "' + entry.name + '" has no image columns.');
+          return;
+        }
+        _renderTableList();
+      })
+      .catch(function() {});
+  }
+
+  function _removeTable(idx) {
+    tableEntries.splice(idx, 1);
+    _renderTableList();
+    _updateState();
+  }
+
+  function _renderTableList() {
+    var list = document.getElementById('im-table-list');
+    var empty = document.getElementById('im-no-tables');
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (tableEntries.length === 0) {
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    tableEntries.forEach(function(entry, idx) {
+      var row = document.createElement('div');
+      row.className = 'im-table-row';
+      var colChips = entry.imageCols.length > 0
+        ? entry.imageCols.map(function(c) { return '<span class="im-col-chip">' + _esc(c) + '</span>'; }).join(' ')
+        : '<span style="font-size:9px;color:var(--text-muted)">detecting...</span>';
+      row.innerHTML =
+        '<span class="url" title="' + _esc(entry.url) + '">' + _esc(entry.url) + '</span>' +
+        '<span class="cols">' + colChips + '</span>' +
+        '<button class="remove" title="Remove" data-idx="' + idx + '">&times;</button>';
+      row.querySelector('.remove').onclick = function() { _removeTable(idx); };
+      list.appendChild(row);
+    });
+  }
+
+  function _showTableError(msg) {
+    var el = document.getElementById('im-table-error');
+    if (el) {
+      el.textContent = msg;
+      el.style.display = '';
+      setTimeout(function() { el.style.display = 'none'; }, 5000);
+    }
+  }
+
+  function _tableNameFromUrl(url) {
+    // Extract last path segment as table name
+    var parts = url.replace(/\/+$/, '').split('/');
+    return parts[parts.length - 1] || url;
+  }
+
+  /* ── Check URL params for table pre-selection ── */
+  function _checkUrlParams() {
+    // From PLUGIN_API context (action button)
+    var ctx = (typeof PLUGIN_API !== 'undefined' && PLUGIN_API.context) ? PLUGIN_API.context : {};
+    var urls = ctx.resourceUrls || [];
+
+    // Also check URL params directly
+    if (!urls.length) {
+      var params = new URLSearchParams(window.location.search);
+      urls = params.getAll('table').filter(Boolean);
+      if (!urls.length) {
+        var single = params.get('url') || '';
+        if (single) urls = [single];
+      }
+    }
+
+    urls.forEach(function(url) { _addTableUrl(url); });
+  }
+
+  /* ═════════════════════════════════════════════════════════════
+     Run metrics — processes each table sequentially
+     ═════════════════════════════════════════════════════════════ */
+
+  window.imRunMetrics = function() {
+    if (tableEntries.length === 0) { alert('Please select at least one table.'); return; }
+
+    var metricIds = Object.keys(selectedMetrics);
+    if (metricIds.length === 0) { alert('Please select at least one metric.'); return; }
+
+    var suffix = (document.getElementById('im-output-name').value || 'metrics').trim();
+
+    // Show progress
+    document.getElementById('im-progress-card').style.display = '';
+    document.getElementById('im-result-card').style.display = 'none';
+    document.getElementById('im-result-card').innerHTML = '';
+    document.getElementById('im-run-btn').disabled = true;
+    document.getElementById('im-cancel-btn').style.display = '';
+    document.getElementById('im-log').innerHTML = '';
+    _setProgress(0, 'Submitting...');
+    _setStatus('Submitting...');
+
+    // Submit one job per table
+    tableEntries.forEach(function(entry) {
+      var outputName = entry.name + '-' + suffix;
+      _apiPost('/api/plugins/image-metrics/run', {
+        table_url: entry.url,
+        metric_ids: metricIds,
+        image_columns: entry.imageCols,
+        output_name: outputName,
+      })
+      .then(function(data) {
+        if (data.error) {
+          _addLog('Error for ' + entry.name + ': ' + data.error);
+        } else {
+          currentJobId = data.job_id;
+          _addLog('Queued: ' + entry.name + ' (job ' + data.job_id.substring(0, 8) + ')');
+        }
+      })
+      .catch(function(err) {
+        _addLog('Failed to submit ' + entry.name + ': ' + err.message);
+      });
+    });
+
+    _setStatus('Jobs submitted');
+  };
+
+  /* ── Cancel job ── */
+  window.imCancelJob = function() {
+    if (!currentJobId) return;
+    _apiPost('/api/plugins/jobs/' + currentJobId + '/cancel', {})
+      .then(function() { _setStatus('Cancelling...'); })
+      .catch(function() {});
+  };
+
+  /* ── SocketIO ── */
+  function _connectSocket() {
+    var ioLib = PLUGIN_API.libs.io;
+    if (!ioLib) return;
+    try {
+      socket = ioLib(COMPUTE_URL + '/image-metrics', {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 2000,
+      });
+
+      socket.on('connect', function() {});
+      socket.on('disconnect', function() {});
+
+      socket.on('progress', function(data) {
+        _setProgress(data.percent || 0, data.label || '');
+      });
+
+      socket.on('status', function(data) {
+        _setStatus(data.message || '');
+        _addLog(data.message || '');
+      });
+
+      socket.on('complete', function(data) {
+        _setProgress(100, 'Done!');
+        _setStatus('Complete');
+        document.getElementById('im-cancel-btn').style.display = 'none';
+        document.getElementById('im-run-btn').disabled = false;
+        currentJobId = null;
+        _addLog('Complete: ' + (data.table_name || ''));
+        _showResult(data);
+      });
+
+      socket.on('error', function(data) {
+        _setStatus('Error: ' + (data.message || 'Unknown error'));
+        _addLog('ERROR: ' + (data.message || ''));
+        document.getElementById('im-cancel-btn').style.display = 'none';
+        document.getElementById('im-run-btn').disabled = false;
+        currentJobId = null;
+      });
+
+      socket.on('queue_update', function() {});
+    } catch (e) {
+      console.error('SocketIO connection failed:', e);
+    }
+  }
+
+  /* ── UI helpers ── */
+  function _setProgress(pct, label) {
+    var bar = document.getElementById('im-progress-bar');
+    var lbl = document.getElementById('im-progress-label');
+    var pctEl = document.getElementById('im-progress-pct');
+    if (bar) bar.style.width = pct + '%';
+    if (lbl) lbl.textContent = label || '';
+    if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+  }
+
+  function _setStatus(msg) {
+    var el = document.getElementById('im-status-text');
+    if (el) el.textContent = msg;
+  }
+
+  function _addLog(msg) {
+    var log = document.getElementById('im-log');
+    if (!log) return;
+    var ts = new Date().toLocaleTimeString();
+    var line = document.createElement('div');
+    line.textContent = '[' + ts + '] ' + msg;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function _showResult(data) {
+    var container = document.getElementById('im-result-card');
+    if (!container) return;
+    container.style.display = '';
+
+    // Build "View in Project" link using project/dataset from result
+    var viewHref = '';
+    if (data.project_name) {
+      viewHref = '/projects/' + encodeURIComponent(data.project_name);
+      if (data.dataset_name) {
+        viewHref += '?dataset=' + encodeURIComponent(data.dataset_name);
+      }
+      if (data.result_url) {
+        viewHref += (viewHref.indexOf('?') >= 0 ? '&' : '?') + 'table=' + encodeURIComponent(data.result_url);
+      }
+      viewHref += '#datasets';
+    }
+
+    container.innerHTML +=
+      '<div class="im-result-banner">' +
+        '<div class="icon">✓</div>' +
+        '<div class="info">' +
+          '<div class="title">' + _esc(data.table_name || 'Metrics computed') + '</div>' +
+          '<div class="detail">' +
+            (data.row_count || '?') + ' rows &times; ' + (data.metrics_count || '?') + ' metric columns' +
+          '</div>' +
+        '</div>' +
+        (viewHref ? '<a href="' + viewHref + '" class="btn btn-primary btn-sm">View in Project</a>' : '') +
+      '</div>';
+  }
+
+  /* ── API helpers (use PLUGIN_API.authFetch for auth) ── */
+  function _apiFetch(path) {
+    return PLUGIN_API.authFetch(COMPUTE_URL + path, { headers: { 'Accept': 'application/json' }, timeout: 120000 })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      });
+  }
+
+  function _apiPost(path, body) {
+    return PLUGIN_API.authFetch(COMPUTE_URL + path, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      timeout: 300000,
+    })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+  }
+
+  function _esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+
+  /* ── Boot ── */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>

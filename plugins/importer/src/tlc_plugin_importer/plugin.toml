@@ -1,0 +1,23 @@
+# 3LC Compute plugin manifest — the single source of truth for this plugin's metadata.
+id = "importer"
+name = "Import"
+description = "Import datasets from CSV, Parquet, COCO, and other formats into 3LC projects."
+version = "1.0.0"
+min_service_version = "0.1.0"
+icon = "↑"
+icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V2M4.5 6l3.5-4 3.5 4"/><path d="M2 14h12"/></svg>'
+
+[ui]
+display_mode = "sidebar"
+section = "Data Ops"
+compatible_with = []
+input_types = []
+output_types = ["table"]
+priority = 90
+quick_action = true
+quick_action_label = "Import Dataset"
+quick_action_description = "Import data from CSV, Parquet, COCO, or other formats"
+
+[runtime]
+isolation = "host"
+entrypoint = "tlc_plugin_importer:ImportPlugin"

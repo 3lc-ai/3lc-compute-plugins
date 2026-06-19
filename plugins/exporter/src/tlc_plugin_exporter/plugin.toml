@@ -1,0 +1,25 @@
+# 3LC Compute plugin manifest — the single source of truth for this plugin's
+# metadata. The host loads the plugin via runtime.entrypoint; there is no
+# register() call at import and no metadata on the plugin class.
+id = "exporter"
+name = "Export"
+description = "Export tables to CSV, XLSX, YOLO, COCO, and other formats."
+version = "1.0.0"
+min_service_version = "0.1.0"
+icon = "↓"
+icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v9M4.5 7l3.5 4 3.5-4"/><path d="M2 14h12"/></svg>'
+
+[ui]
+display_mode = "sidebar"
+section = "Data Ops"
+compatible_with = ["table"]
+input_types = ["table"]
+output_types = []
+priority = 80
+quick_action = true
+quick_action_label = "Export Data"
+quick_action_description = "Export tables to CSV, XLSX, YOLO, COCO, or other formats"
+
+[runtime]
+isolation = "host"
+entrypoint = "tlc_plugin_exporter:ExportPlugin"

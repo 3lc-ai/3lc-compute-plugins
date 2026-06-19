@@ -1,0 +1,19 @@
+# 3LC Compute plugin manifest — the single source of truth for this plugin's metadata.
+id = "table-statistics"
+name = "Table Statistics"
+description = "Compute per-column statistics and serve image thumbnails for tables."
+version = "1.0.0"
+min_service_version = "0.1.0"
+icon = "▥"
+icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13V9M6 13V5M9 13V7M12 13V3"/><path d="M2 14h12" stroke-width="1"/></svg>'
+
+[ui]
+display_mode = "hidden"
+section = "Analysis"
+compatible_with = ["table"]
+input_types = ["table"]
+output_types = []
+
+[runtime]
+isolation = "host"
+entrypoint = "tlc_plugin_table_statistics:TableStatisticsPlugin"

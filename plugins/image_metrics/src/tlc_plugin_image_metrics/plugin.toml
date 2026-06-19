@@ -1,0 +1,26 @@
+# 3LC Compute plugin manifest — the single source of truth for this plugin's metadata.
+id = "image-metrics"
+name = "Image Metrics"
+description = "Analyze image quality (brightness, sharpness, noise, contrast, and more) and add metric columns to your table."
+version = "1.0.0"
+min_service_version = "0.1.0"
+icon = "▦"
+icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="1"/><circle cx="6" cy="6" r="1.5"/><path d="M2 11l3-3 2 2 4-5 3 3"/></svg>'
+
+[ui]
+display_mode = "sidebar"
+section = "Data Ops"
+compatible_with = ["table"]
+input_types = ["table", "table", "table", "table", "table", "table", "table", "table", "table", "table"]
+output_types = ["table"]
+priority = 60
+group = "Table Ops"
+quick_action = true
+quick_action_label = "Create Image Metrics"
+quick_action_description = "Compute brightness, sharpness, noise, and more"
+min_input_count = 1
+
+[runtime]
+isolation = "host"
+entrypoint = "tlc_plugin_image_metrics:ImageMetricsPlugin"
+requires_gpu = true

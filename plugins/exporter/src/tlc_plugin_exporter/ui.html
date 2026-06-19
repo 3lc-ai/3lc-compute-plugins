@@ -1,0 +1,380 @@
+<!--
+-- <copyright>
+-- Copyright (c) 2026 3LC Inc. All rights reserved.
+--
+-- All rights are reserved. Reproduction or transmission in whole or in part, in
+-- any form or by any means, electronic, mechanical or otherwise, is prohibited
+-- without the prior written permission of the copyright owner.
+-- </copyright>
+-->
+<!-- Export Wizard — self-contained plugin UI fragment -->
+<style>
+/* Unique to exporter — not in main.css */
+.plugin-page .format-options-label {
+  font-size: 12px; font-weight: 600; color: var(--text-secondary, #6b7280);
+  letter-spacing: 0.3px; margin-bottom: 10px;
+}
+.export-col-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px; margin-top: 6px; }
+.export-col-item { display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  font-size: 12px; border-bottom: 1px solid var(--border-light, rgba(0,0,0,0.05)); }
+.export-col-item:last-child { border-bottom: none; }
+.export-col-type { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 3px;
+  text-transform: uppercase; letter-spacing: 0.3px; background: var(--bg-secondary, #f3f4f6);
+  color: var(--text-muted); white-space: nowrap; }
+.export-col-type.type-image { background: var(--badge-blue-bg, #dbeafe); color: var(--badge-blue-text, #1d4ed8); }
+.export-col-type.type-bbox { background: var(--badge-yellow-bg, #fef3c7); color: var(--badge-yellow-text, #92400e); }
+.export-col-type.type-segmentation { background: var(--badge-purple-bg, #ede9fe); color: var(--badge-purple-text, #6d28d9); }
+.export-col-type.type-number { background: var(--badge-green-bg, #d1fae5); color: var(--badge-green-text, #065f46); }
+.export-col-type.type-embedding { background: var(--badge-pink-bg, #fce7f3); color: var(--badge-pink-text, #9d174d); }
+.export-col-actions { display: flex; gap: 8px; margin-top: 6px; }
+.export-col-actions button { font-size: 11px; padding: 3px 10px; background: transparent;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer;
+  color: var(--text-muted); font-weight: 500; }
+.export-col-actions button:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+
+<div class="plugin-page">
+  <div class="plugin-hero">
+    <h2>↓ Export Dataset</h2>
+    <p>Export a 3LC table to CSV, Excel, YOLO, COCO, or other formats for use in external tools and pipelines.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l7-4 7 4v8l-7 4-7-4V7z"/><path d="M3 7l7 4 7-4M10 11v8"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Multiple Formats</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">CSV, Excel, YOLO, COCO</div>
+      </div>
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h12M3 10h14M4 6h12"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Column Selection</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Choose which columns to export</div>
+      </div>
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="4" cy="10" r="2"/><circle cx="16" cy="10" r="2"/><path d="M6 10h8"/><path d="M12 6l4 4-4 4"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Pipeline Ready</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Feed into any ML workflow</div>
+      </div>
+    </div>
+    <div class="plugin-workflow" style="margin-top:10px">
+      <div class="plugin-workflow-step"><span class="num">1</span> Select table</div>
+      <div class="plugin-workflow-step"><span class="num">2</span> Pick format</div>
+      <div class="plugin-workflow-step"><span class="num">3</span> Export</div>
+    </div>
+  </div>
+
+  <div id="export-result"></div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Export Configuration</div></div>
+    <div class="card-body">
+
+      <!-- Table URL -->
+      <div class="form-group">
+        <label class="form-label required">Table URL</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="export-table-url" class="form-control"
+                 placeholder="Paste table URL or click Browse…">
+          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
+                  id="export-browse-btn">Browse…</button>
+        </div>
+        <div class="form-help">Select a table from your projects, or paste a URL directly.</div>
+      </div>
+
+      <!-- Format selector -->
+      <div class="form-group">
+        <label class="form-label required">Export Format</label>
+        <div class="format-grid" id="export-format-grid">
+          <div style="font-size:13px;color:var(--text-muted)">Loading formats…</div>
+        </div>
+      </div>
+
+      <!-- Details (hidden until format selected) -->
+      <div id="export-details" style="display:none">
+        <div class="form-group">
+          <label class="form-label required">Output Path</label>
+          <input type="text" id="export-output-path" class="form-control"
+                 placeholder="/path/to/output/folder">
+          <div class="form-help">Output directory or full file path.</div>
+        </div>
+
+        <!-- Column selector (for CSV/XLSX) -->
+        <div id="export-column-section" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Columns</label>
+            <div class="export-col-actions">
+              <button type="button" onclick="_expSelectAll(true)">Select all</button>
+              <button type="button" onclick="_expSelectAll(false)">Deselect all</button>
+              <span id="export-col-count" style="font-size:11px;color:var(--text-muted);margin-left:auto"></span>
+            </div>
+            <div class="export-col-list" id="export-col-list">
+              <div style="font-size:12px;color:var(--text-muted);padding:8px 0">
+                Enter a table URL to load columns…
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Format-specific options injected here -->
+        <div id="export-format-options"></div>
+
+        <hr class="divider">
+        <div style="display:flex;gap:10px;align-items:center">
+          <button type="button" class="btn btn-primary btn-lg" id="export-submit-btn">↓ Export</button>
+          <span class="spinner" id="export-spinner" style="display:none"></span>
+          <span id="export-status" style="display:none;font-size:12px;color:var(--text-muted)">
+            Exporting… this may take a moment.</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var API = window.PLUGIN_API;
+  var computeUrl = API.getConfig('compute_service_url');
+  var formats = [];
+  var selectedFormat = null;
+  var tableColumns = [];
+
+  var urlParams = new URLSearchParams(window.location.search);
+  var prefillUrl = '';
+  if (API.context.resourceUrls && API.context.resourceUrls.length) {
+    prefillUrl = API.context.resourceUrls[0];
+  } else {
+    prefillUrl = urlParams.get('url') || urlParams.get('table') || '';
+  }
+
+  function loadFormats() {
+    API.authFetch(computeUrl + '/api/plugins/exporter/formats')
+      .then(function(r) { return r.json(); })
+      .then(function(data) { formats = data; renderFormatGrid(); })
+      .catch(function(err) {
+        document.getElementById('export-format-grid').innerHTML =
+          '<div style="color:var(--error)">Failed to load formats: ' + err.message + '</div>';
+      });
+  }
+
+  function renderFormatGrid() {
+    var grid = document.getElementById('export-format-grid');
+    grid.innerHTML = '';
+    formats.forEach(function(fmt) {
+      var card = document.createElement('div');
+      card.className = 'format-card' + (selectedFormat === fmt.name ? ' active' : '');
+      card.innerHTML =
+        '<div class="format-card-icon">' + (fmt.icon || '') + '</div>' +
+        '<div class="format-card-name">' + _esc(fmt.display_name) + '</div>' +
+        '<div class="format-card-desc">' + _esc(fmt.description) + '</div>';
+      card.onclick = function() { selectFormat(fmt.name); };
+      grid.appendChild(card);
+    });
+  }
+
+  function selectFormat(name) {
+    selectedFormat = name;
+    renderFormatGrid();
+    document.getElementById('export-details').style.display = '';
+    renderFormatOptions();
+    var fmt = formats.find(function(f) { return f.name === name; });
+    var colSection = document.getElementById('export-column-section');
+    if (fmt && fmt.needs_column_select) {
+      colSection.style.display = '';
+      var tableUrl = document.getElementById('export-table-url').value.trim();
+      if (tableUrl && tableColumns.length === 0) loadColumns(tableUrl);
+    } else {
+      colSection.style.display = 'none';
+    }
+  }
+
+  function loadColumns(tableUrl) {
+    if (!tableUrl) return;
+    var list = document.getElementById('export-col-list');
+    list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Loading columns…</div>';
+    API.authFetch(computeUrl + '/api/plugins/exporter/columns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table_url: tableUrl }),
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          list.innerHTML = '<div style="color:var(--error);font-size:12px;padding:8px 0">' + _esc(data.error) + '</div>';
+          return;
+        }
+        tableColumns = data.columns || [];
+        renderColumnList();
+      })
+      .catch(function(err) {
+        list.innerHTML = '<div style="color:var(--error);font-size:12px;padding:8px 0">Failed: ' + _esc(err.message) + '</div>';
+      });
+  }
+
+  function renderColumnList() {
+    var list = document.getElementById('export-col-list');
+    if (!tableColumns.length) {
+      list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">No columns found.</div>';
+      return;
+    }
+    var html = '';
+    tableColumns.forEach(function(col, idx) {
+      var checked = col.type !== 'embedding' ? ' checked' : '';
+      html += '<div class="export-col-item">' +
+        '<input type="checkbox" id="export-col-' + idx + '" data-col="' + _esc(col.name) + '"' + checked + ' onchange="_expUpdateCount()">' +
+        '<label for="export-col-' + idx + '" style="flex:1;cursor:pointer">' + _esc(col.name) + '</label>' +
+        '<span class="export-col-type type-' + _esc(col.type) + '">' + _esc(col.type) + '</span>' +
+        '</div>';
+    });
+    list.innerHTML = html;
+    _expUpdateCount();
+  }
+
+  window._expSelectAll = function(checked) {
+    var cbs = document.getElementById('export-col-list').querySelectorAll('input[type="checkbox"]');
+    cbs.forEach(function(cb) { cb.checked = checked; });
+    _expUpdateCount();
+  };
+
+  window._expUpdateCount = function() {
+    var cbs = document.getElementById('export-col-list').querySelectorAll('input[type="checkbox"]');
+    var n = 0; cbs.forEach(function(cb) { if (cb.checked) n++; });
+    var el = document.getElementById('export-col-count');
+    if (el) el.textContent = n + ' / ' + cbs.length + ' columns selected';
+  };
+
+  function getSelectedColumns() {
+    var cbs = document.getElementById('export-col-list').querySelectorAll('input[type="checkbox"]:checked');
+    var cols = [];
+    cbs.forEach(function(cb) { cols.push(cb.getAttribute('data-col')); });
+    return cols;
+  }
+
+  function renderFormatOptions() {
+    var container = document.getElementById('export-format-options');
+    var fmt = formats.find(function(f) { return f.name === selectedFormat; });
+    if (!fmt || !fmt.options || !fmt.options.length) { container.innerHTML = ''; return; }
+    var html = '<div class="format-options-label">' + _esc(fmt.display_name) + ' Options</div>';
+    fmt.options.forEach(function(opt) {
+      html += '<div class="form-group">';
+      html += '<label class="form-label" for="export-opt-' + opt.name + '">' + _esc(opt.label) + '</label>';
+      if (opt.type === 'select') {
+        html += '<select id="export-opt-' + opt.name + '" class="form-control" style="max-width:240px">';
+        (opt.choices || []).forEach(function(c) {
+          var display = c === 'tab' ? 'Tab' : c;
+          html += '<option value="' + _esc(c) + '"' + (c === opt.default ? ' selected' : '') + '>' + _esc(display) + '</option>';
+        });
+        html += '</select>';
+      } else {
+        html += '<input type="text" id="export-opt-' + opt.name + '" class="form-control" style="max-width:240px"' +
+                ' value="' + _esc(opt.default || '') + '" placeholder="' + _esc(opt.default || '') + '">';
+      }
+      if (opt.help) html += '<div class="form-help">' + _esc(opt.help) + '</div>';
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function executeExport() {
+    var tableUrl = document.getElementById('export-table-url').value.trim();
+    var outputPath = document.getElementById('export-output-path').value.trim();
+    var submitBtn = document.getElementById('export-submit-btn');
+    var spinner = document.getElementById('export-spinner');
+    var status = document.getElementById('export-status');
+    if (!tableUrl) { showResult({ success: false, message: 'Table URL is required.' }); return; }
+    if (!selectedFormat) { showResult({ success: false, message: 'Please select an export format.' }); return; }
+    if (!outputPath) { showResult({ success: false, message: 'Output path is required.' }); return; }
+
+    var body = { format: selectedFormat, table_url: tableUrl, output_path: outputPath };
+    var fmt = formats.find(function(f) { return f.name === selectedFormat; });
+    if (fmt && fmt.options) {
+      fmt.options.forEach(function(opt) {
+        var el = document.getElementById('export-opt-' + opt.name);
+        if (el) body[opt.name] = el.value;
+      });
+    }
+    if (fmt && fmt.needs_column_select) {
+      var cols = getSelectedColumns();
+      if (cols.length > 0) body.columns = cols;
+    }
+
+    submitBtn.disabled = true;
+    spinner.style.display = 'inline-block';
+    status.style.display = 'inline';
+
+    API.authFetch(computeUrl + '/api/plugins/exporter/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(data) { showResult(data); })
+      .catch(function(err) { showResult({ success: false, message: 'Request failed: ' + err.message }); })
+      .finally(function() {
+        submitBtn.disabled = false;
+        spinner.style.display = 'none';
+        status.style.display = 'none';
+      });
+  }
+
+  function showResult(data) {
+    var el = document.getElementById('export-result');
+    var cls = data.success ? 'alert-success' : 'alert-error';
+    var icon = data.success ? '✓' : '✗';
+    var html = '<div class="alert ' + cls + '">';
+    html += '<span class="alert-icon">' + icon + '</span>';
+    html += '<div><strong>' + _esc(data.message) + '</strong>';
+    if (data.details) {
+      html += '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">';
+      var keys = Object.keys(data.details);
+      for (var i = 0; i < keys.length; i++) {
+        html += '<span style="margin-right:12px"><strong>' + _esc(keys[i]) + ':</strong> ' +
+                _esc(String(data.details[keys[i]])) + '</span>';
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+    el.innerHTML = html;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  document.getElementById('export-browse-btn').addEventListener('click', function() {
+    if (typeof openTablePicker === 'function') {
+      openTablePicker('export-table-url', function() {
+        var fmt = formats.find(function(f) { return f.name === selectedFormat; });
+        if (fmt && fmt.needs_column_select) {
+          tableColumns = [];
+          loadColumns(document.getElementById('export-table-url').value.trim());
+        }
+      });
+    } else {
+      showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
+    }
+  });
+
+  var _colDebounce = null;
+  document.getElementById('export-table-url').addEventListener('input', function() {
+    clearTimeout(_colDebounce);
+    _colDebounce = setTimeout(function() {
+      var fmt = formats.find(function(f) { return f.name === selectedFormat; });
+      if (fmt && fmt.needs_column_select) {
+        tableColumns = [];
+        loadColumns(document.getElementById('export-table-url').value.trim());
+      }
+    }, 500);
+  });
+
+  document.getElementById('export-submit-btn').addEventListener('click', executeExport);
+
+  function _esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  if (prefillUrl) document.getElementById('export-table-url').value = prefillUrl;
+  loadFormats();
+})();
+</script>

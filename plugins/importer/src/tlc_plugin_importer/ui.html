@@ -1,0 +1,1686 @@
+<!--
+-- <copyright>
+-- Copyright (c) 2026 3LC Inc. All rights reserved.
+--
+-- All rights are reserved. Reproduction or transmission in whole or in part, in
+-- any form or by any means, electronic, mechanical or otherwise, is prohibited
+-- without the prior written permission of the copyright owner.
+-- </copyright>
+-->
+<!-- Import Wizard — self-contained plugin UI fragment -->
+<!-- All styles provided by main.css + plugin-common.css -->
+
+<style>
+/* Guide pulse — draws attention to the next required empty field */
+@keyframes guide-pulse {
+  0%, 100% { background: var(--bg-card); box-shadow: 0 0 0 0 rgba(217,119,6,0); }
+  50% { background: rgba(217,119,6,0.1); box-shadow: 0 0 0 3px rgba(217,119,6,0.25); }
+}
+.form-control.guide-next {
+  animation: guide-pulse 2s ease-in-out infinite;
+  border-color: var(--warning, #d97706);
+}
+
+/* CSV wizard styles */
+.csv-wizard { font-size: 12px; }
+.csv-step { display: none; }
+.csv-step.active { display: block; }
+.csv-steps-bar { display: flex; gap: 0; margin-bottom: 16px; }
+.csv-step-pill { flex: 1; text-align: center; padding: 8px 4px; font-size: 11px; font-weight: 600;
+  color: var(--text-muted); border-bottom: 2px solid var(--border); cursor: default; transition: all .15s; }
+.csv-step-pill.active { color: var(--accent); border-color: var(--accent); }
+.csv-step-pill.done { color: var(--success); border-color: var(--success); }
+
+.csv-upload-zone {
+  border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 32px; text-align: center;
+  cursor: pointer; transition: border-color .15s, background .15s; margin-bottom: 12px;
+}
+.csv-upload-zone:hover { border-color: var(--accent); background: var(--accent-light, rgba(42,74,97,.04)); }
+.csv-upload-zone.dragging { border-color: var(--accent); background: var(--accent-light, rgba(42,74,97,.08)); }
+.csv-upload-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.csv-upload-sub { font-size: 11px; color: var(--text-muted); }
+
+.csv-preview-wrap { max-height: 300px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; }
+.csv-preview-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.csv-preview-table th {
+  position: sticky; top: 0; background: var(--bg-card); padding: 6px 8px; text-align: left;
+  font-weight: 600; border-bottom: 2px solid var(--border); white-space: nowrap; z-index: 1;
+}
+.csv-preview-table td { padding: 4px 8px; border-bottom: 1px solid var(--border-light, rgba(0,0,0,.04)); white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.csv-preview-table tr:hover td { background: var(--golden-light); }
+
+.csv-col-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.csv-col-card {
+  border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
+  display: flex; align-items: flex-start; gap: 10px; transition: border-color .15s;
+}
+.csv-col-card.selected { border-color: var(--accent); background: var(--accent-light, rgba(42,74,97,.04)); }
+.csv-col-card .col-header { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.csv-col-card .col-name { font-weight: 600; font-size: 12px; }
+.csv-col-card .col-type-badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--bg-secondary, #f0f0f0); color: var(--text-muted); }
+.csv-col-card .col-sample { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.csv-col-config { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-light, rgba(0,0,0,.06)); font-size: 11px; }
+.csv-col-config label { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; cursor: pointer; }
+.csv-col-config select { font-size: 11px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-card); }
+
+.csv-labels-grid { display: grid; grid-template-columns: 50px 1fr; gap: 4px 8px; margin-top: 6px; font-size: 11px; align-items: center; }
+.csv-labels-grid input { font-size: 11px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; width: 100%; }
+
+.csv-result { padding: 16px; border-radius: var(--radius-lg); font-size: 12px; margin-top: 12px; }
+.csv-result.success { background: rgba(5,150,105,.08); border: 1px solid rgba(5,150,105,.2); }
+.csv-result.error { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); }
+
+.csv-mode-toggle { display: flex; gap: 0; margin-bottom: 14px; }
+.csv-mode-btn { flex: 1; padding: 10px 8px; text-align: center; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--border); cursor: pointer; transition: all .15s; background: var(--bg-card); color: var(--text-secondary); }
+.csv-mode-btn:first-child { border-radius: 6px 0 0 6px; }
+.csv-mode-btn:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+.csv-mode-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Format selection banner (collapsed state) */
+.format-selected-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; margin-bottom: 4px;
+  background: var(--accent-light, rgba(42,74,97,.06));
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-lg, 8px);
+  animation: plugin-badge-in 0.3s ease-out both;
+}
+.format-selected-banner .fmt-icon { font-size: 24px; flex-shrink: 0; }
+.format-selected-banner .fmt-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.format-selected-banner .fmt-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+</style>
+
+<div class="plugin-page">
+  <div class="plugin-hero">
+    <h2>↑ Import Dataset</h2>
+    <p>Create a 3LC table from your data — YOLO, COCO, image folders, CSV/Excel, or unlabeled collections.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l7-4 7 4v8l-7 4-7-4V7z"/><path d="M3 7l7 4 7-4M10 11v8"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Multiple Formats</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">YOLO, COCO, CSV & more</div>
+      </div>
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12l-2 2a2.83 2.83 0 1 1-4-4l2-2a2.83 2.83 0 0 1 4 0M12 8l2-2a2.83 2.83 0 1 1 4 4l-2 2a2.83 2.83 0 0 1-4 0"/><path d="M7 13l6-6"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Full Lineage</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Revision history from day one</div>
+      </div>
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2L5 11h5l-1 7 6-9h-5l1-7z"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Instant Access</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Browse & explore immediately</div>
+      </div>
+    </div>
+    <div class="plugin-workflow" style="margin-top:10px">
+      <div class="plugin-workflow-step"><span class="num">1</span> Pick format</div>
+      <div class="plugin-workflow-step"><span class="num">2</span> Fill details</div>
+      <div class="plugin-workflow-step"><span class="num">3</span> Import</div>
+    </div>
+  </div>
+
+  <!-- Format selector -->
+  <div class="format-grid" id="format-grid">
+    <div style="font-size:13px;color:var(--text-muted)">Loading formats…</div>
+  </div>
+
+  <!-- Form area (standard formats) -->
+  <div id="import-form-area"></div>
+
+  <!-- CSV wizard area (hidden by default) -->
+  <div id="csv-wizard-area" style="display:none">
+    <div class="csv-wizard">
+      <div class="csv-steps-bar">
+        <div class="csv-step-pill active" data-step="1">1. Upload File</div>
+        <div class="csv-step-pill" data-step="2">2. Select Columns</div>
+        <div class="csv-step-pill" data-step="3">3. Output & Execute</div>
+      </div>
+
+      <!-- Step 1: Upload -->
+      <div class="csv-step active" id="csv-step-1">
+        <div class="csv-upload-zone" id="csv-drop-zone">
+          <div class="csv-upload-title">Drop CSV or Excel file here</div>
+          <div class="csv-upload-sub">or click to browse — .csv, .xlsx supported</div>
+          <input type="file" id="csv-file-input" accept=".csv,.xlsx,.xls" style="display:none">
+        </div>
+        <div id="csv-file-info" style="display:none;font-size:11px;color:var(--text-muted);margin-bottom:12px"></div>
+        <div id="csv-preview-area" style="display:none">
+          <div style="font-size:11px;font-weight:600;margin-bottom:6px">Preview <span id="csv-row-count" style="color:var(--text-muted);font-weight:400"></span></div>
+          <div class="csv-preview-wrap" id="csv-preview-wrap"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-primary btn-sm" id="csv-next-1">Next: Select Columns</button>
+            <button class="btn btn-secondary btn-sm" id="csv-cancel-1">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Column selection -->
+      <div class="csv-step" id="csv-step-2">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:600">Select columns to include</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" id="csv-sel-all">Select All</button>
+            <button class="btn btn-ghost btn-sm" id="csv-desel-all">Deselect All</button>
+          </div>
+        </div>
+        <div class="csv-col-list" id="csv-col-list"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" id="csv-back-2">Back</button>
+          <button class="btn btn-primary btn-sm" id="csv-next-2">Next: Output & Execute</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Output mode + Execute -->
+      <div class="csv-step" id="csv-step-3">
+        <div id="csv-config-summary"></div>
+
+        <div style="font-size:11px;font-weight:600;margin-bottom:8px;margin-top:14px">Output Mode</div>
+        <div class="csv-mode-toggle">
+          <div class="csv-mode-btn active" data-mode="create_new">Create New Table</div>
+          <div class="csv-mode-btn" data-mode="extend_existing">Extend Existing Table</div>
+        </div>
+
+        <!-- Create New fields -->
+        <div id="csv-mode-create" style="display:block">
+          <div class="form-group">
+            <label class="form-label required">Project Name</label>
+            <input type="text" id="csv-project" class="form-control" placeholder="my-project" style="font-size:11px">
+          </div>
+          <div class="form-group">
+            <label class="form-label required">Dataset Name</label>
+            <input type="text" id="csv-dataset" class="form-control" placeholder="my-dataset" style="font-size:11px">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Table Name</label>
+            <input type="text" id="csv-table-name" class="form-control" placeholder="initial" style="font-size:11px">
+            <div class="form-help">Table revision name. Leave blank for 'initial'.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description (optional)</label>
+            <input type="text" id="csv-create-desc" class="form-control" placeholder="" style="font-size:11px">
+          </div>
+          <div id="csv-alias-area"></div>
+        </div>
+
+        <!-- Extend Existing fields -->
+        <div id="csv-mode-extend" style="display:none">
+          <div class="form-group">
+            <label class="form-label required">Source Table URL</label>
+            <input type="text" id="csv-extend-url" class="form-control" placeholder="Table URL to extend" style="font-size:11px">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Output Table Name</label>
+            <input type="text" id="csv-extend-name" class="form-control" placeholder="extended" style="font-size:11px" value="extended">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description (optional)</label>
+            <input type="text" id="csv-extend-desc" class="form-control" placeholder="" style="font-size:11px">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-secondary btn-sm" id="csv-back-3">Back</button>
+          <button class="btn btn-primary btn-sm" id="csv-execute-btn">Import</button>
+          <span class="spinner" id="csv-spinner" style="display:none"></span>
+        </div>
+        <div id="csv-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var API = window.PLUGIN_API;
+  var computeUrl = API.getConfig('compute_service_url');
+  var formats = [];
+  var selectedFormat = null;
+
+  // Read URL params
+  var urlParams = new URLSearchParams(window.location.search);
+  var prefillProject = urlParams.get('project') || '';
+  var prefillTableUrl = urlParams.get('url') || urlParams.get('table') || '';
+
+  // CSV wizard state
+  var _csvSessionId = '';
+  var _csvColumns = [];
+  var _csvPreview = [];
+  var _csvHeaders = [];
+  var _csvTotalRows = 0;
+  var _csvSelected = {};
+  var _csvColConfig = {};
+  var _csvMode = 'create_new';
+
+  // ── Helpers ─────────────────────────────────────────────
+  function _esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // Alias UI uses shared functions injected below (see {{ALIAS_UI_SCRIPT}})
+
+  // ── Upload a file to compute service temp dir ──────────
+  function _uploadTempFile(file, fieldId) {
+    var zone = document.getElementById('import-dropzone-' + fieldId);
+    var hiddenInput = document.getElementById('import-' + fieldId);
+    var infoEl = document.getElementById('import-file-info-' + fieldId);
+
+    infoEl.style.display = '';
+    infoEl.textContent = 'Uploading ' + file.name + '…';
+    zone.style.opacity = '0.6';
+    zone.style.pointerEvents = 'none';
+
+    var formData = new FormData();
+    formData.append('data', file);
+
+    API.authFetch(computeUrl + '/api/plugins/importer/upload-temp', {
+      method: 'POST',
+      body: formData,
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+      hiddenInput.value = result.path;
+      infoEl.innerHTML = '<span style="color:var(--success)">✓</span> ' + _esc(file.name) +
+        ' <span style="color:var(--text-muted)">→ ' + _esc(result.path) + '</span>';
+      zone.querySelector('.csv-upload-title').textContent = file.name;
+      zone.querySelector('.csv-upload-sub').textContent = 'Click or drop to replace';
+    })
+    .catch(function(err) {
+      infoEl.innerHTML = '<span style="color:var(--error)">Upload failed:</span> ' + _esc(String(err));
+    })
+    .finally(function() {
+      zone.style.opacity = '';
+      zone.style.pointerEvents = '';
+    });
+  }
+
+  // ── Load formats from compute service ───────────────────
+  function loadFormats() {
+    API.authFetch(computeUrl + '/api/plugins/importer/formats')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        formats = data;
+        renderFormatGrid();
+        var autoFormat = urlParams.get('format');
+        if (autoFormat) selectFormat(autoFormat);
+      })
+      .catch(function(err) {
+        document.getElementById('format-grid').innerHTML =
+          '<div style="color:var(--error)">Failed to load import formats: ' + err.message + '</div>';
+      });
+  }
+
+  // ── Render format cards ─────────────────────────────────
+  function renderFormatGrid() {
+    var grid = document.getElementById('format-grid');
+    grid.innerHTML = '';
+    formats.forEach(function(fmt) {
+      var card = document.createElement('div');
+      card.className = 'format-card' + (selectedFormat === fmt.name ? ' active' : '');
+      card.innerHTML =
+        '<div class="format-card-icon">' + (fmt.icon || '⊡') + '</div>' +
+        '<div class="format-card-name">' + _esc(fmt.display_name) + '</div>' +
+        '<div class="format-card-desc">' + _esc(fmt.description) + '</div>';
+      card.onclick = function() { selectFormat(fmt.name); };
+      grid.appendChild(card);
+    });
+  }
+
+  // ── Select a format ─────────────────────────────────────
+  function selectFormat(name) {
+    selectedFormat = name;
+    var url = new URL(window.location);
+    url.searchParams.set('format', name);
+    history.replaceState(null, '', url);
+
+    var fmt = formats.find(function(f) { return f.name === name; });
+
+    // Collapse format grid into compact banner
+    var grid = document.getElementById('format-grid');
+    if (fmt) {
+      grid.innerHTML =
+        '<div class="format-selected-banner">' +
+          '<span class="fmt-icon">' + (fmt.icon || '') + '</span>' +
+          '<div style="flex:1">' +
+            '<div class="fmt-name">' + _esc(fmt.display_name) + '</div>' +
+            '<div class="fmt-desc">' + _esc(fmt.description) + '</div>' +
+          '</div>' +
+          '<button class="btn btn-secondary btn-sm" id="change-format-btn">Change Format</button>' +
+        '</div>';
+      document.getElementById('change-format-btn').addEventListener('click', _resetToFormatGrid);
+    }
+
+    if (fmt && fmt.custom_ui) {
+      // CSV/Excel — show wizard
+      document.getElementById('import-form-area').style.display = 'none';
+      document.getElementById('csv-wizard-area').style.display = '';
+      csvReset();
+    } else {
+      // Standard form
+      document.getElementById('csv-wizard-area').style.display = 'none';
+      document.getElementById('import-form-area').style.display = '';
+      renderForm();
+    }
+
+    // Scroll to the form
+    var target = (fmt && fmt.custom_ui)
+      ? document.getElementById('csv-wizard-area')
+      : document.getElementById('import-form-area');
+    if (target) {
+      setTimeout(function() { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+    }
+  }
+
+  function _resetToFormatGrid() {
+    selectedFormat = null;
+    _yoloDetectedSplits = [];
+    _yoloCheckedSplits = {};
+    _cocoDetectedSplits = [];
+    _cocoCheckedSplits = {};
+    _cocoAllTypes = [];
+    _cocoSelectedType = '';
+    var url = new URL(window.location);
+    url.searchParams.delete('format');
+    history.replaceState(null, '', url);
+    renderFormatGrid();
+    document.getElementById('csv-wizard-area').style.display = 'none';
+    document.getElementById('import-form-area').style.display = '';
+    document.getElementById('import-form-area').innerHTML = '';
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // STANDARD FORM (YOLO, COCO, Folder, Unlabeled)
+  // ══════════════════════════════════════════════════════════
+
+  function renderForm() {
+    var area = document.getElementById('import-form-area');
+    var fmt = formats.find(function(f) { return f.name === selectedFormat; });
+    if (!fmt) {
+      area.innerHTML = '';
+      return;
+    }
+
+    var html = '<div class="card">';
+    html += '<div class="card-header"><div>';
+    html += '<div class="card-title">' + (fmt.icon || '') + ' ' + _esc(fmt.display_name) + '</div>';
+    html += '<div class="card-subtitle">' + _esc(fmt.description) + '</div>';
+    html += '</div></div>';
+    html += '<div class="card-body">';
+    html += '<div id="import-result"></div>';
+    html += '<form id="import-exec-form" onsubmit="return false;">';
+    html += '<div class="form-row">';
+
+    var fields = fmt.form_fields || [];
+    for (var i = 0; i < fields.length; i++) {
+      var f = fields[i];
+      if (i % 2 === 0) html += '<div>';
+
+      html += '<div class="form-group">';
+      html += '<label class="form-label' + (f.required ? ' required' : '') + '" for="import-' + f.id + '">';
+      html += _esc(f.label) + '</label>';
+
+      var prefill = (f.id === 'project_name' && prefillProject) ? prefillProject : '';
+
+      if (f.type === 'table_picker') {
+        html += '<div style="display:flex;gap:6px;align-items:center">';
+        html += '<input type="text" name="' + f.id + '" id="import-' + f.id + '"' +
+                ' class="form-control" value="' + _esc(prefill) + '"' +
+                ' placeholder="' + _esc(f.placeholder || 'Select a table...') + '"' +
+                (f.required ? ' required' : '') + ' style="flex:1">';
+        html += '<button type="button" class="btn btn-secondary btn-sm" onclick="if(typeof openTablePicker===\'function\')openTablePicker(\'import-' + f.id + '\')">Browse…</button>';
+        html += '</div>';
+      } else if (f.type === 'file_upload') {
+        // Drop zone + hidden field for server-side path
+        var accept = f.accept || '.csv,.xlsx,.xls';
+        html += '<input type="hidden" name="' + f.id + '" id="import-' + f.id + '">';
+        html += '<div class="csv-upload-zone" id="import-dropzone-' + f.id + '" data-field-id="' + f.id + '" data-accept="' + _esc(accept) + '">';
+        html += '<div class="csv-upload-title">Drop file here</div>';
+        html += '<div class="csv-upload-sub">or click to browse — ' + _esc(accept) + ' supported</div>';
+        html += '<input type="file" id="import-file-' + f.id + '" accept="' + _esc(accept) + '" style="display:none">';
+        html += '</div>';
+        html += '<div id="import-file-info-' + f.id + '" style="display:none;font-size:11px;color:var(--text-muted);margin-top:4px"></div>';
+      } else if (f.type === 'select') {
+        html += '<select name="' + f.id + '" id="import-' + f.id + '" class="form-control"' +
+                (f.required ? ' required' : '') + '>';
+        var opts = f.options || [];
+        for (var j = 0; j < opts.length; j++) {
+          html += '<option value="' + _esc(opts[j].value) + '">' + _esc(opts[j].label) + '</option>';
+        }
+        html += '</select>';
+      } else if (f.type === 'textarea') {
+        html += '<textarea name="' + f.id + '" id="import-' + f.id + '" class="form-control"' +
+                ' placeholder="' + _esc(f.placeholder || '') + '"' +
+                (f.required ? ' required' : '') + '>' + _esc(prefill) + '</textarea>';
+      } else {
+        html += '<input type="' + (f.type || 'text') + '" name="' + f.id + '" id="import-' + f.id + '"' +
+                ' class="form-control" value="' + _esc(prefill) + '"' +
+                ' placeholder="' + _esc(f.placeholder || '') + '"' +
+                (f.required ? ' required' : '') + '>';
+      }
+
+      if (f.help) {
+        html += '<div class="form-help">' + _esc(f.help) + '</div>';
+      }
+      html += '</div>';
+
+      if (i % 2 === 1 || i === fields.length - 1) html += '</div>';
+    }
+
+    html += '</div>';
+
+    // Alias settings
+    var initFolder = '';
+    for (var fi = 0; fi < fields.length; fi++) {
+      if (fields[fi].id === 'image_folder' || fields[fi].id === 'folder_path') {
+        initFolder = ''; // will be filled from field value at submit time
+        break;
+      }
+    }
+    html += _tlcAliasSettingsHtml('import', prefillProject, initFolder);
+
+    html += '<hr class="divider">';
+    html += '<div style="display:flex;gap:10px;align-items:center">';
+    html += '<button type="button" class="btn btn-primary btn-lg" id="import-submit-btn" disabled>';
+    html += '↑ Import ' + _esc(fmt.display_name) + '</button>';
+    html += '<button type="button" class="btn btn-secondary" id="import-cancel-btn">Cancel</button>';
+    html += '<span class="spinner" id="import-spinner" style="display:none"></span>';
+    html += '<span id="import-status" style="display:none;font-size:12px;color:var(--text-muted)">';
+    html += 'Importing… this may take a moment.</span>';
+    html += '</div>';
+    html += '<div id="import-progress" style="display:none;margin-top:12px">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">';
+    html += '<span id="import-progress-label" style="font-size:13px;color:var(--text-secondary)">Importing...</span>';
+    html += '<span id="import-progress-time" style="font-size:12px;color:var(--text-muted);margin-left:auto"></span>';
+    html += '</div>';
+    html += '<div style="height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden">';
+    html += '<div id="import-progress-bar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width 0.3s"></div>';
+    html += '</div>';
+    html += '</div>';
+    html += '<div id="import-queue-panel" style="margin-top:12px"></div>';
+    html += '</form>';
+    html += '</div></div>';
+
+    area.innerHTML = html;
+
+    _tlcBindAliasToggle('import');
+    // Detect the folder field id for this format
+    var folderFieldId = null;
+    for (var ai = 0; ai < fields.length; ai++) {
+      if (fields[ai].id === 'image_folder' || fields[ai].id === 'folder_path') {
+        folderFieldId = 'import-' + fields[ai].id;
+        break;
+      }
+    }
+    _tlcBindAliasAutoUpdate('import', 'import-project_name', folderFieldId);
+
+    var form = document.getElementById('import-exec-form');
+    form.addEventListener('submit', function(e) {
+      e.preventDefault(); // Never submit on Enter — user must click the button
+    });
+    document.getElementById('import-submit-btn').addEventListener('click', function() {
+      executeImport(fmt);
+    });
+    document.getElementById('import-cancel-btn').addEventListener('click', _resetToFormatGrid);
+
+    // Bind file upload drop zones
+    var dropZones = area.querySelectorAll('.csv-upload-zone[data-field-id]');
+    dropZones.forEach(function(zone) {
+      var fieldId = zone.getAttribute('data-field-id');
+      var fileInput = document.getElementById('import-file-' + fieldId);
+      var hiddenInput = document.getElementById('import-' + fieldId);
+      var infoEl = document.getElementById('import-file-info-' + fieldId);
+
+      zone.addEventListener('click', function() { fileInput.click(); });
+      zone.addEventListener('dragover', function(e) { e.preventDefault(); zone.classList.add('dragging'); });
+      zone.addEventListener('dragleave', function() { zone.classList.remove('dragging'); });
+      zone.addEventListener('drop', function(e) {
+        e.preventDefault(); zone.classList.remove('dragging');
+        if (e.dataTransfer.files.length > 0) _uploadTempFile(e.dataTransfer.files[0], fieldId);
+      });
+      fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) _uploadTempFile(fileInput.files[0], fieldId);
+      });
+    });
+
+    // YOLO: auto-detect splits from YAML
+    if (fmt.name === 'yolo') {
+      _setupYoloAutoDetect();
+    }
+    // COCO: auto-detect splits from annotations folder
+    if (fmt.name === 'coco') {
+      _setupCocoAutoDetect();
+    }
+
+    // ── Enable/disable submit button based on required fields ──
+    _currentFormFmt = fmt;
+    _checkImportReady();
+    // Bind to all form inputs
+    area.querySelectorAll('input, select, textarea').forEach(function(el) {
+      el.addEventListener('input', _checkImportReady);
+      el.addEventListener('change', _checkImportReady);
+    });
+    // Auto-focus the first empty required field
+    var firstGuide = area.querySelector('.guide-next');
+    if (firstGuide) setTimeout(function() { firstGuide.focus(); }, 100);
+  }
+
+  var _currentFormFmt = null;
+
+  function _checkImportReady() {
+    var btn = document.getElementById('import-submit-btn');
+    if (!btn || !_currentFormFmt) return;
+    var fields = _currentFormFmt.form_fields || [];
+    var ready = true;
+
+    // For YOLO with auto-detect: skip 'split' (handled by checkboxes),
+    // require dataset_yaml + dataset_name + project_name + table_name
+    var isYoloMulti = _currentFormFmt.name === 'yolo' && _yoloDetectedSplits.length > 0;
+    // For COCO with auto-detect: skip 'annotations_file' and 'image_folder' (handled per-split)
+    var isCocoMulti = _currentFormFmt.name === 'coco' && _cocoDetectedSplits.length > 0;
+
+    for (var i = 0; i < fields.length; i++) {
+      var f = fields[i];
+      if (!f.required) continue;
+
+      // Skip fields that are handled by auto-detect
+      if (isYoloMulti && f.id === 'split') continue;
+      if (isCocoMulti && (f.id === 'annotations_file' || f.id === 'image_folder')) continue;
+
+      // Skip hidden fields (display:none on form-group)
+      var el = document.getElementById('import-' + f.id);
+      if (!el) { ready = false; break; }
+      var group = el.closest('.form-group');
+      if (group && group.style.display === 'none') continue;
+
+      if (!(el.value || '').trim()) { ready = false; break; }
+    }
+
+    // For YOLO multi-split: need at least one split checked
+    if (isYoloMulti) {
+      var anyChecked = _yoloDetectedSplits.some(function(s) { return _yoloCheckedSplits[s]; });
+      if (!anyChecked) ready = false;
+    }
+    // For COCO multi-split: need at least one split checked
+    if (isCocoMulti) {
+      var anyCocoChecked = _cocoDetectedSplits.some(function(s) { return _cocoCheckedSplits[s.split || s.file]; });
+      if (!anyCocoChecked) ready = false;
+    }
+
+    btn.disabled = !ready;
+
+    // Guide pulse: highlight the first empty required field
+    var area = document.getElementById('import-form-area');
+    if (area) {
+      area.querySelectorAll('.form-control.guide-next').forEach(function(el) {
+        el.classList.remove('guide-next');
+      });
+    }
+    if (!ready) {
+      for (var gi = 0; gi < fields.length; gi++) {
+        var gf = fields[gi];
+        if (!gf.required) continue;
+        if (isYoloMulti && gf.id === 'split') continue;
+        if (isCocoMulti && (gf.id === 'annotations_file' || gf.id === 'image_folder')) continue;
+        var gel = document.getElementById('import-' + gf.id);
+        if (!gel) continue;
+        var gg = gel.closest('.form-group');
+        if (gg && gg.style.display === 'none') continue;
+        if (!(gel.value || '').trim()) {
+          gel.classList.add('guide-next');
+          break;
+        }
+      }
+    }
+  }
+
+  // ── YOLO auto-detect splits from dataset.yaml ──────────
+  var _yoloDetectedSplits = [];   // e.g. ['train', 'val', 'test']
+  var _yoloCheckedSplits = {};    // e.g. {train: true, val: true}
+  var _yoloBaseName = '';         // e.g. 'coco128'
+  var _yoloDetectTimer = null;
+
+  function _setupYoloAutoDetect() {
+    var yamlInput = document.getElementById('import-dataset_yaml');
+    if (!yamlInput) return;
+
+    // Replace the split dropdown with an auto-detected splits panel
+    var splitSelect = document.getElementById('import-split');
+    var splitGroup = splitSelect ? splitSelect.closest('.form-group') : null;
+    if (splitGroup) {
+      splitGroup.style.display = 'none';
+      // Insert the splits panel in the same spot (inside the same column wrapper)
+      var panel = document.createElement('div');
+      panel.id = 'yolo-splits-panel';
+      // Show a placeholder so column doesn't collapse
+      panel.innerHTML = '<div class="form-group"><label class="form-label">Splits</label>' +
+        '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Enter a YAML path above to auto-detect splits.</div></div>';
+      splitGroup.parentNode.insertBefore(panel, splitGroup.nextSibling);
+    }
+
+    // Update dataset_name help text
+    var dsInput = document.getElementById('import-dataset_name');
+    if (dsInput) {
+      var dsHelp = dsInput.parentNode.querySelector('.form-help');
+      if (dsHelp) {
+        dsHelp.textContent = 'Base name — each split is imported as a separate dataset (e.g. coco128_train, coco128_val).';
+      }
+      var dsLabel = dsInput.parentNode.querySelector('.form-label');
+      if (dsLabel) dsLabel.textContent = 'Dataset Base Name';
+    }
+
+    // Auto-detect on blur or after typing pause
+    yamlInput.addEventListener('blur', function() { _yoloDetect(yamlInput.value); });
+    yamlInput.addEventListener('input', function() {
+      clearTimeout(_yoloDetectTimer);
+      _yoloDetectTimer = setTimeout(function() { _yoloDetect(yamlInput.value); }, 800);
+    });
+  }
+
+  function _yoloDetect(yamlPath) {
+    if (!yamlPath || !yamlPath.trim()) return;
+    API.authFetch(computeUrl + '/api/plugins/importer/parse-yolo?yaml_path=' + encodeURIComponent(yamlPath.trim()))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) return;
+        _yoloDetectedSplits = data.splits || [];
+        _yoloBaseName = data.name || '';
+
+        if (_yoloDetectedSplits.length === 0) return;
+
+        // Auto-fill dataset base name if empty
+        var dsInput = document.getElementById('import-dataset_name');
+        if (dsInput && !dsInput.value.trim()) {
+          dsInput.value = _yoloBaseName;
+        }
+
+        // Set alias folder to dataset root (common parent of all splits)
+        if (data.root) _tlcSetAliasRoot('import', data.root);
+
+        // Hide the dropdown, show checkboxes
+        var splitSelect = document.getElementById('import-split');
+        var splitGroup = splitSelect ? splitSelect.closest('.form-group') : null;
+        if (splitGroup) splitGroup.style.display = 'none';
+
+        // Pre-check all splits
+        _yoloCheckedSplits = {};
+        _yoloDetectedSplits.forEach(function(s) { _yoloCheckedSplits[s] = true; });
+
+        _renderYoloSplitsPanel(data);
+        _checkImportReady();
+      })
+      .catch(function() {});
+  }
+
+  function _renderYoloSplitsPanel(data) {
+    var panel = document.getElementById('yolo-splits-panel');
+    if (!panel) return;
+    panel.style.display = '';
+
+    var html = '<div class="form-group">';
+    html += '<label class="form-label">Splits to Import</label>';
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">';
+    _yoloDetectedSplits.forEach(function(s) {
+      var checked = _yoloCheckedSplits[s] ? ' checked' : '';
+      var label = s.charAt(0).toUpperCase() + s.slice(1);
+      html += '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">';
+      html += '<input type="checkbox" class="yolo-split-cb" value="' + s + '"' + checked + '> ' + label;
+      html += '</label>';
+    });
+    html += '</div>';
+    html += '<div class="form-help">Each checked split will be imported as a separate dataset.</div>';
+
+    if (data.num_classes) {
+      html += '<div style="margin-top:6px;font-size:10px;color:var(--text-muted)">';
+      html += 'Detected: ' + data.num_classes + ' classes';
+      if (data.class_names && data.class_names.length > 0) {
+        html += ' — ' + data.class_names.slice(0, 5).join(', ');
+        if (data.class_names.length > 5) html += ', …';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+
+    panel.innerHTML = html;
+
+    // Bind checkboxes
+    panel.querySelectorAll('.yolo-split-cb').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        _yoloCheckedSplits[cb.value] = cb.checked;
+        _checkImportReady();
+      });
+    });
+  }
+
+  // ── COCO auto-detect splits from annotations folder ────
+  var _cocoDetectedSplits = [];    // e.g. [{split:'train', file:'/.../instances_train2017.json', images_hint:'/.../train2017'}]
+  var _cocoCheckedSplits = {};     // e.g. {train: true, val: true}
+  var _cocoBaseName = '';
+  var _cocoDetectTimer = null;
+
+  function _setupCocoAutoDetect() {
+    var annInput = document.getElementById('import-annotations_file');
+    if (!annInput) return;
+
+    // Insert splits panel after the image_folder form-group
+    var imgInput = document.getElementById('import-image_folder');
+    var imgGroup = imgInput ? imgInput.closest('.form-group') : null;
+    if (imgGroup) {
+      var panel = document.createElement('div');
+      panel.id = 'coco-splits-panel';
+      panel.style.display = 'none';
+      imgGroup.parentNode.insertBefore(panel, imgGroup.nextSibling);
+    }
+
+    annInput.addEventListener('blur', function() { _cocoDetect(annInput.value); });
+    annInput.addEventListener('input', function() {
+      clearTimeout(_cocoDetectTimer);
+      _cocoDetectTimer = setTimeout(function() { _cocoDetect(annInput.value); }, 800);
+    });
+  }
+
+  var _cocoAllTypes = [];         // [{type, splits}]
+  var _cocoSelectedType = '';      // e.g. 'instances'
+
+  function _cocoDetect(annPath) {
+    if (!annPath || !annPath.trim()) return;
+    var trimmed = annPath.trim();
+
+    API.authFetch(computeUrl + '/api/plugins/importer/parse-coco?annotations_dir=' + encodeURIComponent(trimmed))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error || !data.splits || data.splits.length === 0) {
+          _cocoDetectedSplits = [];
+          _cocoAllTypes = [];
+          var panel = document.getElementById('coco-splits-panel');
+          if (panel) panel.style.display = 'none';
+          // Re-show image_folder if it was hidden
+          var imgInput = document.getElementById('import-image_folder');
+          if (imgInput) {
+            var imgGroup = imgInput.closest('.form-group');
+            if (imgGroup) imgGroup.style.display = '';
+          }
+          return;
+        }
+
+        _cocoAllTypes = data.types || [];
+        _cocoSelectedType = data.default_type || '';
+        _cocoBaseName = data.name || '';
+
+        // Set alias folder to dataset root (common parent of all splits)
+        if (data.root) _tlcSetAliasRoot('import', data.root);
+
+        // For single files or single-type folders, set splits directly
+        if (_cocoAllTypes.length > 0) {
+          _cocoSelectType(_cocoSelectedType);
+        } else {
+          _cocoDetectedSplits = data.splits || [];
+          _cocoCheckedSplits = {};
+          _cocoDetectedSplits.forEach(function(s) { _cocoCheckedSplits[s.split || s.file] = true; });
+        }
+
+        // Auto-fill dataset base name
+        var dsInput = document.getElementById('import-dataset_name');
+        if (dsInput && !dsInput.value.trim() && _cocoBaseName) {
+          dsInput.value = _cocoBaseName;
+        }
+
+        // Auto-fill image folder from hint (single file or first split)
+        var imgInput = document.getElementById('import-image_folder');
+        var imgHint = data.images_hint || (_cocoDetectedSplits[0] && _cocoDetectedSplits[0].images_hint) || '';
+        if (imgInput && !imgInput.value.trim() && imgHint) {
+          imgInput.value = imgHint;
+        }
+
+        // Single JSON file — just auto-fill image folder, no splits panel needed
+        var isSingleFile = trimmed.toLowerCase().endsWith('.json');
+        if (isSingleFile) {
+          var panel = document.getElementById('coco-splits-panel');
+          if (panel) panel.style.display = 'none';
+          return;
+        }
+
+        _renderCocoSplitsPanel();
+
+        // If multi-split, update labels and hide image_folder
+        if (_cocoDetectedSplits.length > 1) {
+          if (dsInput) {
+            var dsHelp = dsInput.parentNode.querySelector('.form-help');
+            if (dsHelp) dsHelp.textContent = 'Base name — each split is imported as a separate dataset (e.g. coco_train, coco_val).';
+            var dsLabel = dsInput.parentNode.querySelector('.form-label');
+            if (dsLabel) dsLabel.textContent = 'Dataset Base Name';
+          }
+          if (imgInput) {
+            var imgGroup = imgInput.closest('.form-group');
+            if (imgGroup) imgGroup.style.display = 'none';
+          }
+        }
+        _checkImportReady();
+      })
+      .catch(function() {});
+  }
+
+  function _cocoSelectType(typeName) {
+    _cocoSelectedType = typeName;
+    var found = _cocoAllTypes.find(function(t) { return t.type === typeName; });
+    _cocoDetectedSplits = found ? found.splits : [];
+    _cocoCheckedSplits = {};
+    _cocoDetectedSplits.forEach(function(s) { _cocoCheckedSplits[s.split || s.file] = true; });
+  }
+
+  function _renderCocoSplitsPanel() {
+    var panel = document.getElementById('coco-splits-panel');
+    if (!panel) return;
+    panel.style.display = '';
+
+    var html = '';
+
+    // Annotation type selector (only if multiple types)
+    if (_cocoAllTypes.length > 1) {
+      html += '<div class="form-group">';
+      html += '<label class="form-label">Annotation Type</label>';
+      html += '<select id="coco-type-select" class="form-control" style="max-width:240px">';
+      _cocoAllTypes.forEach(function(t) {
+        var sel = t.type === _cocoSelectedType ? ' selected' : '';
+        html += '<option value="' + _esc(t.type) + '"' + sel + '>' + _esc(t.type) + ' (' + t.splits.length + ' split' + (t.splits.length !== 1 ? 's' : '') + ')</option>';
+      });
+      html += '</select>';
+      html += '<div class="form-help">Multiple annotation types found. Select which to import.</div>';
+      html += '</div>';
+    }
+
+    // Split checkboxes
+    html += '<div class="form-group">';
+    html += '<label class="form-label">Splits to Import</label>';
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">';
+    _cocoDetectedSplits.forEach(function(s) {
+      var key = s.split || s.file;
+      var checked = _cocoCheckedSplits[key] ? ' checked' : '';
+      var label = s.split ? s.split.charAt(0).toUpperCase() + s.split.slice(1) : s.file.split('/').pop();
+      html += '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">';
+      html += '<input type="checkbox" class="coco-split-cb" value="' + _esc(key) + '"' + checked + '> ' + _esc(label);
+      html += '</label>';
+    });
+    html += '</div>';
+    html += '<div class="form-help">Each checked split will be imported as a separate dataset.</div>';
+
+    // File details
+    html += '<div style="margin-top:6px;font-size:10px;color:var(--text-muted)">';
+    _cocoDetectedSplits.forEach(function(s) {
+      var name = s.file.split('/').pop();
+      html += '<div>' + _esc(name);
+      if (s.images_hint) html += ' → images/' + _esc(s.images_hint.split('/').pop());
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '</div>';
+
+    panel.innerHTML = html;
+
+    // Bind type selector
+    var typeSel = document.getElementById('coco-type-select');
+    if (typeSel) {
+      typeSel.addEventListener('change', function() {
+        _cocoSelectType(typeSel.value);
+        _renderCocoSplitsPanel();
+        // Update image folder hint
+        var imgInput = document.getElementById('import-image_folder');
+        if (imgInput && _cocoDetectedSplits[0] && _cocoDetectedSplits[0].images_hint) {
+          imgInput.value = _cocoDetectedSplits[0].images_hint;
+        }
+        _checkImportReady();
+      });
+    }
+
+    // Bind checkboxes
+    panel.querySelectorAll('.coco-split-cb').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        _cocoCheckedSplits[cb.value] = cb.checked;
+        _checkImportReady();
+      });
+    });
+  }
+
+  function executeImport(fmt) {
+    var submitBtn = document.getElementById('import-submit-btn');
+    var spinner = document.getElementById('import-spinner');
+    var status = document.getElementById('import-status');
+    var progressEl = document.getElementById('import-progress');
+    var progressBar = document.getElementById('import-progress-bar');
+    var progressLabel = document.getElementById('import-progress-label');
+    var progressTime = document.getElementById('import-progress-time');
+
+    var formData = { format: fmt.name };
+    var fields = fmt.form_fields || [];
+    for (var i = 0; i < fields.length; i++) {
+      var el = document.getElementById('import-' + fields[i].id);
+      if (el) formData[fields[i].id] = el.value;
+    }
+
+    // Include alias settings
+    var alias = _tlcGetAliasValues('import');
+    formData.alias_enabled = alias.alias_enabled ? 'true' : 'false';
+    formData.alias_token = alias.alias_token;
+    formData.alias_folder = alias.alias_folder;
+
+    // YOLO multi-split: build queue of split imports
+    if (fmt.name === 'yolo' && _yoloDetectedSplits.length > 0) {
+      var splits = _yoloDetectedSplits.filter(function(s) { return _yoloCheckedSplits[s]; });
+      if (splits.length === 0) {
+        showResult({ success: false, message: 'Please select at least one split to import.' });
+        return;
+      }
+      var baseName = (formData.dataset_name || '').trim();
+      if (!baseName) {
+        showResult({ success: false, message: 'Dataset Base Name is required.' });
+        return;
+      }
+      // Skip split-specific validation for dataset_name since we'll set it per split
+      var baseErrors = [];
+      for (var k = 0; k < fields.length; k++) {
+        if (fields[k].id === 'split' || fields[k].id === 'dataset_name') continue;
+        if (fields[k].required && !(formData[fields[k].id] || '').trim()) {
+          baseErrors.push(fields[k].label + ' is required.');
+        }
+      }
+      if (baseErrors.length) {
+        showResult({ success: false, message: baseErrors.join(' ') });
+        return;
+      }
+      _executeYoloMultiSplit(fmt, formData, splits, baseName);
+      return;
+    }
+
+    // COCO multi-split: build queue from detected splits (also handles single split from folder)
+    if (fmt.name === 'coco' && _cocoDetectedSplits.length > 0) {
+      var cocoSplits = _cocoDetectedSplits.filter(function(s) { return _cocoCheckedSplits[s.split || s.file]; });
+      if (cocoSplits.length === 0) {
+        showResult({ success: false, message: 'Please select at least one split to import.' });
+        return;
+      }
+      var cocoBaseName = (formData.dataset_name || '').trim();
+      if (!cocoBaseName) {
+        showResult({ success: false, message: 'Dataset Base Name is required.' });
+        return;
+      }
+      var cocoErrors = [];
+      for (var k = 0; k < fields.length; k++) {
+        if (fields[k].id === 'dataset_name' || fields[k].id === 'annotations_file' || fields[k].id === 'image_folder') continue;
+        if (fields[k].required && !(formData[fields[k].id] || '').trim()) {
+          cocoErrors.push(fields[k].label + ' is required.');
+        }
+      }
+      if (cocoErrors.length) {
+        showResult({ success: false, message: cocoErrors.join(' ') });
+        return;
+      }
+      _executeCocoMultiSplit(fmt, formData, cocoSplits, cocoBaseName);
+      return;
+    }
+
+    var errors = [];
+    for (var k = 0; k < fields.length; k++) {
+      if (fields[k].required && !(formData[fields[k].id] || '').trim()) {
+        errors.push(fields[k].label + ' is required.');
+      }
+    }
+    if (errors.length) {
+      showResult({ success: false, message: errors.join(' ') });
+      return;
+    }
+
+    // Clear previous result
+    var resultEl = document.getElementById('import-result');
+    if (resultEl) resultEl.innerHTML = '';
+
+    _runSingleImport(formData, fmt);
+  }
+
+  function _fmtElapsed(s) {
+    if (s < 60) return Math.round(s) + 's';
+    return Math.floor(s / 60) + 'm ' + Math.round(s % 60) + 's';
+  }
+
+  // ── Generic job-channel driven import (window.PluginJobs) ──────────────
+  // The importer emits NO bespoke events; it drives the wizard purely from the
+  // generic job_update channel. Rebuild the rich result from the generic payload
+  // (run_url -> table link, metrics -> details) + the form we submitted
+  // (format/split/names are known client-side, so nothing importer-specific
+  // needs to ride the generic channel). The separate frontend's generic Queue &
+  // Progress panel consumes the same job_update for cross-navigation visibility.
+  function _resultFromJob(job, fd) {
+    fd = fd || {};
+    var metrics = {};
+    (job.metrics || []).forEach(function(m) { metrics[m.label] = m.value; });
+    return {
+      success: job.status === 'completed',
+      message: job.subtitle || (job.progress && job.progress.label) || 'Import complete.',
+      table_url: job.run_url || null,
+      project_name: fd.project_name || metrics.project || '',
+      dataset_name: fd.dataset_name || metrics.dataset || '',
+      format: fd.format || '',
+      split: fd.split || '',
+      details: (metrics.rows != null) ? { row_count: metrics.rows } : null,
+    };
+  }
+
+  function _runSingleImport(formData, fmt) {
+    var submitBtn = document.getElementById('import-submit-btn');
+    var spinner = document.getElementById('import-spinner');
+    var status = document.getElementById('import-status');
+    var progressEl = document.getElementById('import-progress');
+    var progressBar = document.getElementById('import-progress-bar');
+    var progressLabel = document.getElementById('import-progress-label');
+    var progressTime = document.getElementById('import-progress-time');
+
+    submitBtn.disabled = true;
+    spinner.style.display = 'inline-block';
+    status.style.display = 'inline';
+    progressEl.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressLabel.textContent = 'Submitting import job...';
+    progressTime.textContent = '';
+
+    // Indeterminate pulse — imports report percent=-1 (no step granularity).
+    var pulsePos = 0;
+    var pulseTimer = setInterval(function() {
+      pulsePos = (pulsePos + 2) % 100;
+      progressBar.style.width = Math.min(80, pulsePos) + '%';
+    }, 200);
+
+    function _reset() {
+      clearInterval(pulseTimer);
+      submitBtn.disabled = false;
+      spinner.style.display = 'none';
+      status.style.display = 'none';
+    }
+
+    PluginJobs.run('importer', formData, {
+      onUpdate: function(job) {
+        if (job.status === 'running') progressLabel.textContent = job.subtitle || ('Importing ' + fmt.display_name + '...');
+        var t = job.progress && job.progress.timing;
+        if (t && t.elapsed_s != null) progressTime.textContent = _fmtElapsed(t.elapsed_s);
+      },
+      onDone: function(job) {
+        clearInterval(pulseTimer);
+        if (progressBar) progressBar.style.width = '100%';
+        setTimeout(function() {
+          progressEl.style.display = 'none';
+          _reset();
+          if (job.status === 'cancelled') { showResult({ success: false, message: 'Import cancelled.' }); return; }
+          showResult(_resultFromJob(job, formData));
+        }, 400);
+      },
+      onError: function(job) {
+        progressEl.style.display = 'none';
+        _reset();
+        showResult({ success: false, message: (job && (job.subtitle || (job.progress && job.progress.label))) || 'Import failed' });
+      },
+    });
+  }
+
+  // Render the per-split queue panel from local state (status comes from job_update).
+  function _renderImportQueue(states) {
+    var container = document.getElementById('import-queue-panel');
+    if (!container) return;
+    var html = '';
+    states.forEach(function(st) {
+      var s = st.status;
+      var badge = s === 'running' ? '<span class="badge badge-status-running">running</span>'
+        : s === 'completed' ? '<span class="badge badge-status-completed">completed</span>'
+        : (s === 'failed' || s === 'cancelled') ? '<span class="badge badge-status-failed">' + s + '</span>'
+        : '<span class="badge badge-status-queued">queued</span>';
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-light)">';
+      html += '<span style="font-size:13px;font-weight:500;color:var(--text);flex:1">Import ' + _esc(st.label || '') + '</span>';
+      html += badge + '</div>';
+      if (s === 'running') {
+        html += '<div class="plugin-progress-wrap" style="margin:4px 0 8px"><div class="plugin-progress-bar indeterminate" style="width:30%"></div></div>';
+      }
+    });
+    container.innerHTML = html;
+    container.style.display = html ? '' : 'none';
+  }
+
+  // Run N split imports; the host CpuQueue serializes them one at a time. Renders
+  // the queue panel live (from job_update) and shows a combined result at the end.
+  function _runMultiImport(splitJobs) {
+    var submitBtn = document.getElementById('import-submit-btn');
+    var spinner = document.getElementById('import-spinner');
+    var status = document.getElementById('import-status');
+    var progressEl = document.getElementById('import-progress');
+    var resultEl = document.getElementById('import-result');
+    if (resultEl) resultEl.innerHTML = '';
+
+    submitBtn.disabled = true;
+    spinner.style.display = 'inline-block';
+    status.style.display = 'inline';
+    status.textContent = splitJobs.length + ' split(s) queued — safe to navigate away';
+    progressEl.style.display = 'none';
+
+    var states = splitJobs.map(function(sj) { return { label: sj.label, status: 'queued' }; });
+    var completed = [], failed = [], lastResult = null, remaining = splitJobs.length;
+    _renderImportQueue(states);
+
+    function _settle() {
+      remaining--;
+      if (remaining > 0) return;
+      spinner.style.display = 'none';
+      status.style.display = 'none';
+      submitBtn.disabled = false;
+      showResult({
+        success: failed.length === 0,
+        message: (completed.length ? 'Imported: ' + completed.join(', ') : '') +
+                 (failed.length ? (completed.length ? '. ' : '') + 'Failed: ' + failed.join(', ') : ''),
+        table_url: lastResult ? lastResult.table_url : null,
+        project_name: lastResult ? lastResult.project_name : null,
+        dataset_name: lastResult ? lastResult.dataset_name : null,
+        format: lastResult ? lastResult.format : '',
+      });
+    }
+
+    splitJobs.forEach(function(sj, i) {
+      PluginJobs.run('importer', sj.formData, {
+        onUpdate: function(job) { states[i].status = job.status; _renderImportQueue(states); },
+        onDone: function(job) {
+          if (job.status === 'completed') { completed.push(sj.label); lastResult = _resultFromJob(job, sj.formData); }
+          else { failed.push(sj.label); }
+          states[i].status = job.status; _renderImportQueue(states); _settle();
+        },
+        onError: function() {
+          failed.push(sj.label); states[i].status = 'failed'; _renderImportQueue(states); _settle();
+        },
+      });
+    });
+  }
+
+  function showResult(data) {
+    var el = document.getElementById('import-result');
+    if (!el) return;
+
+    var cls = data.success ? 'alert-success' : 'alert-error';
+    var icon = data.success ? '✓' : '✗';
+
+    var html = '<div class="alert ' + cls + '">';
+    html += '<span class="alert-icon">' + icon + '</span>';
+    html += '<div><strong>' + _esc(data.message) + '</strong>';
+
+    // Error guidance for "already exists" issues
+    if (!data.success && data.message && data.message.toLowerCase().indexOf('already exists') !== -1) {
+      html += '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary);line-height:1.6">';
+      html += '<strong>Possible fix:</strong><br>';
+      html += '&bull; Change the dataset name or table name to something different<br>';
+      html += '&bull; Delete the existing table/dataset from the project first<br>';
+      html += '&bull; Use a different project name';
+      html += '</div>';
+    }
+
+    if (data.success && data.table_url) {
+      html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+      if (data.project_name) {
+        html += '<a href="/projects/' + encodeURIComponent(data.project_name) +
+                '?dataset=' + encodeURIComponent(data.dataset_name || '') +
+                '&table=' + encodeURIComponent(data.table_url) +
+                '#datasets" class="btn btn-secondary btn-sm">View in Project</a>';
+      }
+      html += '<a href="/plugin/exporter?url=' + encodeURIComponent(data.table_url) +
+              '" class="btn btn-ghost btn-sm">Export</a>';
+
+      // "Import Next Split" button for YOLO
+      if (data.format === 'yolo' && data.split) {
+        var _splits = ['train', 'val', 'test'];
+        var _curIdx = _splits.indexOf(data.split);
+        if (_curIdx >= 0 && _curIdx < _splits.length - 1) {
+          var _nextSplit = _splits[_curIdx + 1];
+          var _curDs = data.dataset_name || '';
+          var _nextDs = _curDs.replace(new RegExp('_?' + data.split + '$'), '') + '_' + _nextSplit;
+          html += '<button type="button" class="btn btn-primary btn-sm" id="import-next-split-btn"' +
+                  ' data-next-split="' + _nextSplit + '" data-next-ds="' + _esc(_nextDs) + '">' +
+                  'Import ' + _nextSplit.charAt(0).toUpperCase() + _nextSplit.slice(1) + ' Split &rarr;</button>';
+        }
+      }
+      html += '</div>';
+
+      // Multi-split guidance
+      if (data.format === 'yolo') {
+        html += '<div style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.5">';
+        html += 'Tip: Import each split (train, val, test) as a separate dataset for best results with 3LC.';
+        html += '</div>';
+      }
+    }
+
+    if (data.details) {
+      html += '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">';
+      var keys = Object.keys(data.details);
+      for (var i = 0; i < keys.length; i++) {
+        html += '<span style="margin-right:12px"><strong>' + _esc(keys[i]) + ':</strong> ' +
+                _esc(String(data.details[keys[i]])) + '</span>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div></div>';
+    el.innerHTML = html;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Bind "Import Next Split" click
+    var nextBtn = document.getElementById('import-next-split-btn');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function() {
+        var nextSplit = nextBtn.getAttribute('data-next-split');
+        var nextDs = nextBtn.getAttribute('data-next-ds');
+        var splitSelect = document.getElementById('import-split');
+        if (splitSelect) splitSelect.value = nextSplit;
+        var dsInput = document.getElementById('import-dataset_name');
+        if (dsInput) dsInput.value = nextDs;
+        var tableInput = document.getElementById('import-table_name');
+        if (tableInput) tableInput.value = 'initial';
+        // Clear result and scroll to form
+        el.innerHTML = '';
+        var formArea = document.getElementById('import-form-area');
+        if (formArea) formArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }
+
+  // ── YOLO multi-split import (one /run per split; host CpuQueue serializes) ──
+  function _executeYoloMultiSplit(fmt, baseFormData, splits, baseName) {
+    var splitJobs = splits.map(function(splitName) {
+      var fd = {};
+      for (var k in baseFormData) fd[k] = baseFormData[k];
+      fd.split = splitName;
+      fd.dataset_name = baseName + '_' + splitName;
+      return { label: splitName, formData: fd };
+    });
+    _runMultiImport(splitJobs);
+  }
+
+  // ── COCO multi-split import (one /run per split; host CpuQueue serializes) ──
+  function _executeCocoMultiSplit(fmt, baseFormData, cocoSplits, baseName) {
+    var splitJobs = cocoSplits.map(function(s) {
+      var fd = {};
+      for (var k in baseFormData) fd[k] = baseFormData[k];
+      fd.annotations_file = s.file;
+      fd.dataset_name = s.split ? baseName + '_' + s.split : baseName;
+      if (s.images_hint) fd.image_folder = s.images_hint;
+      return { label: s.split || 'default', formData: fd };
+    });
+    _runMultiImport(splitJobs);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // CSV / EXCEL WIZARD
+  // ══════════════════════════════════════════════════════════
+
+  function csvReset() {
+    _csvSessionId = '';
+    _csvColumns = [];
+    _csvPreview = [];
+    _csvHeaders = [];
+    _csvTotalRows = 0;
+    _csvSelected = {};
+    _csvColConfig = {};
+    _csvMode = 'create_new';
+    csvGoStep(1);
+    document.getElementById('csv-file-info').style.display = 'none';
+    document.getElementById('csv-preview-area').style.display = 'none';
+    document.getElementById('csv-result').innerHTML = '';
+    // Pre-fill from URL params
+    if (prefillProject) document.getElementById('csv-project').value = prefillProject;
+    if (prefillTableUrl) document.getElementById('csv-extend-url').value = prefillTableUrl;
+  }
+
+  function csvGoStep(step) {
+    document.querySelectorAll('.csv-step').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById('csv-step-' + step).classList.add('active');
+    document.querySelectorAll('.csv-step-pill').forEach(function(el) {
+      var s = parseInt(el.getAttribute('data-step'));
+      el.classList.toggle('active', s === step);
+      el.classList.toggle('done', s < step);
+    });
+    if (step === 2) csvRenderColumns();
+    if (step === 3) csvRenderConfigSummary();
+  }
+
+  // ── File upload ─────────────────────────────────────
+  var csvDropZone = document.getElementById('csv-drop-zone');
+  var csvFileInput = document.getElementById('csv-file-input');
+
+  csvDropZone.addEventListener('click', function() { csvFileInput.click(); });
+  csvDropZone.addEventListener('dragover', function(e) { e.preventDefault(); csvDropZone.classList.add('dragging'); });
+  csvDropZone.addEventListener('dragleave', function() { csvDropZone.classList.remove('dragging'); });
+  csvDropZone.addEventListener('drop', function(e) {
+    e.preventDefault(); csvDropZone.classList.remove('dragging');
+    if (e.dataTransfer.files.length > 0) csvUploadFile(e.dataTransfer.files[0]);
+  });
+  csvFileInput.addEventListener('change', function() {
+    if (csvFileInput.files.length > 0) csvUploadFile(csvFileInput.files[0]);
+  });
+
+  function csvUploadFile(file) {
+    var info = document.getElementById('csv-file-info');
+    info.style.display = '';
+    info.textContent = 'Uploading ' + file.name + '...';
+    document.getElementById('csv-preview-area').style.display = 'none';
+
+    var formData = new FormData();
+    formData.append('data', file);
+
+    API.authFetch(computeUrl + '/api/plugins/importer/csv/parse', {
+      method: 'POST',
+      body: formData,
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+      if (result.error) {
+        info.textContent = 'Error: ' + result.error;
+        return;
+      }
+      _csvSessionId = result.session_id;
+      _csvColumns = result.columns || [];
+      _csvPreview = result.preview || [];
+      _csvHeaders = result.headers || [];
+      _csvTotalRows = result.total_rows || 0;
+
+      info.textContent = file.name + ' — ' + _csvTotalRows + ' rows, ' + _csvColumns.length + ' columns';
+      csvRenderPreview();
+      document.getElementById('csv-preview-area').style.display = '';
+    })
+    .catch(function(err) {
+      info.textContent = 'Upload failed: ' + err;
+    });
+  }
+
+  function csvRenderPreview() {
+    var html = '<table class="csv-preview-table"><thead><tr>';
+    _csvHeaders.forEach(function(h) { html += '<th>' + _esc(h) + '</th>'; });
+    html += '</tr></thead><tbody>';
+    _csvPreview.forEach(function(row) {
+      html += '<tr>';
+      row.forEach(function(v) { html += '<td title="' + _esc(v) + '">' + _esc(v) + '</td>'; });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('csv-preview-wrap').innerHTML = html;
+    document.getElementById('csv-row-count').textContent = '(' + _csvTotalRows + ' rows, showing first ' + _csvPreview.length + ')';
+  }
+
+  // ── Step navigation buttons ─────────────────────────
+  document.getElementById('csv-next-1').addEventListener('click', function() { csvGoStep(2); });
+  document.getElementById('csv-cancel-1').addEventListener('click', function() {
+    selectedFormat = null;
+    document.getElementById('csv-wizard-area').style.display = 'none';
+    document.getElementById('import-form-area').style.display = '';
+    renderFormatGrid();
+    renderForm();
+  });
+  document.getElementById('csv-back-2').addEventListener('click', function() { csvGoStep(1); });
+  document.getElementById('csv-next-2').addEventListener('click', function() {
+    var anySelected = Object.keys(_csvSelected).some(function(k) { return _csvSelected[k]; });
+    if (!anySelected) { API.showToast('Select at least one column', 'error'); return; }
+    csvGoStep(3);
+  });
+  document.getElementById('csv-back-3').addEventListener('click', function() { csvGoStep(2); });
+  document.getElementById('csv-sel-all').addEventListener('click', function() {
+    _csvColumns.forEach(function(col) { _csvSelected[col.index] = true; });
+    csvRenderColumns();
+  });
+  document.getElementById('csv-desel-all').addEventListener('click', function() {
+    _csvColumns.forEach(function(col) { _csvSelected[col.index] = false; });
+    csvRenderColumns();
+  });
+
+  // ── Mode toggle ─────────────────────────────────────
+  document.querySelectorAll('.csv-mode-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      _csvMode = btn.getAttribute('data-mode');
+      document.querySelectorAll('.csv-mode-btn').forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-mode') === _csvMode);
+      });
+      document.getElementById('csv-mode-create').style.display = _csvMode === 'create_new' ? '' : 'none';
+      document.getElementById('csv-mode-extend').style.display = _csvMode === 'extend_existing' ? '' : 'none';
+    });
+  });
+
+  // ── Column selection ────────────────────────────────
+  function csvRenderColumns() {
+    var html = '';
+    _csvColumns.forEach(function(col) {
+      var sel = _csvSelected[col.index] || false;
+      var cfg = _csvColConfig[col.index] || { type: col.inferred_type, categorical: false, labels: {} };
+      _csvColConfig[col.index] = cfg;
+
+      html += '<div class="csv-col-card ' + (sel ? 'selected' : '') + '">';
+      html += '<input type="checkbox" ' + (sel ? 'checked' : '') + ' data-col-toggle="' + col.index + '">';
+      html += '<div style="flex:1;min-width:0">';
+      html += '<div class="col-header">';
+      html += '<span class="col-name">' + _esc(col.name) + '</span>';
+      html += '<span class="col-type-badge">' + _esc(col.inferred_type) + '</span>';
+      html += '<span style="font-size:10px;color:var(--text-muted)">' + col.unique_count + ' unique</span>';
+      html += '</div>';
+      html += '<div class="col-sample">' + col.sample_values.map(_esc).join(', ') + '</div>';
+
+      if (sel) {
+        html += '<div class="csv-col-config">';
+        // Type selector — includes image_url
+        html += '<label>Type: <select data-col-type="' + col.index + '">';
+        ['string', 'int', 'float', 'image_url'].forEach(function(t) {
+          var label = t === 'image_url' ? 'Image URL' : t;
+          html += '<option value="' + t + '"' + (cfg.type === t ? ' selected' : '') + '>' + label + '</option>';
+        });
+        html += '</select></label>';
+
+        // Categorical toggle (for string and int only, not image_url or float)
+        if (cfg.type === 'string' || cfg.type === 'int') {
+          html += '<label><input type="checkbox" ' + (cfg.categorical ? 'checked' : '') +
+            ' data-col-cat="' + col.index + '"> Categorical</label>';
+        }
+
+        // Labels editor for int categorical
+        if (cfg.categorical && cfg.type === 'int') {
+          var intVals = col.unique_values.filter(function(v) { return !isNaN(parseInt(v)); }).map(function(v) { return parseInt(v); });
+          intVals.sort(function(a,b) { return a - b; });
+          html += '<div class="csv-labels-grid">';
+          html += '<div style="font-weight:600">Value</div><div style="font-weight:600">Label</div>';
+          intVals.forEach(function(iv) {
+            var lbl = (cfg.labels || {})[String(iv)] || '';
+            html += '<div>' + iv + '</div>';
+            html += '<div><input value="' + _esc(lbl) + '" placeholder="class_' + iv + '" data-col-label="' + col.index + '-' + iv + '"></div>';
+          });
+          html += '</div>';
+        }
+
+        // String categorical preview
+        if (cfg.categorical && cfg.type === 'string') {
+          html += '<div style="margin-top:4px;color:var(--text-muted);font-size:10px">';
+          html += col.unique_count + ' unique values will be auto-mapped to integers 0..' + (col.unique_count - 1);
+          if (col.unique_count <= 20) {
+            html += ': ' + col.unique_values.map(function(v,i) { return '<strong>' + i + '</strong>=' + _esc(v); }).join(', ');
+          }
+          html += '</div>';
+        }
+
+        html += '</div>';
+      }
+
+      html += '</div></div>';
+    });
+    document.getElementById('csv-col-list').innerHTML = html;
+
+    // Bind events via delegation
+    csvBindColumnEvents();
+  }
+
+  function csvBindColumnEvents() {
+    var list = document.getElementById('csv-col-list');
+
+    // Toggle checkboxes
+    list.querySelectorAll('[data-col-toggle]').forEach(function(el) {
+      el.addEventListener('change', function() {
+        var idx = parseInt(el.getAttribute('data-col-toggle'));
+        _csvSelected[idx] = el.checked;
+        csvRenderColumns();
+      });
+    });
+
+    // Type selects
+    list.querySelectorAll('[data-col-type]').forEach(function(el) {
+      el.addEventListener('change', function() {
+        var idx = parseInt(el.getAttribute('data-col-type'));
+        _csvColConfig[idx].type = el.value;
+        if (el.value === 'float' || el.value === 'image_url') _csvColConfig[idx].categorical = false;
+        csvRenderColumns();
+      });
+    });
+
+    // Categorical checkboxes
+    list.querySelectorAll('[data-col-cat]').forEach(function(el) {
+      el.addEventListener('change', function() {
+        var idx = parseInt(el.getAttribute('data-col-cat'));
+        _csvColConfig[idx].categorical = el.checked;
+        csvRenderColumns();
+      });
+    });
+
+    // Label inputs
+    list.querySelectorAll('[data-col-label]').forEach(function(el) {
+      el.addEventListener('change', function() {
+        var parts = el.getAttribute('data-col-label').split('-');
+        var idx = parseInt(parts[0]);
+        var intVal = parts[1];
+        if (!_csvColConfig[idx].labels) _csvColConfig[idx].labels = {};
+        _csvColConfig[idx].labels[intVal] = el.value;
+      });
+    });
+  }
+
+  // ── Config summary ──────────────────────────────────
+  function csvRenderConfigSummary() {
+    var html = '<div style="font-size:11px;font-weight:600;margin-bottom:8px">Columns to include:</div>';
+    html += '<table class="csv-preview-table" style="margin-bottom:12px"><thead><tr><th>Column</th><th>Type</th><th>Categorical</th></tr></thead><tbody>';
+    var hasImageCol = false;
+    _csvColumns.forEach(function(col) {
+      if (!_csvSelected[col.index]) return;
+      var cfg = _csvColConfig[col.index];
+      var typeLabel = cfg.type === 'image_url' ? 'Image URL' : cfg.type;
+      if (cfg.type === 'image_url') hasImageCol = true;
+      html += '<tr>';
+      html += '<td style="font-weight:600">' + _esc(col.name) + '</td>';
+      html += '<td>' + _esc(typeLabel) + '</td>';
+      html += '<td>' + (cfg.categorical ? 'Yes' : '—') + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('csv-config-summary').innerHTML = html;
+
+    // Show alias settings if there are image URL columns
+    var aliasArea = document.getElementById('csv-alias-area');
+    if (aliasArea) {
+      if (hasImageCol) {
+        var proj = document.getElementById('csv-project').value.trim();
+        aliasArea.innerHTML = _tlcAliasSettingsHtml('csv', proj, '');
+        _tlcBindAliasToggle('csv');
+        _tlcBindAliasAutoUpdate('csv', 'csv-project', null);
+      } else {
+        aliasArea.innerHTML = '';
+      }
+    }
+  }
+
+  // ── Execute ─────────────────────────────────────────
+  document.getElementById('csv-execute-btn').addEventListener('click', function() {
+    var btn = document.getElementById('csv-execute-btn');
+    var spinner = document.getElementById('csv-spinner');
+    btn.disabled = true;
+    btn.textContent = 'Importing...';
+    spinner.style.display = 'inline-block';
+
+    // Build selected columns payload
+    var selectedCols = [];
+    _csvColumns.forEach(function(col) {
+      if (!_csvSelected[col.index]) return;
+      var cfg = _csvColConfig[col.index];
+      selectedCols.push({
+        index: col.index,
+        name: col.name,
+        type: cfg.type,
+        categorical: cfg.categorical || false,
+        labels: cfg.labels || {},
+      });
+    });
+
+    var payload = {
+      session_id: _csvSessionId,
+      mode: _csvMode,
+      selected_columns: selectedCols,
+    };
+
+    if (_csvMode === 'create_new') {
+      payload.project_name = document.getElementById('csv-project').value.trim();
+      payload.dataset_name = document.getElementById('csv-dataset').value.trim();
+      payload.table_name = document.getElementById('csv-table-name').value.trim();
+      payload.description = document.getElementById('csv-create-desc').value.trim();
+      // Include alias settings (only meaningful when image URL columns exist)
+      var csvAlias = _tlcGetAliasValues('csv');
+      payload.alias_enabled = csvAlias.alias_enabled;
+      payload.alias_token = csvAlias.alias_token;
+    } else {
+      payload.table_url = document.getElementById('csv-extend-url').value.trim();
+      payload.output_table_name = document.getElementById('csv-extend-name').value.trim() || 'extended';
+      payload.description = document.getElementById('csv-extend-desc').value.trim();
+    }
+
+    // CSV runs as a generic host job too: format='csv' tells run_job to read the
+    // uploaded bytes from the server-side session store by session_id.
+    var pluginParams = {};
+    for (var pk in payload) pluginParams[pk] = payload[pk];
+    pluginParams.format = 'csv';
+
+    function _csvReset() {
+      btn.disabled = false;
+      btn.textContent = 'Import';
+      spinner.style.display = 'none';
+    }
+    function _csvShow(result) {
+      var el = document.getElementById('csv-result');
+      if (result.success) {
+        el.className = 'csv-result success';
+        var d = result.details || {};
+        var viewUrl = '/projects/' + encodeURIComponent(result.project_name) +
+          '?dataset=' + encodeURIComponent(result.dataset_name || d.dataset || '') +
+          '&table=' + encodeURIComponent(result.table_url || '') + '#datasets';
+        var dashboardUrl = API.getConfig('dashboard_url');
+        var openUrl = dashboardUrl ? dashboardUrl + '?table=' + encodeURIComponent(result.table_url) : '';
+        el.innerHTML = '<strong>Success!</strong> ' + _esc(result.message) +
+          '<div style="display:flex;gap:8px;margin-top:10px">' +
+          '<a href="' + viewUrl + '" class="btn btn-primary btn-sm">View in Project</a>' +
+          (openUrl ? ' <a href="' + openUrl + '" target="_blank" class="btn btn-secondary btn-sm">Open in Dashboard</a>' : '') +
+          ' <a href="/plugin/exporter?url=' + encodeURIComponent(result.table_url || '') + '" class="btn btn-ghost btn-sm">Export</a>' +
+          '</div>';
+        API.showToast(result.message, 'success');
+      } else {
+        el.className = 'csv-result error';
+        el.innerHTML = '<strong>Error:</strong> ' + _esc(result.message);
+        API.showToast(result.message, 'error');
+      }
+    }
+
+    PluginJobs.run('importer', pluginParams, {
+      onDone: function(job) {
+        _csvReset();
+        if (job.status === 'cancelled') { _csvShow({ success: false, message: 'Import cancelled.' }); return; }
+        _csvShow(_resultFromJob(job, pluginParams));
+      },
+      onError: function(job) {
+        _csvReset();
+        _csvShow({ success: false, message: (job && (job.subtitle || (job.progress && job.progress.label))) || 'Import failed' });
+      },
+    });
+  });
+
+  // ── Init ────────────────────────────────────────────
+  loadFormats();
+})();
+</script>
