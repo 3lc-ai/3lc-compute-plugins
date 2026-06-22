@@ -206,9 +206,8 @@ class YOLOModel(BaseTrainingModel):
                 "options": [
                     {"value": "umap", "label": "UMAP"},
                     {"value": "pacmap", "label": "PaCMAP"},
-                    {"value": "pca", "label": "PCA"},
                 ],
-                "help": "Reduction algorithm for image embeddings. PCA allows arbitrary output dimensions.",
+                "help": "Reduction algorithm for image embeddings.",
                 "group": "3LC Settings",
             },
             {
@@ -309,6 +308,19 @@ class YOLOModel(BaseTrainingModel):
                 "group": "3LC Settings",
             },
             {
+                "id": "instance_embeddings_reducer",
+                "label": "Instance Embeddings Reducer",
+                "type": "select",
+                "default": "pacmap",
+                "options": [
+                    {"value": "pacmap", "label": "PaCMAP"},
+                    {"value": "umap", "label": "UMAP"},
+                    {"value": "pca", "label": "PCA"},
+                ],
+                "help": "Reduction algorithm for per-instance embeddings. PCA allows arbitrary output dimensions.",
+                "group": "3LC Settings",
+            },
+            {
                 "id": "ground_truth_instance_embeddings",
                 "label": "GT Instance Embeddings",
                 "type": "checkbox",
@@ -395,6 +407,7 @@ class YOLOModel(BaseTrainingModel):
         settings_kwargs["collection_disable"] = _to_bool(params.get("collection_disable", False))
         settings_kwargs["collection_epoch_interval"] = int(params.get("collection_epoch_interval", 1))
         settings_kwargs["instance_embeddings_dim"] = int(params.get("instance_embeddings_dim", 0))
+        settings_kwargs["instance_embeddings_reducer"] = params.get("instance_embeddings_reducer", "pacmap")
         settings_kwargs["ground_truth_instance_embeddings"] = _to_bool(
             params.get("ground_truth_instance_embeddings", False)
         )
@@ -630,6 +643,7 @@ class YOLOModel(BaseTrainingModel):
             params.get("exclude_zero_weight_collection", False)
         )
         settings_kwargs["instance_embeddings_dim"] = int(params.get("instance_embeddings_dim", 0))
+        settings_kwargs["instance_embeddings_reducer"] = params.get("instance_embeddings_reducer", "pacmap")
         settings_kwargs["ground_truth_instance_embeddings"] = _to_bool(
             params.get("ground_truth_instance_embeddings", False)
         )

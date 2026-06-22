@@ -48,7 +48,7 @@ sam3 = [
     "umap-learn>=0.5",
 ]
 yolo = [
-    "3lc-ultralytics",
+    "3lc-ultralytics>=0.3.3",
     "torch",
     "torchvision",
 ]
@@ -97,18 +97,6 @@ explicit = true
 torch = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
 3lc = { index = "3lc-releases" }
-3lc-ultralytics = { git = "https://github.com/3lc-ai/3lc-ultralytics.git", branch = "feature/fred/instance-level-embeddings-3.0" }
 # DEV-ONLY (build-out): the SDK is unpublished, so resolve it from the sibling checkout.
 # Drop this line once 3lc-plugin-sdk is on the index.
 3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
-
-# The 3lc-ultralytics branch's own pyproject points 3lc → ../tlc-monorepo (its local dev
-# layout). Override its metadata so uv resolves 3lc from the index instead.
-[[tool.uv.dependency-metadata]]
-name = "3lc-ultralytics"
-version = "0.3.0"
-requires-dist = [
-    "3lc>=3.0.0,<4.0.0",
-    "pacmap>=0.8.0",
-    "ultralytics>=8.4.0,<8.4.7",
-]

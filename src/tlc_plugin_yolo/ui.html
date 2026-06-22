@@ -1039,10 +1039,12 @@ function trRenderParamFields(fields, savedValues) {
       });
       tlcSection.appendChild(grid);
 
-      // Wire reducer → dim field switching (PCA uses number inputs, UMAP/PaCMAP use dropdowns)
-      var reducerEl = grid.querySelector('[data-param-id="image_embeddings_reducer"]');
+      // Wire instance reducer → instance dim field switching: PCA allows arbitrary
+      // output dimensions (number input); UMAP/PaCMAP reduce to the 0/2/3 dropdown.
+      // (Image embeddings only support UMAP/PaCMAP, so their dim stays a dropdown.)
+      var reducerEl = grid.querySelector('[data-param-id="instance_embeddings_reducer"]');
       if (reducerEl) {
-        var _dimIds = ['image_embeddings_dim', 'instance_embeddings_dim'];
+        var _dimIds = ['instance_embeddings_dim'];
         function _switchDimFields() {
           var isPca = reducerEl.value === 'pca';
           _dimIds.forEach(function(pid) {
