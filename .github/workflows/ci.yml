@@ -1,0 +1,38 @@
+name: CI
+
+# Static lint/format only (ruff), run via `uvx` so CI does NOT `uv sync` — a base install
+# would fetch the PRIVATE, unpublished 3lc-plugin-sdk, which has no credentials in CI.
+# Deferred until the SDK is published to an index (CodeArtifact / 3lc-releases):
+#   - mypy — needs the SDK importable (config is in pyproject.toml, ready to wire), and
+#   - pytest — there are no unit tests in this repo yet (they live in the host / will be
+#     re-homed), and they import tlc (the same key catch-22 as the SDK).
+# See the 3lc-insights plugin arc tracker, Layer F.
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.8.15"
+
+      # `uvx` runs ruff in an isolated tool env — no project sync, so the private SDK is
+      # never fetched. ruff reads its config from pyproject.toml [tool.ruff].
+      - name: Ruff lint
+        run: uvx --from 'ruff>=0.15,<0.16' ruff check .
+
+      - name: Ruff format check
+        run: uvx --from 'ruff>=0.15,<0.16' ruff format --check .

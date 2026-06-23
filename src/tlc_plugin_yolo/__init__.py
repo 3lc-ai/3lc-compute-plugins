@@ -23,8 +23,9 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from tlc_plugin_yolo import routes as _routes
 from tlc_plugin_sdk import ComputePlugin
+
+from tlc_plugin_yolo import routes as _routes
 
 if TYPE_CHECKING:
     from tlc_plugin_sdk.job_context import JobContext
@@ -95,9 +96,10 @@ class YoloPlugin(ComputePlugin):
         """
         import time
 
+        from tlc_plugin_sdk.shared.generic_job import epoch_progress
+
         from tlc_plugin_yolo.models import MODEL_REGISTRY
         from tlc_plugin_yolo.runtime import get_store
-        from tlc_plugin_sdk.shared.generic_job import epoch_progress
 
         params_in = ctx.params
         project_id = str(params_in.get("project_id", "") or "").strip()

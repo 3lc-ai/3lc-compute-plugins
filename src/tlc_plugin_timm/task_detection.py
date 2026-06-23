@@ -32,7 +32,6 @@ def detect_task(table_url: str) -> dict[str, Any]:
     """
     try:
         import tlc
-
         from tlc_plugin_sdk.shared.modality import detect_modality_from_table
 
         table = tlc.Table.from_url(table_url)

@@ -79,7 +79,6 @@ def get_route_handlers() -> list[BaseRouteHandler]:
 
         try:
             import tlc
-
             from tlc_plugin_sdk.shared.images import get_image_column, read_image_from_table
 
             table = tlc.Table.from_url(normalize_url(url))

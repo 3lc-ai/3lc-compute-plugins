@@ -13,8 +13,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from tlc_plugin_table_statistics import routes as _routes
 from tlc_plugin_sdk import ComputePlugin
+
+from tlc_plugin_table_statistics import routes as _routes
 
 
 class TableStatisticsPlugin(ComputePlugin):
@@ -26,8 +27,9 @@ class TableStatisticsPlugin(ComputePlugin):
 
     def compute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Compute table statistics via the generic compute endpoint."""
-        from tlc_plugin_table_statistics.table_stats import get_or_start_stats
         from tlc_plugin_sdk.shared.url_utils import normalize_url
+
+        from tlc_plugin_table_statistics.table_stats import get_or_start_stats
 
         url = params.get("url", "")
         if not url:

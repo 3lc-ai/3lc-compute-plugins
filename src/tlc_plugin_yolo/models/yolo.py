@@ -565,11 +565,10 @@ class YOLOModel(BaseTrainingModel):
             # Find best.pt from ultralytics trainer
             if hasattr(model, "trainer") and hasattr(model.trainer, "best"):
                 best_model_src = Path(str(model.trainer.best))
-                if not best_model_src.exists():
-                    if hasattr(model.trainer, "save_dir"):
-                        fallback = Path(str(model.trainer.save_dir)) / "weights" / "best.pt"
-                        if fallback.exists():
-                            best_model_src = fallback
+                if not best_model_src.exists() and hasattr(model.trainer, "save_dir"):
+                    fallback = Path(str(model.trainer.save_dir)) / "weights" / "best.pt"
+                    if fallback.exists():
+                        best_model_src = fallback
 
             if best_model_src and best_model_src.exists() and tlc_run and run_url:
                 from tlc_plugin_sdk.shared.model_storage import save_model_to_run, store_model_info_in_run

@@ -97,6 +97,47 @@ explicit = true
 torch = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
 3lc = { index = "3lc-releases" }
-# DEV-ONLY (build-out): the SDK is unpublished, so resolve it from the sibling checkout.
-# Drop this line once 3lc-plugin-sdk is on the index.
+# DEV-ONLY (build-out): the SDK repo is PRIVATE + unpublished, so a git pin can't resolve
+# without credentials (uv's HTTPS fetch 401s). Resolve it from the sibling checkout for local
+# dev + venv provisioning. SHIPPABLE FORM: pin from the index once the SDK is published to
+# CodeArtifact / 3lc-releases (the long pole) — then CI `uv sync` works credential-free.
 3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+exclude = [".git", ".mypy_cache", ".ruff_cache", ".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["A", "C4", "E", "EM", "F", "I", "N", "PIE", "RUF", "SIM", "UP", "W"]
+ignore = ["N806", "N818", "SIM105", "SIM108", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+preview = true
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+# src/ layout with multiple top-level packages (tlc_plugin_*).
+mypy_path = "src"
+explicit_package_bases = true
+
+# Untyped / not-installed-in-base boundary: tlc + the heavy ML stacks the venv plugins
+# import (torch/timm/sam3/ultralytics/...) are not in the base install and/or ship no stubs.
+[[tool.mypy.overrides]]
+module = [
+    "tlc", "tlc.*", "tlcurl.*",
+    "torch", "torch.*", "torchvision", "torchvision.*",
+    "timm", "timm.*", "sam3", "sam3.*",
+    "ultralytics", "ultralytics.*", "tlc_ultralytics", "tlc_ultralytics.*",
+    "pacmap", "umap", "umap.*",
+    "datasets", "datasets.*", "transformers", "transformers.*",
+    "openpyxl", "openpyxl.*", "pyarrow", "pyarrow.*", "yaml",
+]
+ignore_missing_imports = true
