@@ -920,6 +920,13 @@ def _collect_metrics(
         reduced = sr.get("reduced")
         if reduced is not None:
             run_metrics["embeddings"] = list(reduced)
+            # Declare the reduced embedding as a fixed-size vector (e.g. 2D → min=max=2),
+            # otherwise add_metrics infers a variable-sized list and the frontend can't
+            # treat it as plottable coordinates.
+            column_schemas["embeddings"] = tlc.schemas.Float32Schema(
+                shape=(embeddings_dim,),
+                display_name=f"Embedding ({embeddings_dim}D)",
+            )
             on_status(f"Reduced {split_name} embeddings: {reduced.shape}")
 
         if write_full_embeddings and sr["embeddings"] is not None:
