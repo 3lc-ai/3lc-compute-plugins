@@ -42,7 +42,10 @@ timm = [
     "umap-learn>=0.5",
 ]
 sam3 = [
-    "sam3",
+    # Floor above the empty PyPI placeholder (0.0.1): that release ships no code,
+    # so a bare "sam3" lets the resolver pin it and the worker fails at import
+    # with `No module named 'sam3.model'`. 0.1.x is the real Meta SAM3.
+    "sam3>=0.1.4",
     "torch",
     "torchvision",
     "umap-learn>=0.5",
@@ -96,7 +99,11 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
-3lc = { index = "3lc-releases" }
+# DEV-ONLY: resolve 3lc from the sibling monorepo checkout so the venv worker runs
+# the same dev build as the host (the released wheel enforces API-key validation,
+# which surfaces auth/version skew between host and worker). Drop to ship — the
+# committed form is `3lc = { index = "3lc-releases" }`.
+3lc = { path = "../tlc-monorepo", editable = true }
 # DEV-ONLY (build-out): the SDK is unpublished, so resolve it from the sibling checkout.
 # Drop this line once 3lc-plugin-sdk is on the index.
 3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
