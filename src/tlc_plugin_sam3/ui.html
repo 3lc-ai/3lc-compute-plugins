@@ -667,7 +667,8 @@ function sam3RunPreview(sameImage) {
     document.getElementById("sam3-preview-filename").textContent = data.image_path.split("/").pop();
     sam3Log("Preview: " + data.num_detections + " detections in " + data.image_path.split("/").pop());
   }).catch(function(e) {
-    btn.disabled = false; sameBtn.disabled = false; btn.textContent = "Preview Random Image"; sam3Log("Error: " + e);
+    btn.disabled = false; sameBtn.disabled = false; btn.textContent = "Preview Random Image";
+    sam3Log("Error: " + (e && e.message ? e.message : e));
   });
 }
 

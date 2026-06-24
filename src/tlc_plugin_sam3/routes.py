@@ -56,14 +56,25 @@ def get_route_handlers() -> list[BaseRouteHandler]:
     # ── Preview (CPU-bound SAM3 inference — sync_to_thread keeps the event loop free) ──
 
     @post("/preview", status_code=200, sync_to_thread=True)
-    def preview(data: dict[str, Any]) -> dict[str, Any]:
+    def preview(data: dict[str, Any]) -> Response[dict[str, Any]]:
         import traceback
 
         try:
-            return _run_preview(data)
-        except Exception:
-            logger.error("Preview failed:\n%s", traceback.format_exc())
-            return {"error": traceback.format_exc()}
+            result = _run_preview(data)
+        except Exception as exc:
+            tb = traceback.format_exc()
+            logger.error("Preview failed:\n%s", tb)
+            # Return (not raise): Litestar scrubs a *raised* 5xx's detail down to a
+            # generic "Internal Server Error", hiding the cause from the UI. A
+            # returned Response is sent verbatim, so the real message reaches the
+            # frontend's authFetch (which surfaces `detail`). The full traceback
+            # still goes to the server log above.
+            return Response({"detail": f"{type(exc).__name__}: {exc}"}, status_code=500)
+        # _run_preview returns {"error": ...} for bad/missing inputs — a client
+        # error, not a success.
+        if "error" in result:
+            return Response({"detail": str(result["error"])}, status_code=400)
+        return Response(result, status_code=200)
 
     # ── Image listing ──
 
