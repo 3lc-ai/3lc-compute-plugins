@@ -21,7 +21,10 @@ requires-python = ">=3.10"
 # Base = the contract SDK + the light deps the in-process (host-mode) plugins need in the host
 # venv. NO heavy ML deps here — those are the per-venv-plugin extras below.
 dependencies = [
-    "3lc-plugin-sdk>=0.2.0,<0.3.0",
+    # [data] = the SDK's optional `tlc` data plane: these host-mode plugins use the
+    # `tlc_plugin_sdk.shared.*` helpers (and `tlc` directly), so they need the extra. The
+    # bare SDK no longer pulls `tlc`; light consumers (the Hub frontend) depend on it without.
+    "3lc-plugin-sdk[data]>=0.2.0,<0.3.0",
     "openpyxl>=3.1",        # importer, exporter
     "pyyaml",               # importer
     "datasets",             # importer (HuggingFace import)
@@ -99,11 +102,13 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
-# DEV-ONLY: resolve 3lc from the sibling monorepo checkout so the venv worker runs
-# the same dev build as the host (the released wheel enforces API-key validation,
-# which surfaces auth/version skew between host and worker). Drop to ship — the
-# committed form is `3lc = { index = "3lc-releases" }`.
-3lc = { path = "../tlc-monorepo", editable = true }
-# DEV-ONLY (build-out): the SDK is unpublished, so resolve it from the sibling checkout.
-# Drop this line once 3lc-plugin-sdk is on the index.
-3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
+# 3lc and the (still-unpublished) SDK resolve from the releases index / GitHub here. This
+# is the committed form on purpose: the host consumes this umbrella as a GIT dependency, and
+# a committed `path = "../<repo>"` source breaks every remote consumer because uv reinterprets
+# the relative path as a git *subdirectory of this repo* (`#subdirectory=../3lc-plugin-sdk`),
+# which doesn't exist. For side-by-side local dev, override these UNCOMMITTED, e.g.
+#   3lc            = { path = "../tlc-monorepo",   editable = true }   # venv worker on the host's dev build
+#   3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
+# Drop the SDK git line once 3lc-plugin-sdk is published to an index.
+3lc = { index = "3lc-releases" }
+3lc-plugin-sdk = { git = "https://github.com/3lc-ai/3lc-plugin-sdk.git", branch = "develop" }
