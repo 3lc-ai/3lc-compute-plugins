@@ -21,10 +21,10 @@ requires-python = ">=3.10"
 # Base = the contract SDK + the light deps the in-process (host-mode) plugins need in the host
 # venv. NO heavy ML deps here — those are the per-venv-plugin extras below.
 dependencies = [
-    # [data] = the SDK's optional `tlc` data plane: these host-mode plugins use the
-    # `tlc_plugin_sdk.shared.*` helpers (and `tlc` directly), so they need the extra. The
-    # bare SDK no longer pulls `tlc`; light consumers (the Hub frontend) depend on it without.
-    "3lc-plugin-sdk[data]>=0.2.0,<0.3.0",
+    # [shared] = the SDK's optional `tlc` data plane behind `tlc_plugin_sdk.shared.*`: these
+    # host-mode plugins use those helpers (and `tlc` directly), so they need the extra. The bare
+    # SDK no longer pulls `tlc`; light consumers (the Hub frontend) depend on it without.
+    "3lc-plugin-sdk[shared]>=0.2.0,<0.3.0",
     "openpyxl>=3.1",        # importer, exporter
     "pyyaml",               # importer
     "datasets",             # importer (HuggingFace import)
