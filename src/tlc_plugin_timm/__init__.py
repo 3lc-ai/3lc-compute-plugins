@@ -23,8 +23,9 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from tlc_plugin_timm import routes as _routes
 from tlc_plugin_sdk import ComputePlugin
+
+from tlc_plugin_timm import routes as _routes
 
 if TYPE_CHECKING:
     from tlc_plugin_sdk.job_context import JobContext
@@ -86,8 +87,9 @@ class TimmPlugin(ComputePlugin):
         """
         import time
 
-        from tlc_plugin_timm.config_store import config_store
         from tlc_plugin_sdk.shared.generic_job import epoch_progress
+
+        from tlc_plugin_timm.config_store import config_store
 
         params_in = ctx.params
         config_id = str(params_in.get("config_id", "") or "").strip()

@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruff:
+    name: ruff (lint + format)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.8.15"
+
+      # Ruff runs STANDALONE (uvx): linting must not require resolving the per-plugin ML
+      # stacks (torch / timm / sam3 / ultralytics) — that would be slow and need extra
+      # indexes. Config lives in pyproject [tool.ruff]; pin matches 3lc-plugin-sdk.
+      - name: Ruff lint
+        run: uvx --from 'ruff>=0.15,<0.16' ruff check .
+
+      - name: Ruff format check
+        run: uvx --from 'ruff>=0.15,<0.16' ruff format --check .

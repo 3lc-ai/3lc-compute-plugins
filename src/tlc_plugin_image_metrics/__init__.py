@@ -25,8 +25,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from tlc_plugin_image_metrics import routes as _routes
 from tlc_plugin_sdk import ComputePlugin
+
+from tlc_plugin_image_metrics import routes as _routes
 
 if TYPE_CHECKING:
     from tlc_plugin_sdk.job_context import JobContext
@@ -47,7 +48,6 @@ def _detect_image_columns(table_url: str) -> list[str]:
 
     """
     import tlc
-
     from tlc_plugin_sdk.shared.modality import detect_modality_from_table
     from tlc_plugin_sdk.shared.url_utils import normalize_url
 
@@ -171,10 +171,10 @@ class ImageMetricsPlugin(ComputePlugin):
                 raise ValueError(msg)
 
             import tlc
-
-            from tlc_plugin_image_metrics.metrics import METRIC_BY_ID, compute_metrics_for_image
             from tlc_plugin_sdk.shared.images import get_image_paths, load_image
             from tlc_plugin_sdk.shared.url_utils import normalize_url
+
+            from tlc_plugin_image_metrics.metrics import METRIC_BY_ID, compute_metrics_for_image
 
             for mid in metric_ids:
                 if mid not in METRIC_BY_ID:

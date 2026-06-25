@@ -68,7 +68,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
             schema_values = table.rows_schema.values if hasattr(table.rows_schema, "values") else {}
             first_row = table.table_rows[0] if table.row_count > 0 else {}
 
-            for name in first_row.keys():
+            for name in first_row:
                 col_schema = schema_values.get(name)
                 col_type = _classify_column_type(col_schema, name) if col_schema else "other"
                 columns.append({"name": name, "type": col_type})

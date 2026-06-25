@@ -112,3 +112,21 @@ torchvision = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
 # Drop the SDK git line once 3lc-plugin-sdk is published to an index.
 3lc = { index = "3lc-releases" }
 3lc-plugin-sdk = { git = "https://github.com/3lc-ai/3lc-plugin-sdk.git", branch = "develop" }
+
+# Ruff config mirrors 3lc-plugin-sdk / 3lc-insights for a consistent house style. CI runs ruff
+# standalone (uvx) — linting must not require resolving the heavy per-plugin ML stacks.
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+exclude = [".git", ".mypy_cache", ".ruff_cache", ".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["A", "C4", "E", "EM", "F", "I", "N", "PIE", "RUF", "SIM", "UP", "W"]
+ignore = ["N806", "N818", "SIM105", "SIM108", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+preview = true
+docstring-code-format = true

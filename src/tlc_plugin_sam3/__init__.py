@@ -23,8 +23,9 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from tlc_plugin_sam3 import routes as _routes
 from tlc_plugin_sdk import ComputePlugin
+
+from tlc_plugin_sam3 import routes as _routes
 
 if TYPE_CHECKING:
     from tlc_plugin_sdk.job_context import JobContext
@@ -157,7 +158,6 @@ def _run_predict(ctx: JobContext, table_url: str = "") -> None:
         run_name = generate_name()
 
     import tlc
-
     from tlc_plugin_sdk.shared.images import get_image_column, read_image_from_table
 
     _log(ctx, f"Loading table: {table_url}")

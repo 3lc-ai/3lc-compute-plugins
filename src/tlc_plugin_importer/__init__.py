@@ -17,8 +17,9 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from tlc_plugin_importer import routes as _routes
 from tlc_plugin_sdk import ComputePlugin
+
+from tlc_plugin_importer import routes as _routes
 
 if TYPE_CHECKING:
     from tlc_plugin_sdk.job_context import JobContext

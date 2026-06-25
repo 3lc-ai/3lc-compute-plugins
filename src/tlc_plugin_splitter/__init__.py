@@ -29,7 +29,6 @@ def _execute_split(form_data: dict[str, Any]) -> dict[str, Any]:
     """Split a table into train/val/test sets using delete_rows to create EditedTable revisions."""
     import numpy as np
     import tlc
-
     from tlc_plugin_sdk.shared.url_utils import normalize_url
 
     table_url = form_data["table_url"].strip()

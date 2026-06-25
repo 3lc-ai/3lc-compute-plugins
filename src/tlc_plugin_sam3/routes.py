@@ -201,7 +201,6 @@ def _run_preview(data: dict[str, Any]) -> dict[str, Any]:
             # Pick a random image from the table. The path is absolutized so
             # the response's image_path round-trips into later previews.
             import tlc
-
             from tlc_plugin_sdk.shared.url_utils import normalize_url
 
             table = tlc.Table.from_url(normalize_url(table_url))
