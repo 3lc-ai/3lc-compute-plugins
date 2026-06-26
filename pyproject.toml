@@ -1,14 +1,16 @@
 # 3lc-compute-plugins — the open, first-party plugins for the 3LC compute service,
 # packaged as ONE distribution (an umbrella; single-plugin and multi-dist repos are equally
-# valid elsewhere — the host discovers by entry point, not by repo shape).
+# valid elsewhere — the host discovers by scanning a folder Source, not by repo shape).
 #
-# The host installs the BASE (every plugin's light code + its bundled plugin.toml manifest +
-# the host-mode plugins' light deps) via `3lc-compute[plugins]`, discovers all plugins through
-# the `tlc_compute.plugins` entry-point group, runs the host-mode ones in-process, and reads
-# (without importing) the venv ones. Each venv plugin's heavy stack is an extra below; the host
-# installs it ONLY into that plugin's provisioned venv (selected by the manifest's
-# runtime.provision_extra) — never the host venv. That is the whole "manifest in the host,
-# heavy code in the venv" split.
+# This distribution is NEVER installed into the host venv. The host discovers these plugins via a
+# folder Source pointed at `src/` (TLC_COMPUTE_EXTERNAL_PLUGIN_DIRS / --plugin-dir), reads each
+# bundled `plugin.toml` manifest WITHOUT importing, and provisions each plugin into its OWN venv.
+# Every open plugin here is `venv`-isolated: its deps live in a per-plugin extra below and are
+# installed only into that plugin's provisioned venv (selected by the manifest's
+# runtime.provision_extra, via `uv sync --extra <id>`) — never the host venv. The base
+# `dependencies` is the SDK floor only. That is the whole "manifest in the host, heavy code in the
+# venv" split. (The `tlc_compute.plugins` entry points below are kept for the optional
+# pip-installed-discovery path, but folder-Source discovery is how the host consumes these today.)
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -16,7 +18,7 @@ build-backend = "hatchling.build"
 [project]
 name = "3lc-compute-plugins"
 version = "0.1.0"
-description = "Open, first-party plugins for the 3LC compute service (host-mode + venv)."
+description = "Open, first-party plugins for the 3LC compute service (all venv-isolated)."
 requires-python = ">=3.10"
 # Base = the contract SDK floor ONLY. Every open plugin is now `venv`-isolated, so NO plugin
 # deps (light or heavy) live in the base — each plugin's deps ride its own extra below and are
