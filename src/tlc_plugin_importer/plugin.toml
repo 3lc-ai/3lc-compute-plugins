@@ -19,5 +19,8 @@ quick_action_label = "Import Dataset"
 quick_action_description = "Import data from CSV, Parquet, COCO, or other formats"
 
 [runtime]
-isolation = "host"
+isolation = "venv"
 entrypoint = "tlc_plugin_importer:ImportPlugin"
+# Deps live behind this extra of the umbrella distribution; the host installs it ONLY
+# into this plugin's provisioned venv, never the host venv.
+provision_extra = "importer"

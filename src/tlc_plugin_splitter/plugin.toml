@@ -23,5 +23,8 @@ quick_action_label = "Split Table"
 quick_action_description = "Split a table into train/val/test sets"
 
 [runtime]
-isolation = "host"
+isolation = "venv"
 entrypoint = "tlc_plugin_splitter:SplitterPlugin"
+# Deps live behind this extra of the umbrella distribution; the host installs it ONLY
+# into this plugin's provisioned venv, never the host venv.
+provision_extra = "splitter"

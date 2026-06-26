@@ -4,8 +4,8 @@ This repo is the **public, first-party plugin collection** for the 3LC compute s
 a single **umbrella distribution** `3lc-compute-plugins` built against the public
 [`3lc-plugin-sdk`](https://github.com/3lc-ai/3lc-plugin-sdk). Extracted from the private
 `3lc-insights` monorepo (where the host runtime + the design docs live). (The umbrella is this repo's
-packaging choice — the host discovers plugins by entry point, so single-plugin and multi-dist repos
-are equally valid elsewhere.)
+packaging choice — the host discovers plugins via a folder Source scanning `src/`, not by repo shape,
+so single-plugin and multi-dist repos are equally valid elsewhere.)
 
 ## Layout
 
@@ -19,14 +19,16 @@ src/
 ```
 
 One `pyproject.toml` declares **all** plugins:
-- **base `dependencies`** = `3lc-plugin-sdk` + the light deps the in-process (**host-mode**) plugins
-  need; these install into the host venv via `3lc-compute[plugins]`.
-- **per-venv-plugin extras** (`[timm]`/`[sam3]`/`[yolo]`) = each one's heavy stack (torch, …),
-  installed ONLY into that plugin's provisioned venv.
-- **`[project.entry-points."tlc_compute.plugins"]`** = one entry per plugin (value = its import
-  package). The host iterates this group to discover every plugin, then reads each bundled
-  `plugin.toml`. For host-mode it imports the entrypoint in-process; for venv it registers the
-  plugin and provisions a venv installing the `provision_extra` named in the manifest.
+- **base `dependencies`** = the SDK floor ONLY (`3lc-plugin-sdk[shared]`). Every plugin here is
+  `venv`-isolated, so NO plugin deps live in the base — this distribution is never installed into
+  the host venv.
+- **per-plugin extras** (`[importer]`/`[exporter]`/`[merger]`/`[splitter]`/`[table_statistics]`/
+  `[image_metrics]`/`[timm]`/`[sam3]`/`[yolo]`) = each plugin's deps, installed ONLY into that
+  plugin's provisioned venv. `merger` is intentionally empty (SDK floor suffices).
+- **`[project.entry-points."tlc_compute.plugins"]`** = one entry per plugin. Kept for the optional
+  installed-package discovery path, but **not** how the host consumes these today: the host
+  discovers via a **folder Source** pointed at `src/`, reads each bundled `plugin.toml` without
+  importing, and provisions a venv installing the `provision_extra` named in the manifest.
 
 These are **real installable packages** (resolved from site-packages), not the old flat
 `package = false` + cwd-on-sys.path form.
@@ -36,9 +38,9 @@ These are **real installable packages** (resolved from site-packages), not the o
 1. **Touch the host only through `3lc-plugin-sdk`.** A plugin imports `tlc_plugin_sdk` and nothing
    from `tlc_compute` (the host). The mental test: *could this build against just the SDK wheel, with
    the host source deleted?* It must.
-2. **Heavy deps are this plugin's own venv, never the host venv.** A `venv`-mode plugin (torch,
-   ultralytics, …) is provisioned into its own environment; its heavy deps must never become a host
-   dependency. Only light `host`-mode plugins install into the host venv.
+2. **Every plugin's deps are its own venv, never the host venv.** Each plugin here is `venv`-isolated
+   and provisioned into its own environment from its extra; nothing in this repo installs into the
+   host venv. (`host`-mode is reserved for the private in-tree `run_insights`/`table_insights`.)
 3. **Metadata lives in `plugin.toml`, not on the class.** No `register()` at import; the class is
    behavior-only. The host stamps display identity from the manifest.
 4. **Custom events / routes are plugin-private.** Use the generic job channel
@@ -60,8 +62,9 @@ torch comes from the cu126 index; 3lc from the 3lc-releases index. These dev sou
 index/git pins before any real publish.
 
 ```bash
-uv sync                       # base: host-mode plugins' light deps + SDK
-uv sync --extra timm          # add a venv plugin's heavy stack (what provisioning installs into its venv)
+uv sync                       # SDK floor only
+uv sync --extra importer      # one plugin's deps (exactly what the host provisions into its venv)
+uv sync --extra timm          # a heavy GPU plugin's stack
 uv run ruff check .
 ```
 

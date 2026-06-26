@@ -22,5 +22,8 @@ quick_action_label = "Merge Tables"
 quick_action_description = "Combine columns from two tables into one"
 
 [runtime]
-isolation = "host"
+isolation = "venv"
 entrypoint = "tlc_plugin_merger:MergePlugin"
+# No deps beyond the SDK floor; the (empty) extra still gives this plugin its own
+# provisioned venv so it runs out-of-process like every other open plugin.
+provision_extra = "merger"
