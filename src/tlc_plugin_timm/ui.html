@@ -476,6 +476,12 @@ var TM_COMPUTE_URL = PLUGIN_API.getConfig("compute_service_url");
 
 // ── Helpers ───────────────────────────────────────────────────
 function _tmFetch(path, opts) {
+  opts = opts || {};
+  // The venv worker can be cold on first use — it imports torch and builds the
+  // timm model registry on startup, which can exceed authFetch's default 10s
+  // abort and surface as "AbortError: signal is aborted without reason". Give
+  // worker calls a more generous default; callers may still override per-request.
+  if (opts.timeout === undefined) opts.timeout = 60000;
   return PLUGIN_API.authFetch(TM_COMPUTE_URL + path, opts);
 }
 
@@ -1323,10 +1329,23 @@ function _tmBindAutoSave() {
     if (_projectParam) document.getElementById('tm-3lc-project').value = _projectParam;
     if (_trainParam) tmOnTrainTableChange();
   } else {
-    // Restore last selected config
+    // Restore the last-selected config — but only if it still exists. A remembered
+    // id can be stale (the config was deleted, or it carried over from a prior
+    // config store), which would otherwise 404 on load and surface a spurious
+    // startup error. Verify against the list first; if the list fetch fails (e.g. a
+    // slow/transient worker) leave the pointer untouched so it is never discarded
+    // on a transient error.
     var lastId = localStorage.getItem(_TM_STORAGE_KEY);
     if (lastId) {
-      setTimeout(function() { tmLoadConfig(lastId); }, 200);
+      _tmFetchJson("/api/plugins/timm/configs")
+        .then(function(data) {
+          if (Array.isArray(data) && data.some(function(c) { return c.id === lastId; })) {
+            tmLoadConfig(lastId);
+          } else {
+            localStorage.removeItem(_TM_STORAGE_KEY);
+          }
+        })
+        .catch(function() { /* list unavailable — keep the pointer, retry next load */ });
     }
   }
 })();
