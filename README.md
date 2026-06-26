@@ -34,8 +34,8 @@ host venv.** This is uniform across the light CPU plugins (importer, merger, …
 ones (timm, sam3, yolo): it's the always-`venv` shape the static-index / shop deliverability model
 expects. The base distribution carries only the SDK floor (`3lc-plugin-sdk[shared]`).
 
-`host`-mode (in-process) is reserved for the private in-tree plugins (`run_insights`,
-`table_insights`) that ship inside the compute service itself — not for anything in this repo.
+`host`-mode (in-process) is reserved for the in-tree plugins (`run_insights`, `table_insights`)
+that ship inside the compute service itself — not for anything in this repo.
 
 ## Develop
 
@@ -46,7 +46,7 @@ uv sync --extra timm          # a heavy GPU plugin's stack
 uv run ruff check .
 ```
 
-During the build-out, `3lc-plugin-sdk` is resolved from a sibling checkout via a **dev-only**
+During development, `3lc-plugin-sdk` is resolved from a sibling checkout via a **dev-only**
 `[tool.uv.sources]` path — see `CLAUDE.md`. That reverts to an index/git pin before publish.
 
 ### Consumed by the host
@@ -60,4 +60,4 @@ index, so it lands fully once `3lc-plugin-sdk` is published.)
 ## Status
 
 Pre-1.0. License pending (see `CLAUDE.md`). The proprietary `run_insights` / `table_insights`
-plugins deliberately stay in the private `3lc-insights` monorepo and are **not** here.
+plugins are maintained in the compute service itself and are **not** part of this open distribution.

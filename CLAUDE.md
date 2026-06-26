@@ -2,8 +2,7 @@
 
 This repo is the **public, first-party plugin collection** for the 3LC compute service, packaged as
 a single **umbrella distribution** `3lc-compute-plugins` built against the public
-[`3lc-plugin-sdk`](https://github.com/3lc-ai/3lc-plugin-sdk). Extracted from the private
-`3lc-insights` monorepo (where the host runtime + the design docs live). (The umbrella is this repo's
+[`3lc-plugin-sdk`](https://github.com/3lc-ai/3lc-plugin-sdk). (The umbrella is this repo's
 packaging choice — the host discovers plugins via a folder Source scanning `src/`, not by repo shape,
 so single-plugin and multi-dist repos are equally valid elsewhere.)
 
@@ -70,9 +69,9 @@ uv run ruff check .
 
 ## Where the rest of the context lives
 
-The plugin contract, the author guide, and the architecture/distribution design docs live in
-`3lc-plugin-sdk` (`docs/plugin-guide.md`, `CLAUDE.md`) and the private `3lc-insights` monorepo
-(`docs/plugin-*.md`, the deployment doc §14). Read those for the "why."
+The plugin contract and the author guide live in `3lc-plugin-sdk` (`docs/plugin-guide.md`,
+published at <https://3lc-ai.github.io/3lc-plugin-sdk/>). Read those for the "why" and for how to
+build a plugin against the contract.
 
 ## Conventions
 

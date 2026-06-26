@@ -114,7 +114,7 @@ name = "pytorch-cu126"
 url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
-# 3lc private releases index — 3lc versions not yet on public PyPI.
+# 3lc releases index — 3lc versions not yet on public PyPI.
 [[tool.uv.index]]
 name = "3lc-releases"
 url = "https://pypi.3lc.ai/public/repositories/releases-public"
@@ -134,7 +134,7 @@ torchvision = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
 3lc = { index = "3lc-releases" }
 3lc-plugin-sdk = { git = "https://github.com/3lc-ai/3lc-plugin-sdk.git", branch = "develop" }
 
-# Ruff config mirrors 3lc-plugin-sdk / 3lc-insights for a consistent house style. CI runs ruff
+# Ruff config mirrors 3lc-plugin-sdk for a consistent house style. CI runs ruff
 # standalone (uvx) — linting must not require resolving the heavy per-plugin ML stacks.
 [tool.ruff]
 line-length = 120
