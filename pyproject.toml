@@ -1,0 +1,125 @@
+# 3lc-compute-plugins — the open, first-party plugins for the 3LC compute service, as one
+# distribution. The host discovers each plugin from its bundled `plugin.toml` (read WITHOUT
+# importing) and provisions it into its own venv: every plugin is `venv`-isolated, its deps live in
+# a per-plugin extra below and are installed only into that plugin's venv — never the host venv.
+# The base `dependencies` is the SDK floor only. (The `tlc_compute.plugins` entry points support an
+# optional pip-installed-discovery path; folder-Source discovery is the primary one.)
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "3lc-compute-plugins"
+version = "0.1.0"
+description = "Open, first-party plugins for the 3LC compute service (all venv-isolated)."
+requires-python = ">=3.10"
+# Apache-2.0, matching 3lc-plugin-sdk. Full text in ./LICENSE.
+license = { text = "Apache-2.0" }
+classifiers = ["License :: OSI Approved :: Apache Software License"]
+# Base = the SDK floor ONLY — no plugin deps live here; each plugin's deps ride its own extra
+# below and are installed only into that plugin's venv. `[shared]` adds the SDK's optional `tlc`
+# data plane (`tlc_plugin_sdk.shared.*`), which every plugin uses.
+dependencies = [
+    "3lc-plugin-sdk[shared]>=0.1.0,<0.2.0",
+]
+
+# Per-plugin extras — installed ONLY into that plugin's provisioned venv. Provisioning opts into
+# the extra named by the plugin manifest's runtime.provision_extra (`uv sync --extra <id>`).
+[project.optional-dependencies]
+# CPU plugins.
+importer = [
+    "openpyxl>=3.1",
+    "pyyaml",
+    "datasets",         # tlc HuggingFace import path
+    "transformers",     # tlc HuggingFace import path
+    "numpy",
+    "pillow",
+]
+exporter = [
+    "openpyxl>=3.1",
+]
+merger = []             # no deps beyond the SDK floor; venv-isolated for consistency
+splitter = [
+    "numpy",
+]
+table_statistics = [
+    "pyarrow",
+    "numpy",
+]
+image_metrics = [
+    "numpy",
+    "pillow",
+]
+# Heavy GPU/ML plugin.
+timm = [
+    "timm>=1.0",
+    "torch",
+    "torchvision",
+    "pacmap>=0.8",
+    "umap-learn>=0.5",
+]
+
+# Every plugin advertises itself here; the host iterates this group to discover them all.
+# Value = the import package; its bundled plugin.toml drives id/ui/runtime (and, for venv
+# plugins, the provision extra).
+[project.entry-points."tlc_compute.plugins"]
+timm = "tlc_plugin_timm"
+importer = "tlc_plugin_importer"
+exporter = "tlc_plugin_exporter"
+merger = "tlc_plugin_merger"
+splitter = "tlc_plugin_splitter"
+table_statistics = "tlc_plugin_table_statistics"
+image_metrics = "tlc_plugin_image_metrics"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/tlc_plugin_timm",
+    "src/tlc_plugin_importer",
+    "src/tlc_plugin_exporter",
+    "src/tlc_plugin_merger",
+    "src/tlc_plugin_splitter",
+    "src/tlc_plugin_table_statistics",
+    "src/tlc_plugin_image_metrics",
+]
+
+# torch/torchvision from the CUDA 12.6 index on Linux — used only when a heavy extra is
+# selected during venv provisioning (not on a bare/host install).
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+# 3lc releases index — 3lc versions not yet on public PyPI.
+[[tool.uv.index]]
+name = "3lc-releases"
+url = "https://pypi.3lc.ai/public/repositories/releases-public"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
+torchvision = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
+# `3lc` resolves from the releases index, the SDK from its GitHub repo. Keep these committed —
+# a committed relative `path = ...` source breaks remote consumers (uv reads it as a subdirectory
+# of this repo). For local dev, override UNCOMMITTED, e.g.
+#   3lc            = { path = "../tlc-monorepo",   editable = true }
+#   3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
+3lc = { index = "3lc-releases" }
+3lc-plugin-sdk = { git = "https://github.com/3lc-ai/3lc-plugin-sdk.git", branch = "develop" }
+
+# Ruff config mirrors 3lc-plugin-sdk for a consistent house style. CI runs ruff
+# standalone (uvx) — linting must not require resolving the heavy per-plugin ML stacks.
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+exclude = [".git", ".mypy_cache", ".ruff_cache", ".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["A", "C4", "E", "EM", "F", "I", "N", "PIE", "RUF", "SIM", "UP", "W"]
+ignore = ["N806", "N818", "SIM105", "SIM108", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+preview = true
+docstring-code-format = true

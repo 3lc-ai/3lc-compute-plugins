@@ -1,0 +1,347 @@
+<!-- Copyright 2026 3LC Inc. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Merge Tables — self-contained plugin UI fragment -->
+<style>
+/* Unique to merger — not in main.css */
+.plugin-page .merge-table-chip {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card);
+  margin-bottom: 6px; font-size: 13px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.merge-table-chip .chip-icon { font-size: 16px; flex-shrink: 0; }
+.merge-table-chip .chip-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.merge-table-chip .chip-rows { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.merge-table-chip .chip-remove {
+  width: 20px; height: 20px; border-radius: 4px; border: none; background: none;
+  color: var(--text-muted); cursor: pointer; font-size: 14px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.merge-table-chip .chip-remove:hover { background: var(--bg); color: var(--error); }
+
+.merge-compat { font-size: 11px; padding: 6px 10px; border-radius: 6px; margin-top: 6px; }
+.merge-compat-ok { background: rgba(34,197,94,0.08); color: var(--success); }
+.merge-compat-err { background: rgba(239,68,68,0.08); color: var(--error); }
+
+/* Progress bar */
+.merge-progress-wrap {
+  background: var(--bg, #f3f4f6); border-radius: 8px; height: 8px;
+  overflow: hidden; margin: 12px 0 6px;
+}
+.merge-progress-fill {
+  height: 100%; border-radius: 8px; background: var(--accent);
+  animation: merge-progress-pulse 1.5s ease-in-out infinite;
+  width: 60%;
+}
+@keyframes merge-progress-pulse { 0%,100% { opacity:1 } 50% { opacity:.5 } }
+</style>
+
+<div class="plugin-page">
+  <div class="plugin-hero">
+    <h2>⇌ Merge Datasets</h2>
+    <p>Join columns from two 3LC tables into a single merged table with full revision history.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12l-2 2a2.83 2.83 0 1 1-4-4l2-2a2.83 2.83 0 0 1 4 0M12 8l2-2a2.83 2.83 0 1 1 4 4l-2 2a2.83 2.83 0 0 1-4 0"/><path d="M7 13l6-6"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Column Join</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Combine columns from two tables</div>
+      </div>
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9M8 17V5M12 17V8M16 17V3"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Full Lineage</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Tracks in DAG view</div>
+      </div>
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2L5 11h5l-1 7 6-9h-5l1-7z"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Index-Based</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Matches rows by position</div>
+      </div>
+    </div>
+    <div class="plugin-workflow" style="margin-top:10px">
+      <div class="plugin-workflow-step"><span class="num">1</span> Select 2 tables</div>
+      <div class="plugin-workflow-step"><span class="num">2</span> Name output</div>
+      <div class="plugin-workflow-step"><span class="num">3</span> Merge</div>
+    </div>
+  </div>
+
+  <div id="merge-result"></div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><div class="card-title">Merge Configuration</div></div>
+    <div class="card-body">
+
+      <!-- Table A -->
+      <div class="form-group">
+        <label class="form-label required">Table A</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="merge-table-a" class="form-control"
+                 placeholder="Select first table…">
+          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
+                  id="merge-browse-a">Browse…</button>
+        </div>
+      </div>
+
+      <!-- Table B -->
+      <div class="form-group">
+        <label class="form-label required">Table B</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="merge-table-b" class="form-control"
+                 placeholder="Select second table…">
+          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
+                  id="merge-browse-b">Browse…</button>
+        </div>
+      </div>
+
+      <!-- Compatibility check -->
+      <div id="merge-compat-check"></div>
+
+      <!-- Merge type -->
+      <div class="form-group">
+        <label class="form-label required">Merge Type</label>
+        <select id="merge-type" class="form-control" style="max-width:320px">
+          <option value="join" selected>Join (Column Join) — combine columns by row index</option>
+          <option value="union" disabled>Union (Row Concatenation) — coming soon</option>
+        </select>
+        <div class="form-help">Join requires both tables to have the same number of rows.</div>
+      </div>
+
+      <!-- Output naming -->
+      <div class="form-group" id="merge-output-group">
+        <label class="form-label required">Output Table Name</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+          <span style="font-size:12px;padding:2px 8px;border-radius:4px;background:var(--accent-light);color:var(--accent);font-weight:600" id="merge-out-project">—</span>
+          <span style="font-size:12px;color:var(--text-muted)">/</span>
+          <span style="font-size:12px;padding:2px 8px;border-radius:4px;background:var(--accent-light);color:var(--accent);font-weight:600" id="merge-out-dataset">—</span>
+          <span style="font-size:12px;color:var(--text-muted)">/</span>
+          <input type="text" id="merge-table-name" class="form-control"
+                 placeholder="auto: tableA_tableB_merged" style="flex:1;min-width:140px">
+        </div>
+        <div class="form-help">Leave blank to auto-name from input tables. Project and dataset are inherited from the first selected table.</div>
+      </div>
+
+      <hr class="divider">
+      <div style="display:flex;gap:10px;align-items:center">
+        <button type="button" class="btn btn-primary btn-lg" id="merge-submit-btn">⇌ Merge Tables</button>
+        <span class="spinner" id="merge-spinner" style="display:none"></span>
+        <span id="merge-status" style="display:none;font-size:12px;color:var(--text-muted)">
+          Merging… this may take a moment.</span>
+      </div>
+      <div id="merge-progress-area" style="display:none">
+        <div class="merge-progress-wrap"><div class="merge-progress-fill"></div></div>
+        <div id="merge-elapsed" style="font-size:11px;color:var(--text-muted);text-align:right"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info card -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><div class="card-title">About Merging</div></div>
+    <div class="card-body">
+      <div style="font-size:13px;color:var(--text-secondary)">
+        <p style="margin-bottom:8px"><strong>Join:</strong> Creates a JoinedTable that combines columns
+        from multiple tables (similar to a SQL JOIN on row index). Both tables must have the same
+        number of rows.</p>
+        <p style="margin-bottom:8px"><strong>Union:</strong> Concatenates rows from multiple tables
+        that share the same schema. <em>(Coming soon)</em></p>
+        <p>Merged tables maintain full revision history and can be viewed in the DAG view.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var API = window.PLUGIN_API;
+  var computeUrl = API.getConfig('compute_service_url');
+
+  // Get table URLs from context (passed via action button or URL params)
+  var contextUrls = API.context.resourceUrls || [];
+  var urlParams = new URLSearchParams(window.location.search);
+  if (!contextUrls.length) {
+    contextUrls = urlParams.getAll('url').filter(Boolean);
+  }
+  if (!contextUrls.length) {
+    contextUrls = urlParams.getAll('table').filter(Boolean);
+  }
+
+  var projectName = API.context.projectName || '';
+
+  // Pre-fill from context
+  if (contextUrls.length >= 1) {
+    document.getElementById('merge-table-a').value = contextUrls[0];
+  }
+  if (contextUrls.length >= 2) {
+    document.getElementById('merge-table-b').value = contextUrls[1];
+  }
+
+  // ── Extract metadata for output naming ─────────────────
+  function updateOutputNaming() {
+    var url = document.getElementById('merge-table-a').value.trim();
+    if (!url) {
+      document.getElementById('merge-out-project').textContent = '—';
+      document.getElementById('merge-out-dataset').textContent = '—';
+      return;
+    }
+    var parts = url.replace(/\\/g, '/').split('/');
+    var projIdx = parts.indexOf('projects');
+    var dsIdx = parts.indexOf('datasets');
+    var proj = projIdx >= 0 && parts[projIdx + 1] ? decodeURIComponent(parts[projIdx + 1]) : projectName;
+    var ds = dsIdx >= 0 && parts[dsIdx + 1] ? decodeURIComponent(parts[dsIdx + 1]) : '';
+    document.getElementById('merge-out-project').textContent = proj || '—';
+    document.getElementById('merge-out-dataset').textContent = ds || '—';
+  }
+
+  document.getElementById('merge-table-a').addEventListener('change', updateOutputNaming);
+  updateOutputNaming();
+
+  // ── Execute merge ──────────────────────────────────────
+  function executeMerge() {
+    var tableA = document.getElementById('merge-table-a').value.trim();
+    var tableB = document.getElementById('merge-table-b').value.trim();
+    var tableName = document.getElementById('merge-table-name').value.trim();
+    var mergeType = document.getElementById('merge-type').value;
+
+    if (!tableA || !tableB) {
+      showResult({ success: false, message: 'Select both Table A and Table B.' });
+      return;
+    }
+    if (tableA === tableB) {
+      showResult({ success: false, message: 'Table A and Table B must be different tables.' });
+      return;
+    }
+    if (!tableName) {
+      var nameA = tableA.replace(/\\/g, '/').replace(/\/+$/, '').split('/').pop();
+      var nameB = tableB.replace(/\\/g, '/').replace(/\/+$/, '').split('/').pop();
+      tableName = nameA + '_' + nameB + '_merged';
+    }
+
+    var proj = document.getElementById('merge-out-project').textContent;
+    var ds = document.getElementById('merge-out-dataset').textContent;
+    if (proj === '—' || ds === '—') {
+      showResult({ success: false, message: 'Could not determine project/dataset. Please select Table A first.' });
+      return;
+    }
+
+    var submitBtn = document.getElementById('merge-submit-btn');
+    var spinner = document.getElementById('merge-spinner');
+    var status = document.getElementById('merge-status');
+    var progressArea = document.getElementById('merge-progress-area');
+
+    submitBtn.disabled = true;
+    spinner.style.display = 'inline-block';
+    status.style.display = 'inline';
+    progressArea.style.display = '';
+
+    var startTime = Date.now();
+    var elapsedTimer = setInterval(function() {
+      var el = document.getElementById('merge-elapsed');
+      if (el) { el.textContent = 'Elapsed: ' + ((Date.now() - startTime) / 1000).toFixed(0) + 's'; }
+    }, 1000);
+
+    // Drive the merge over the generic job_update channel (window.PluginJobs).
+    // The form values (proj/ds/tableName) are already in scope, so onDone
+    // reconstructs the result from the final job's run_url + metrics.
+    PluginJobs.run('merger', {
+      table_urls: [tableA, tableB],
+      merge_type: mergeType,
+      project_name: proj,
+      dataset_name: ds,
+      table_name: tableName,
+    }, {
+      onUpdate: function(job) {
+        var p = job.progress || {};
+        if (p.label) { status.textContent = p.label; }
+      },
+      onDone: function(job) {
+        clearInterval(elapsedTimer);
+        resetUI();
+        var details = {};
+        (job.metrics || []).forEach(function(m) { details[m.label] = m.value; });
+        showResult({
+          success: true,
+          message: (job.progress && job.progress.label) || 'Merge complete.',
+          table_url: job.run_url,
+          project_name: proj,
+          dataset_name: ds,
+          details: details,
+        });
+      },
+      onError: function(job) {
+        clearInterval(elapsedTimer);
+        resetUI();
+        showResult({ success: false, message: (job && job.subtitle) || 'Merge failed.' });
+      },
+    });
+  }
+
+  function resetUI() {
+    document.getElementById('merge-submit-btn').disabled = false;
+    document.getElementById('merge-spinner').style.display = 'none';
+    document.getElementById('merge-status').style.display = 'none';
+    document.getElementById('merge-progress-area').style.display = 'none';
+  }
+
+  // ── Result display ─────────────────────────────────────
+  function showResult(data) {
+    var el = document.getElementById('merge-result');
+    var cls = data.success ? 'alert-success' : 'alert-error';
+    var icon = data.success ? '✓' : '✗';
+
+    var html = '<div class="alert ' + cls + '">';
+    html += '<span class="alert-icon">' + icon + '</span>';
+    html += '<div><strong>' + _esc(data.message) + '</strong>';
+
+    if (data.success && data.table_url && data.project_name) {
+      html += '<div style="margin-top:8px">';
+      html += '<a href="/projects/' + encodeURIComponent(data.project_name) +
+              '?dataset=' + encodeURIComponent(data.dataset_name || '') +
+              '&table=' + encodeURIComponent(data.table_url) +
+              '#datasets" class="btn btn-secondary btn-sm">View in Project</a>';
+      html += '</div>';
+    }
+
+    if (data.details) {
+      html += '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">';
+      var keys = Object.keys(data.details);
+      for (var i = 0; i < keys.length; i++) {
+        html += '<span style="margin-right:12px"><strong>' + _esc(keys[i]) + ':</strong> ' +
+                _esc(String(data.details[keys[i]])) + '</span>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div></div>';
+    el.innerHTML = html;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ── Table picker (Browse buttons) ──────────────────────
+  document.getElementById('merge-browse-a').addEventListener('click', function() {
+    if (typeof openTablePicker === 'function') {
+      openTablePicker('merge-table-a');
+    } else {
+      showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
+    }
+  });
+  document.getElementById('merge-browse-b').addEventListener('click', function() {
+    if (typeof openTablePicker === 'function') {
+      openTablePicker('merge-table-b');
+    } else {
+      showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
+    }
+  });
+
+  // ── Submit button ──────────────────────────────────────
+  document.getElementById('merge-submit-btn').addEventListener('click', executeMerge);
+
+  // ── Helpers ────────────────────────────────────────────
+  function _esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+})();
+</script>

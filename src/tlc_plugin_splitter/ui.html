@@ -1,0 +1,473 @@
+<!-- Copyright 2026 3LC Inc. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Split Table — self-contained plugin UI fragment -->
+<style>
+/* Split-specific styles */
+.split-bar-wrap {
+  display: flex; height: 32px; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border); margin-bottom: 8px;
+  /* Align with slider bars: offset by label+dot+gaps on left, pct+gap on right */
+  margin-left: 124px; margin-right: 52px;
+}
+.split-bar-seg {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff; transition: width .2s ease;
+  min-width: 24px;
+}
+.split-bar-train { background: var(--chart-1); }
+.split-bar-val   { background: var(--chart-2); }
+.split-bar-test  { background: var(--chart-7); }
+
+.split-slider-row {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+}
+.split-slider-row label {
+  width: 90px; font-size: 13px; font-weight: 600; flex-shrink: 0;
+}
+.split-slider-row .dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.split-slider-row input[type=range] {
+  flex: 1; accent-color: var(--accent);
+}
+.split-slider-row .pct-display {
+  width: 40px; text-align: right; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+.split-slider-row .row-count {
+  display: none;
+}
+
+.split-result-card {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+  border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--bg-card);
+  margin-bottom: 8px;
+}
+.split-result-card .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.split-result-card .info { flex: 1; }
+.split-result-card .name { font-weight: 700; font-size: 13px; }
+.split-result-card .rows { font-size: 11px; color: var(--text-muted); }
+.split-result-card .link { font-size: 11px; }
+
+/* Progress bar */
+.split-progress-wrap {
+  background: var(--bg, #f3f4f6); border-radius: var(--radius); height: 8px;
+  overflow: hidden; margin: 12px 0 6px;
+}
+.split-progress-fill {
+  height: 100%; border-radius: var(--radius); background: var(--accent);
+  animation: split-progress-pulse 1.5s ease-in-out infinite;
+  width: 60%;
+}
+@keyframes split-progress-pulse { 0%,100% { opacity:1 } 50% { opacity:.5 } }
+</style>
+
+<div class="plugin-page">
+  <div class="plugin-hero">
+    <h2>✂ Split Dataset</h2>
+    <p>Split a 3LC table into train, validation, and test sets — creating new table revisions with full lineage tracking.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9M8 17V5M12 17V8M16 17V3"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Stratified</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Balanced class distribution</div>
+      </div>
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12l-2 2a2.83 2.83 0 1 1-4-4l2-2a2.83 2.83 0 0 1 4 0M12 8l2-2a2.83 2.83 0 1 1 4 4l-2 2a2.83 2.83 0 0 1-4 0"/><path d="M7 13l6-6"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Full Lineage</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">EditedTable revisions</div>
+      </div>
+      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="13" r="1" fill="currentColor" stroke="none"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Reproducible</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Seeded random splits</div>
+      </div>
+    </div>
+    <div class="plugin-workflow" style="margin-top:10px">
+      <div class="plugin-workflow-step"><span class="num">1</span> Select table</div>
+      <div class="plugin-workflow-step"><span class="num">2</span> Set ratios</div>
+      <div class="plugin-workflow-step"><span class="num">3</span> Split</div>
+    </div>
+  </div>
+
+  <div id="split-result"></div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><div class="card-title">Split Configuration</div></div>
+    <div class="card-body">
+
+      <!-- Table URL -->
+      <div class="form-group">
+        <label class="form-label required">Source Table</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="split-table-url" class="form-control"
+                 placeholder="Select a table to split…">
+          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
+                  id="split-browse-btn">Browse…</button>
+        </div>
+        <div class="form-help">Select the table you want to split into train/val/test sets.</div>
+      </div>
+
+      <!-- Strategy -->
+      <div class="form-group">
+        <label class="form-label required">Split Strategy</label>
+        <select id="split-strategy" class="form-control" style="max-width:280px">
+          <option value="random" selected>Random — shuffle all rows</option>
+          <option value="stratified">Stratified — preserve class distribution</option>
+        </select>
+        <div class="form-help">Stratified sampling ensures each split has the same class ratio as the original.</div>
+      </div>
+
+      <!-- Visual split bar -->
+      <div class="form-group">
+        <label class="form-label">Split Ratio</label>
+        <div class="split-bar-wrap" id="split-bar">
+          <div class="split-bar-seg split-bar-train" id="split-bar-train" style="width:70%">70%</div>
+          <div class="split-bar-seg split-bar-val" id="split-bar-val" style="width:20%">20%</div>
+          <div class="split-bar-seg split-bar-test" id="split-bar-test" style="width:10%">10%</div>
+        </div>
+
+        <!-- Train slider -->
+        <div class="split-slider-row">
+          <span class="dot" style="background:#4e79a7"></span>
+          <label>Train</label>
+          <input type="range" id="split-train-slider" min="1" max="98" value="70">
+          <span class="pct-display" id="split-train-pct">70%</span>
+          <span class="row-count" id="split-train-rows"></span>
+        </div>
+
+        <!-- Val slider -->
+        <div class="split-slider-row">
+          <span class="dot" style="background:#b8860b"></span>
+          <label>Validation</label>
+          <input type="range" id="split-val-slider" min="1" max="98" value="20">
+          <span class="pct-display" id="split-val-pct">20%</span>
+          <span class="row-count" id="split-val-rows"></span>
+        </div>
+
+        <!-- Test slider -->
+        <div class="split-slider-row">
+          <span class="dot" style="background:#7b6b8a"></span>
+          <label>Test</label>
+          <input type="range" id="split-test-slider" min="0" max="98" value="10">
+          <span class="pct-display" id="split-test-pct">10%</span>
+          <span class="row-count" id="split-test-rows"></span>
+        </div>
+
+        <div class="form-help" id="split-total-hint" style="margin-top:4px">
+          Total: 100% — drag sliders to adjust. Train + Val + Test must equal 100%.
+        </div>
+      </div>
+
+      <!-- Seed -->
+      <div class="form-group">
+        <label class="form-label">Random Seed</label>
+        <input type="number" id="split-seed" class="form-control" value="42"
+               style="max-width:120px" min="0" step="1">
+        <div class="form-help">Fixed seed for reproducible splits. Change to get a different random ordering.</div>
+      </div>
+
+      <hr class="divider">
+      <div style="display:flex;gap:10px;align-items:center">
+        <button type="button" class="btn btn-primary btn-lg" id="split-submit-btn">✂ Split Table</button>
+        <span class="spinner" id="split-spinner" style="display:none"></span>
+        <span id="split-status" style="display:none;font-size:12px;color:var(--text-muted)">
+          Splitting… this may take a moment.</span>
+      </div>
+      <div id="split-progress-area" style="display:none">
+        <div class="split-progress-wrap"><div class="split-progress-fill"></div></div>
+        <div id="split-elapsed" style="font-size:11px;color:var(--text-muted);text-align:right"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><div class="card-title">How It Works</div></div>
+    <div class="card-body">
+      <div style="font-size:13px;color:var(--text-secondary)">
+        <p style="margin-bottom:8px"><strong>EditedTable revisions:</strong> Each split creates a new
+        table revision (EditedTable) that references the original rows — no data is duplicated.</p>
+        <p style="margin-bottom:8px"><strong>Stratified sampling:</strong> When enabled, the split
+        preserves the class distribution from the original table in each split. Requires a
+        categorical label column.</p>
+        <p><strong>DAG lineage:</strong> All split tables appear as children of the source table
+        in the DAG view, making the relationship clear.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var API = window.PLUGIN_API;
+  var computeUrl = API.getConfig('compute_service_url');
+  var totalRows = 0;
+
+  // Pre-fill table URL from context
+  var urlParams = new URLSearchParams(window.location.search);
+  var prefillUrl = '';
+  if (API.context.resourceUrls && API.context.resourceUrls.length) {
+    prefillUrl = API.context.resourceUrls[0];
+  } else {
+    prefillUrl = urlParams.get('url') || urlParams.get('table') || '';
+  }
+
+  // ── Slider sync logic ──────────────────────────────────
+  var trainSlider = document.getElementById('split-train-slider');
+  var valSlider = document.getElementById('split-val-slider');
+  var testSlider = document.getElementById('split-test-slider');
+
+  function syncSliders(changed) {
+    var train = parseInt(trainSlider.value);
+    var val = parseInt(valSlider.value);
+    var test = parseInt(testSlider.value);
+
+    // Enforce total = 100% by adjusting the OTHER sliders
+    if (changed === 'train') {
+      // Keep test, adjust val to fill remainder
+      val = 100 - train - test;
+      if (val < 1) { val = 1; test = 100 - train - val; }
+      if (test < 0) { test = 0; val = 100 - train; }
+    } else if (changed === 'val') {
+      // Keep test, adjust train to fill remainder
+      train = 100 - val - test;
+      if (train < 1) { train = 1; test = 100 - train - val; }
+      if (test < 0) { test = 0; train = 100 - val; }
+    } else if (changed === 'test') {
+      // Keep train, adjust val to fill remainder
+      val = 100 - train - test;
+      if (val < 1) { val = 1; train = 100 - val - test; }
+      if (train < 1) { train = 1; val = 100 - train - test; }
+    }
+
+    // Clamp
+    train = Math.max(1, Math.min(98, train));
+    val = Math.max(1, Math.min(98, val));
+    test = Math.max(0, Math.min(98, test));
+
+    // Final correction for rounding
+    var total = train + val + test;
+    if (total !== 100) {
+      if (changed !== 'val') val += (100 - total);
+      else train += (100 - total);
+    }
+
+    trainSlider.value = train;
+    valSlider.value = val;
+    testSlider.value = test;
+
+    updateDisplay(train, val, test);
+  }
+
+  function updateDisplay(train, val, test) {
+    document.getElementById('split-train-pct').textContent = train + '%';
+    document.getElementById('split-val-pct').textContent = val + '%';
+    document.getElementById('split-test-pct').textContent = test + '%';
+
+    document.getElementById('split-bar-train').style.width = train + '%';
+    document.getElementById('split-bar-train').textContent = train >= 8 ? train + '%' : '';
+    document.getElementById('split-bar-val').style.width = val + '%';
+    document.getElementById('split-bar-val').textContent = val >= 8 ? val + '%' : '';
+    document.getElementById('split-bar-test').style.width = test + '%';
+    document.getElementById('split-bar-test').textContent = test >= 8 ? test + '%' : '';
+    document.getElementById('split-bar-test').style.display = test > 0 ? '' : 'none';
+
+    // Row counts
+    if (totalRows > 0) {
+      var nTrain = Math.max(1, Math.round(totalRows * train / 100));
+      var nTest = test > 0 ? Math.max(0, Math.round(totalRows * test / 100)) : 0;
+      var nVal = totalRows - nTrain - nTest;
+      document.getElementById('split-train-rows').textContent = nTrain.toLocaleString() + ' rows';
+      document.getElementById('split-val-rows').textContent = nVal.toLocaleString() + ' rows';
+      document.getElementById('split-test-rows').textContent = nTest > 0 ? nTest.toLocaleString() + ' rows' : '';
+    } else {
+      document.getElementById('split-train-rows').textContent = '';
+      document.getElementById('split-val-rows').textContent = '';
+      document.getElementById('split-test-rows').textContent = '';
+    }
+
+    var totalPct = train + val + test;
+    var hint = document.getElementById('split-total-hint');
+    if (totalPct === 100) {
+      hint.textContent = 'Total: 100% ✓';
+      hint.style.color = '';
+    } else {
+      hint.textContent = 'Total: ' + totalPct + '% — must equal 100%!';
+      hint.style.color = 'var(--error)';
+    }
+  }
+
+  trainSlider.addEventListener('input', function() { syncSliders('train'); });
+  valSlider.addEventListener('input', function() { syncSliders('val'); });
+  testSlider.addEventListener('input', function() { syncSliders('test'); });
+
+  // ── Try to fetch row count from table URL ──────────────
+  function fetchTableRowCount() {
+    var url = document.getElementById('split-table-url').value.trim();
+    if (!url) { totalRows = 0; updateDisplay(parseInt(trainSlider.value), parseInt(valSlider.value), parseInt(testSlider.value)); return; }
+
+    // Try Object Service to get row count
+    var objUrl = API.getConfig('object_service_url');
+    if (objUrl) {
+      var encoded = encodeURIComponent(url).replace(/%/g, '%25');
+      API.authFetch(objUrl + '/table/' + encoded)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data && data.row_count) {
+            totalRows = data.row_count;
+          }
+          updateDisplay(parseInt(trainSlider.value), parseInt(valSlider.value), parseInt(testSlider.value));
+        })
+        .catch(function() {
+          totalRows = 0;
+          updateDisplay(parseInt(trainSlider.value), parseInt(valSlider.value), parseInt(testSlider.value));
+        });
+    }
+  }
+
+  var _rowCountDebounce = null;
+  document.getElementById('split-table-url').addEventListener('change', function() {
+    clearTimeout(_rowCountDebounce);
+    _rowCountDebounce = setTimeout(fetchTableRowCount, 300);
+  });
+
+  // ── Execute split ──────────────────────────────────────
+  function executeSplit() {
+    var tableUrl = document.getElementById('split-table-url').value.trim();
+    if (!tableUrl) { showResult({ success: false, message: 'Select a table to split.' }); return; }
+
+    var train = parseInt(trainSlider.value);
+    var val = parseInt(valSlider.value);
+    var test = parseInt(testSlider.value);
+    if (train + val + test !== 100) {
+      showResult({ success: false, message: 'Train + Val + Test must equal 100%.' });
+      return;
+    }
+
+    var submitBtn = document.getElementById('split-submit-btn');
+    var spinner = document.getElementById('split-spinner');
+    var status = document.getElementById('split-status');
+    var progressArea = document.getElementById('split-progress-area');
+
+    submitBtn.disabled = true;
+    spinner.style.display = 'inline-block';
+    status.style.display = 'inline';
+    progressArea.style.display = '';
+
+    var body = {
+      table_url: tableUrl,
+      strategy: document.getElementById('split-strategy').value,
+      train_pct: train,
+      val_pct: val,
+      test_pct: test,
+      seed: parseInt(document.getElementById('split-seed').value) || 42,
+    };
+
+    var startTime = Date.now();
+    var elapsedTimer = setInterval(function() {
+      var el = document.getElementById('split-elapsed');
+      if (el) { el.textContent = 'Elapsed: ' + ((Date.now() - startTime) / 1000).toFixed(0) + 's'; }
+    }, 1000);
+
+    // The split produces several tables; the flat generic job schema can't carry
+    // that breakdown, so the backend emits a structured `split_result` event the
+    // UI renders. Subscribe before run() so the socket is connected when it fires.
+    var offResult = PluginJobs.on('/splitter', 'split_result', function(result) {
+      offResult();
+      clearInterval(elapsedTimer);
+      resetUI();
+      showResult(result);
+    });
+
+    PluginJobs.run('splitter', body, {
+      onUpdate: function(job) {
+        var p = job.progress || {};
+        if (p.label) { status.textContent = p.label; }
+      },
+      onError: function(job) {
+        offResult();
+        clearInterval(elapsedTimer);
+        resetUI();
+        showResult({ success: false, message: (job && job.subtitle) || 'Split failed.' });
+      },
+    });
+  }
+
+  function resetUI() {
+    document.getElementById('split-submit-btn').disabled = false;
+    document.getElementById('split-spinner').style.display = 'none';
+    document.getElementById('split-status').style.display = 'none';
+    document.getElementById('split-progress-area').style.display = 'none';
+  }
+
+  // ── Result display ─────────────────────────────────────
+  function showResult(data) {
+    var el = document.getElementById('split-result');
+    var cls = data.success ? 'alert-success' : 'alert-error';
+    var icon = data.success ? '✓' : '✗';
+
+    var html = '<div class="alert ' + cls + '">';
+    html += '<span class="alert-icon">' + icon + '</span>';
+    html += '<div><strong>' + _esc(data.message) + '</strong>';
+
+    // Show split result cards
+    if (data.success && data.splits && data.splits.length) {
+      var colors = { train: cssVar('--chart-1'), val: cssVar('--chart-2'), test: cssVar('--chart-7') };
+      html += '<div style="margin-top:12px">';
+      for (var i = 0; i < data.splits.length; i++) {
+        var s = data.splits[i];
+        var color = colors[s.name] || 'var(--accent)';
+        html += '<div class="split-result-card">';
+        html += '<span class="dot" style="background:' + color + '"></span>';
+        html += '<div class="info"><div class="name">' + _esc(s.name) + '</div>';
+        html += '<div class="rows">' + s.rows.toLocaleString() + ' rows</div></div>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    if (data.details) {
+      html += '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">';
+      var keys = Object.keys(data.details);
+      for (var j = 0; j < keys.length; j++) {
+        html += '<span style="margin-right:12px"><strong>' + _esc(keys[j]) + ':</strong> ' +
+                _esc(String(data.details[keys[j]])) + '</span>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div></div>';
+    el.innerHTML = html;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ── Table picker (Browse button) ───────────────────────
+  document.getElementById('split-browse-btn').addEventListener('click', function() {
+    if (typeof openTablePicker === 'function') {
+      openTablePicker('split-table-url');
+    } else {
+      showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
+    }
+  });
+
+  // ── Submit button ──────────────────────────────────────
+  document.getElementById('split-submit-btn').addEventListener('click', executeSplit);
+
+  // ── Helpers ────────────────────────────────────────────
+  function _esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ── Init ───────────────────────────────────────────────
+  if (prefillUrl) {
+    document.getElementById('split-table-url').value = prefillUrl;
+    fetchTableRowCount();
+  }
+  syncSliders('train');
+})();
+</script>

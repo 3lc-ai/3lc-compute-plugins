@@ -1,0 +1,30 @@
+# 3LC Compute plugin manifest — the single source of truth for this plugin's
+# metadata. The host loads the plugin via runtime.entrypoint; there is no
+# register() call at import and no metadata on the plugin class.
+id = "splitter"
+name = "Split"
+description = "Split a table into train, validation, and test sets with random or stratified sampling."
+version = "1.0.0"
+min_service_version = "0.1.0"
+icon = "✂"
+icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="4.5" cy="4.5" r="2"/><circle cx="4.5" cy="11.5" r="2"/><path d="M6.2 5.8L13 12M6.2 10.2L13 4"/></svg>'
+
+[ui]
+display_mode = "sidebar"
+section = "Data Ops"
+compatible_with = ["table"]
+input_types = ["table"]
+output_types = ["table"]
+priority = 75
+group = "Table Ops"
+group_icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M2 6h12M6 2v12"/></svg>'
+quick_action = true
+quick_action_label = "Split Table"
+quick_action_description = "Split a table into train/val/test sets"
+
+[runtime]
+isolation = "venv"
+entrypoint = "tlc_plugin_splitter:SplitterPlugin"
+# Deps live behind this extra of the umbrella distribution; the host installs it ONLY
+# into this plugin's provisioned venv, never the host venv.
+provision_extra = "splitter"

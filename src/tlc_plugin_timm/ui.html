@@ -1,0 +1,1345 @@
+<!-- Copyright 2026 3LC Inc. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- timm — self-contained plugin UI fragment -->
+<style>
+/* ── timm-specific styles ── */
+.tm-config-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 14px; padding: 10px 14px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 8px);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.tm-config-bar select {
+  flex: 1; max-width: 320px; font-size: 12px; font-weight: 500;
+}
+.tm-config-bar .bar-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.3px; color: var(--text-muted); white-space: nowrap;
+}
+.tm-metrics { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.tm-log-area { height: 140px; max-height: none; }
+.tm-log-area div { padding: 1px 0; }
+.tm-queue-status { font-size: 9px; font-weight: 600; letter-spacing: 0.3px; padding: 1px 7px; border-radius: 3px; }
+.tm-job-info { font-size: 9px; color: var(--text-muted); }
+
+/* Model search */
+.tm-model-search { position: relative; }
+.tm-model-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
+  background: var(--bg-card); border: 1px solid var(--border-light);
+  border-radius: 6px; max-height: 300px; overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12); display: none;
+}
+.tm-model-dropdown.open { display: block; }
+.tm-model-item {
+  padding: 6px 12px; cursor: pointer; font-size: 11px;
+  display: flex; align-items: center; gap: 8px;
+  transition: background .12s;
+}
+.tm-model-item:hover { background: var(--accent-light); }
+.tm-model-item .tm-model-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-model-item .tm-model-meta { color: var(--text-muted); font-size: 10px; white-space: nowrap; }
+.tm-model-family-label {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-muted);
+  padding: 8px 12px 3px; border-top: 1px solid var(--border-light);
+}
+.tm-model-family-label:first-child { border-top: none; }
+.tm-model-popular .tm-model-name { font-weight: 600; }
+.tm-model-selected { background: var(--accent-light); }
+/* Task badge styling */
+.tm-task-badge-classification { background: var(--accent); color: #fff; padding: 1px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+.tm-task-badge-feature_extraction { background: var(--golden); color: #fff; padding: 1px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+.tm-task-badge-unknown { background: var(--text-muted); color: #fff; padding: 1px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+.tm-class-list { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+/* Completed job links */
+.tm-run-link { font-size: 10px; text-decoration: none; color: var(--accent); }
+.tm-run-link:hover { text-decoration: underline; }
+</style>
+
+<div class="plugin-page">
+<!-- ── Hero ───────────────────────────────────────────────── -->
+<div class="plugin-hero" style="padding:20px 24px">
+      <h2 style="margin-bottom:6px">timm Training</h2>
+      <p style="font-size:13px;color:var(--text);line-height:1.6;margin:0">
+        Fine-tune any of 1,000+ <a href="https://huggingface.co/docs/timm" target="_blank" style="color:var(--accent)">timm</a> vision models
+        &mdash; ViTs, ResNets, EfficientNets, ConvNeXt &mdash; on your 3LC tables with per-sample metrics for data debugging and fixing.
+      </p>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px">
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="12" y="3" width="5" height="5" rx="1"/><rect x="3" y="12" width="5" height="5" rx="1"/><rect x="12" y="12" width="5" height="5" rx="1"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">1,000+ models</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Search and select from the full timm model zoo</div>
+    </div>
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 3 4-2 6 5"/><path d="M3 17h14"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">Per-sample loss</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Track individual losses to find mislabeled or hard examples</div>
+    </div>
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="7" r="1.5" fill="currentColor" stroke="none"/><circle cx="9" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="14" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="7" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="11" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.5" fill="currentColor" stroke="none"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">Embeddings</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Collect UMAP/PaCMAP embeddings for clustering in the Dashboard</div>
+    </div>
+    <div class="plugin-hero-badge plugin-hero-badge-card">
+      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3a7 7 0 0 1 0 14"/><path d="M6 17A7 7 0 0 1 6 3"/><path d="M14 7V3h4M6 13v4H2"/></svg></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">Collect mode</div>
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Run inference-only to collect metrics without training</div>
+    </div>
+  </div>
+  <div class="plugin-workflow" style="margin-top:10px">
+    <div class="plugin-workflow-step"><span class="num">1</span> Select tables</div>
+    <div class="plugin-workflow-step"><span class="num">2</span> Pick model</div>
+    <div class="plugin-workflow-step"><span class="num">3</span> Train</div>
+  </div>
+</div>
+
+<!-- ── Config bar (replaces sidebar) ──────────────────────── -->
+<div class="tm-config-bar">
+  <span class="bar-label">Config</span>
+  <select id="tm-config-select" class="form-control" onchange="tmOnConfigSelect(this.value)">
+    <option value="">New config</option>
+  </select>
+  <button class="btn btn-ghost btn-sm" onclick="tmNewConfig()">+ New</button>
+  <button class="btn btn-secondary btn-sm" id="tm-save-new-btn" onclick="tmSaveAsNew()" style="display:none">Save New</button>
+  <button class="btn btn-danger btn-sm" id="tm-delete-btn" onclick="tmDeleteConfig()" style="display:none">Delete</button>
+</div>
+
+    <!-- ── Input Tables ──────────────────────────────────── -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <div class="card-title"><span class="plugin-section-number">1</span> Input Tables</div>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label" for="tm-config-name">Config Name</label>
+          <input type="text" id="tm-config-name" class="form-control" placeholder="e.g. CIFAR-10 ResNet50">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="tm-train-url">Train Table URL</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="tm-train-url" class="form-control plugin-mono"
+                   placeholder="Paste URL or click Browse..."
+                   oninput="tmOnTrainTableChange()">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openTablePicker('tm-train-url')">Browse</button>
+          </div>
+          <div class="form-help">Select your training data table. Task type and class names are auto-detected from the table schema.</div>
+        </div>
+        <div style="display:flex;justify-content:center">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="tmSwapUrls()" title="Swap train / val URLs"
+                  style="font-size:13px;padding:1px 6px;line-height:1">&#x21C5;</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tm-val-url">Validation Table URL <span class="text-muted">(optional — uses train table if empty)</span></label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="tm-val-url" class="form-control plugin-mono"
+                   placeholder="Paste URL or click Browse...">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openTablePicker('tm-val-url')">Browse</button>
+          </div>
+          <div class="form-help">Optional validation set for tracking accuracy during training. If empty, a split of the train table is used.</div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <input type="checkbox" id="tm-use-latest">
+          <label for="tm-use-latest" style="cursor:pointer;font-size:10px">
+            Use <code>.latest()</code> at train time
+            <span class="text-muted">(resolve to newest table revision)</span>
+          </label>
+        </div>
+
+        <!-- Alias Override -->
+        <div id="tm-alias-override-area"></div>
+
+        <!-- Detected task + columns -->
+        <div id="tm-detection-area" class="plugin-form-grid">
+          <div class="form-group">
+            <label class="form-label">Detected Task</label>
+            <div>
+              <span id="tm-task-badge" class="plugin-task-badge">--</span>
+              <span id="tm-task-detail" class="text-sm text-muted" style="margin-left:6px"></span>
+            </div>
+            <div id="tm-class-names" class="tm-class-list"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Columns</label>
+            <div class="text-sm">
+              Image: <strong id="tm-image-col">--</strong>
+              &nbsp; Label: <strong id="tm-label-col">--</strong>
+              <span id="tm-num-classes" class="text-muted"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Step 3: timm Settings ─────────────────────────── -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <div class="card-title"><span class="plugin-section-number">2</span> timm Settings</div>
+      </div>
+      <div class="card-body">
+
+        <div class="plugin-form-grid">
+          <!-- Model search -->
+          <div class="form-group">
+            <label class="form-label">Model</label>
+            <div class="tm-model-search">
+              <input type="text" id="tm-model-search" class="form-control"
+                     placeholder="Search models (e.g. resnet50, vit)..."
+                     oninput="tmFilterModels()" onfocus="tmOpenModelDropdown()" autocomplete="off">
+              <div id="tm-model-dropdown" class="tm-model-dropdown"></div>
+            </div>
+            <div id="tm-model-info" class="text-sm text-muted" style="margin-top:3px"></div>
+            <div class="form-help">Search by name or family (e.g. "resnet", "vit", "efficientnet"). Popular models are shown first.</div>
+          </div>
+          <!-- Mode toggle -->
+          <div class="form-group">
+            <label class="form-label">Mode</label>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn btn-sm btn-primary" id="tm-mode-train"
+                      onclick="tmSetMode('train')">Train</button>
+              <button type="button" class="btn btn-sm btn-secondary" id="tm-mode-collect"
+                      onclick="tmSetMode('collect')">Collect</button>
+            </div>
+            <div class="text-sm text-muted" id="tm-mode-help" style="margin-top:3px">
+              Train a model with 3LC metrics collection.
+            </div>
+          </div>
+        </div>
+
+        <!-- Training params -->
+        <div id="tm-train-params">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Epochs</label>
+              <input type="number" id="tm-epochs" class="form-control" value="20" min="1" max="1000" step="1" data-param-id="epochs">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Batch Size</label>
+              <input type="number" id="tm-batch" class="form-control" value="32" min="1" max="512" step="1" data-param-id="batch_size">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Workers</label>
+              <input type="number" id="tm-workers" class="form-control" value="8" min="0" max="32" step="1" data-param-id="num_workers">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Image Size</label>
+              <input type="number" id="tm-imgsz" class="form-control" value="224" min="32" max="1024" step="32" data-param-id="image_size">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Learning Rate</label>
+              <input type="number" id="tm-lr" class="form-control" value="0.001" min="0.00001" max="1.0" step="0.0001" data-param-id="lr">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Weight Decay</label>
+              <input type="number" id="tm-wd" class="form-control" value="0.0001" min="0" max="1.0" step="0.0001" data-param-id="weight_decay">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Optimizer</label>
+              <select id="tm-optimizer" class="form-control" data-param-id="optimizer">
+                <option value="adamw">AdamW</option>
+                <option value="adam">Adam</option>
+                <option value="sgd">SGD</option>
+                <option value="lamb">LAMB</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Scheduler</label>
+              <select id="tm-scheduler" class="form-control" data-param-id="scheduler">
+                <option value="cosine">Cosine</option>
+                <option value="step">Step</option>
+                <option value="plateau">Plateau</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Warmup Epochs</label>
+              <input type="number" id="tm-warmup" class="form-control" value="3" min="0" max="50" step="1" data-param-id="warmup_epochs">
+            </div>
+          </div>
+
+          <!-- Augmentation -->
+          <div style="margin-top:10px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Auto Augment</label>
+                <select id="tm-autoaug" class="form-control" data-param-id="auto_augment"
+                        title="Automatic augmentation policy applied during training">
+                  <option value="" title="No automatic augmentation — only basic transforms (resize, flip, jitter)">None</option>
+                  <option value="rand-m9-mstd0.5" selected title="Randomly applies 2 of 14 transforms (rotate, shear, translate, etc.) at moderate intensity (magnitude 9/30)">RandAugment (m9)</option>
+                  <option value="rand-m15-mstd0.5" title="Same as RandAugment but stronger intensity (magnitude 15/30) — better for larger datasets and longer training">RandAugment (m15)</option>
+                  <option value="trivialaugment" title="Applies a single random transform at random intensity per image — simpler than RandAugment, no tuning needed, often equally effective">TrivialAugment</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Random Erasing</label>
+                <input type="number" id="tm-reprob" class="form-control" value="0.0" min="0" max="1" step="0.05" data-param-id="reprob">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">MixUp Alpha</label>
+                <input type="number" id="tm-mixup" class="form-control" value="0.0" min="0" max="1" step="0.1" data-param-id="mixup_alpha">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">CutMix Alpha</label>
+                <input type="number" id="tm-cutmix" class="form-control" value="0.0" min="0" max="1" step="0.1" data-param-id="cutmix_alpha">
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">
+              <div style="display:flex;align-items:center;gap:5px">
+                <input type="checkbox" id="tm-hflip" checked style="accent-color:var(--btn-primary-bg);width:15px;height:15px" data-param-id="hflip">
+                <label class="text-sm" style="cursor:pointer" onclick="document.getElementById('tm-hflip').click()">Horizontal Flip</label>
+              </div>
+              <div style="display:flex;align-items:center;gap:5px">
+                <input type="checkbox" id="tm-color-jitter" checked style="accent-color:var(--btn-primary-bg);width:15px;height:15px" data-param-id="color_jitter">
+                <label class="text-sm" style="cursor:pointer" onclick="document.getElementById('tm-color-jitter').click()">Color Jitter</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pretrained Model URL (fine-tune from existing checkpoint) -->
+        <div class="form-group" style="margin-top:10px">
+          <label class="form-label" for="tm-pretrained-url">Pretrained Model URL <span class="text-muted">(optional — fine-tune from existing checkpoint)</span></label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="tm-pretrained-url" class="form-control plugin-mono"
+                   placeholder="Path to .pt checkpoint (leave empty for ImageNet pretrained)">
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <input type="checkbox" id="tm-copy-model" checked>
+          <label for="tm-copy-model" style="cursor:pointer;font-size:10px">
+            Copy best model to run folder
+            <span class="text-muted">(store checkpoint alongside run data)</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Step 4: 3LC Settings ──────────────────────────── -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <div class="card-title"><span class="plugin-section-number">3</span> 3LC Settings</div>
+      </div>
+      <div class="card-body">
+        <div class="plugin-form-grid">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="tm-3lc-project">3LC Project</label>
+            <input type="text" id="tm-3lc-project" class="form-control" placeholder="Project from train table">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="tm-run-name">Run Name</label>
+            <input type="text" id="tm-run-name" class="form-control" placeholder="Auto-generated if empty">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Embeddings Dim</label>
+            <select id="tm-embed-dim" class="form-control" data-param-id="image_embeddings_dim">
+              <option value="0">Disabled</option>
+              <option value="2" selected>2D</option>
+              <option value="3">3D</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Embeddings Reducer</label>
+            <select id="tm-embed-reducer" class="form-control" data-param-id="image_embeddings_reducer">
+              <option value="umap" selected>UMAP</option>
+              <option value="pacmap">PaCMAP</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;grid-column:span 2;display:flex;align-items:center;gap:6px;padding-top:18px">
+            <input type="checkbox" id="tm-full-embed" data-param-id="write_full_embeddings">
+            <label for="tm-full-embed" style="font-size:11px;color:var(--text);cursor:pointer">Keep full (unreduced) embeddings</label>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Collection Start Epoch</label>
+            <input type="number" id="tm-collect-start" class="form-control" value="" min="1" max="1000" step="1" data-param-id="collection_epoch_start" placeholder="best only">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Collection Interval</label>
+            <input type="number" id="tm-collect-interval" class="form-control" value="1" min="1" max="100" step="1" data-param-id="collection_interval" title="Collect every N epochs from the start epoch onward. Ignored unless a start epoch is set.">
+          </div>
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="checkbox" id="tm-collect-loss" checked style="accent-color:var(--btn-primary-bg);width:15px;height:15px" data-param-id="collect_loss">
+            <label class="text-sm" style="cursor:pointer" onclick="document.getElementById('tm-collect-loss').click()">Collect Loss</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="checkbox" id="tm-sampling-weights" style="accent-color:var(--btn-primary-bg);width:15px;height:15px" data-param-id="sampling_weights">
+            <label class="text-sm" style="cursor:pointer" onclick="document.getElementById('tm-sampling-weights').click()">Sampling Weights</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="checkbox" id="tm-exclude-zero-train" style="accent-color:var(--btn-primary-bg);width:15px;height:15px" data-param-id="exclude_zero_weight_training">
+            <label class="text-sm" style="cursor:pointer" onclick="document.getElementById('tm-exclude-zero-train').click()">Exclude Zero (Train)</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="checkbox" id="tm-val-only" style="accent-color:var(--btn-primary-bg);width:15px;height:15px" data-param-id="collection_val_only">
+            <label class="text-sm" style="cursor:pointer" onclick="document.getElementById('tm-val-only').click()">Val Only Collection</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="checkbox" id="tm-disable-collection" style="accent-color:var(--btn-primary-bg);width:15px;height:15px" data-param-id="collection_disable">
+            <label class="text-sm" style="cursor:pointer" onclick="document.getElementById('tm-disable-collection').click()">Disable Collection</label>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="plugin-action-bar">
+          <button class="btn btn-primary" id="tm-train-btn" onclick="tmStartTraining()">Start timm Training</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Queue & Progress ─────────────────────────────── -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <div class="card-title">Queue &amp; Progress</div>
+      </div>
+      <div class="card-body">
+        <div id="tm-current-job" style="display:none">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span id="tm-current-label" class="text-sm" style="font-weight:600">--</span>
+            <span id="tm-current-status" class="tm-queue-status plugin-status-running">running</span>
+            <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+              <a id="tm-current-run-link" href="#" class="btn btn-sm btn-secondary" style="display:none">Open</a>
+              <button class="btn btn-danger btn-sm" id="tm-stop-btn" style="display:none" onclick="tmStopCurrentJob()">Stop</button>
+            </span>
+          </div>
+          <div id="tm-current-info" class="tm-job-info" style="margin-bottom:6px"></div>
+          <div style="margin-bottom:4px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+              <span id="tm-epoch-label" class="text-sm">Epoch 0/0</span>
+              <span id="tm-pct-label" class="text-sm" style="font-weight:600">0%</span>
+            </div>
+            <div class="plugin-progress-wrap">
+              <div id="tm-epoch-bar" class="plugin-progress-bar" style="width:0%"></div>
+            </div>
+          </div>
+          <div id="tm-timing" class="text-sm text-muted" style="margin-bottom:6px"></div>
+          <div id="tm-current-metrics" class="tm-metrics"></div>
+        </div>
+        <div id="tm-no-current" class="text-sm text-muted">No active job.</div>
+
+        <div id="tm-queue-section" style="display:none;margin-top:14px">
+          <div class="text-sm" style="font-weight:600;margin-bottom:6px">Pending</div>
+          <div id="tm-queue-list"></div>
+        </div>
+
+        <div id="tm-completed-section" style="display:none;margin-top:14px">
+          <div class="text-sm" style="font-weight:600;margin-bottom:6px">Recent</div>
+          <div id="tm-completed-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Log ──────────────────────────────────────────── -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <div class="card-title">Log</div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div id="tm-log" class="plugin-log-area tm-log-area"></div>
+      </div>
+    </div>
+
+</div>
+
+<script>
+// timm UI — SocketIO handlers, form logic, config management
+
+// ── State ─────────────────────────────────────────────────────
+var tmSocket = null;
+var tmCurrentConfigId = null;
+var tmModelsCache = null;       // [{name, family, popular}]
+var tmDetectedTask = null;
+var tmDetectedImageCol = "";
+var tmDetectedLabelCol = "";
+var tmCurrentMode = "train";
+var _tmAutoSaveTimer = null;
+var _tmCurrentJobId = null;
+var _tmSavedSnapshot = null;
+
+var _TM_STORAGE_KEY = "timm_selected_config";
+
+var TM_COMPUTE_URL = PLUGIN_API.getConfig("compute_service_url");
+
+// ── Helpers ───────────────────────────────────────────────────
+function _tmFetch(path, opts) {
+  opts = opts || {};
+  // The venv worker can be cold on first use — it imports torch and builds the
+  // timm model registry on startup, which can exceed authFetch's default 10s
+  // abort and surface as "AbortError: signal is aborted without reason". Give
+  // worker calls a more generous default; callers may still override per-request.
+  if (opts.timeout === undefined) opts.timeout = 60000;
+  return PLUGIN_API.authFetch(TM_COMPUTE_URL + path, opts);
+}
+
+function _tmFetchJson(path, opts) {
+  return _tmFetch(path, opts).then(function(r) { return r.json(); });
+}
+
+function _tmPost(path, body) {
+  return _tmFetchJson(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+function _esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+function _tmSetTaskBadge(task, detail) {
+  var badge = document.getElementById("tm-task-badge");
+  var detailEl = document.getElementById("tm-task-detail");
+  badge.textContent = task === "error" ? "error" : task.replace(/_/g, " ");
+  badge.className = "tm-task-badge-" + (task === "error" ? "unknown" : task);
+  detailEl.textContent = detail || "";
+}
+
+function _tmFmtDuration(sec) {
+  if (sec < 60) return Math.round(sec) + "s";
+  if (sec < 3600) return Math.floor(sec / 60) + "m " + Math.round(sec % 60) + "s";
+  return Math.floor(sec / 3600) + "h " + Math.floor((sec % 3600) / 60) + "m";
+}
+
+// ── SocketIO Connection ──────────────────────────────────────
+function tmInitSocket() {
+  var io = PLUGIN_API.libs.io;
+  if (!io) { tmLog("SocketIO not available"); return; }
+
+  tmSocket = io(TM_COMPUTE_URL + "/timm", {
+    transports: ["websocket", "polling"],
+    reconnection: true,
+    reconnectionDelay: 2000,
+  });
+
+  tmSocket.on("connect", function() { tmLog("Connected to Compute Service"); });
+  tmSocket.on("disconnect", function() { tmLog("Disconnected"); });
+  tmSocket.on("connect_error", function() {});
+
+  tmSocket.on("epoch_progress", function(data) {
+    tmShowCurrentJob(data.job_id);
+    var m = data.metrics || {};
+    var batch = m.batch || 0;
+    var totalBatches = m.total_batches || 0;
+    var phase = m.phase || "";
+    var timing = data.timing || {};
+
+    var epochFraction = totalBatches > 0 ? (batch / totalBatches) : 1;
+    var overallPct = ((data.epoch - 1 + epochFraction) / data.total_epochs) * 100;
+    overallPct = Math.min(overallPct, 100);
+    document.getElementById("tm-epoch-bar").style.width = overallPct.toFixed(1) + "%";
+    document.getElementById("tm-pct-label").textContent = Math.round(overallPct) + "%";
+
+    if (batch && totalBatches && phase) {
+      var phaseLabel = phase === "val" ? "Val" : "Train";
+      document.getElementById("tm-epoch-label").textContent =
+        "Epoch " + data.epoch + "/" + data.total_epochs + " · " + phaseLabel + " batch " + batch + "/" + totalBatches;
+    } else {
+      document.getElementById("tm-epoch-label").textContent =
+        "Epoch " + data.epoch + "/" + data.total_epochs;
+    }
+
+    var parts = [];
+    if (timing.elapsed_s !== undefined) parts.push("Elapsed: " + _tmFmtDuration(timing.elapsed_s));
+    if (timing.eta_s !== undefined) parts.push("ETA: " + _tmFmtDuration(timing.eta_s));
+    if (timing.avg_epoch_s !== undefined) parts.push("Per epoch: " + _tmFmtDuration(timing.avg_epoch_s));
+    document.getElementById("tm-timing").innerHTML = parts.join(' &nbsp;|&nbsp; ');
+
+    tmRenderMetrics(m);
+  });
+
+  tmSocket.on("job_status", function(data) {
+    tmShowCurrentJob(data.job_id);
+    tmLog("[" + data.job_id.slice(0, 8) + "] " + data.status + ": " + data.message);
+    // Show processing badge during collection phase
+    if (data.status === "collecting" || (data.message && data.message.indexOf("Collecting") === 0)) {
+      var metricsEl = document.getElementById("tm-current-metrics");
+      if (metricsEl) {
+        metricsEl.innerHTML = '<span class="plugin-status-running" style="display:inline-block;padding:3px 10px;border-radius:3px;font-size:10px;font-weight:600">' +
+          _esc(data.message || "Collecting metrics...") + '</span>';
+      }
+      document.getElementById("tm-epoch-label").textContent = "Collecting metrics";
+      document.getElementById("tm-epoch-bar").style.width = "100%";
+      document.getElementById("tm-pct-label").textContent = "";
+    }
+  });
+
+  tmSocket.on("job_completed", function(data) {
+    tmLog("Job completed! Project: " + (data.tlc_project_name || "(unknown)"));
+    tmFinishCurrentJob("completed", data.tlc_project_name);
+    tmLoadConfigs();
+  });
+
+  tmSocket.on("job_failed", function(data) {
+    tmLog("Job FAILED: " + data.error);
+    tmFinishCurrentJob("failed", null);
+  });
+
+  tmSocket.on("queue_update", function(data) {
+    tmRenderQueue(data);
+  });
+}
+
+// ── Logging ──────────────────────────────────────────────────
+function tmLog(msg) {
+  var el = document.getElementById("tm-log");
+  if (!el) return;
+  var line = document.createElement("div");
+  line.textContent = "[" + new Date().toLocaleTimeString() + "] " + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Mode Toggle ─────────────────────────────────────────────
+function tmSetMode(mode) {
+  tmCurrentMode = mode;
+  var trainBtn = document.getElementById("tm-mode-train");
+  var collectBtn = document.getElementById("tm-mode-collect");
+  var helpEl = document.getElementById("tm-mode-help");
+  var startBtn = document.getElementById("tm-train-btn");
+  var trainParams = document.getElementById("tm-train-params");
+
+  if (mode === "collect") {
+    trainBtn.className = "btn btn-sm btn-secondary";
+    collectBtn.className = "btn btn-sm btn-primary";
+    helpEl.textContent = "Run inference and collect embeddings + predictions (no training).";
+    startBtn.textContent = "Start Collection";
+    trainParams.style.display = "none";
+  } else {
+    trainBtn.className = "btn btn-sm btn-primary";
+    collectBtn.className = "btn btn-sm btn-secondary";
+    helpEl.textContent = "Train a model with 3LC metrics collection.";
+    startBtn.textContent = "Start timm Training";
+    trainParams.style.display = "";
+  }
+}
+
+function _tmEnforceTaskMode(task) {
+  var trainBtn = document.getElementById("tm-mode-train");
+  if (task === "feature_extraction") {
+    tmSetMode("collect");
+    trainBtn.disabled = true;
+    trainBtn.title = "No label column — training not available for this dataset";
+  } else {
+    trainBtn.disabled = false;
+    trainBtn.title = "";
+  }
+}
+
+// ── Model Search ─────────────────────────────────────────────
+function tmLoadModels() {
+  if (tmModelsCache !== null) return;
+  _tmFetchJson("/api/plugins/timm/models")
+    .then(function(data) {
+      tmModelsCache = Array.isArray(data) ? data : [];
+      tmLog("Loaded " + tmModelsCache.length + " timm models");
+    })
+    .catch(function(e) { tmLog("Failed to load models: " + e); });
+}
+
+function tmOpenModelDropdown() {
+  if (!tmModelsCache) { tmLoadModels(); return; }
+  tmFilterModels();
+}
+
+function tmFilterModels() {
+  var dd = document.getElementById("tm-model-dropdown");
+  var query = document.getElementById("tm-model-search").value.trim().toLowerCase();
+
+  if (!tmModelsCache) { dd.classList.remove("open"); return; }
+
+  var filtered = tmModelsCache;
+  if (query) {
+    filtered = tmModelsCache.filter(function(m) {
+      return m.name.toLowerCase().indexOf(query) !== -1 || m.family.toLowerCase().indexOf(query) !== -1;
+    });
+  }
+
+  // Limit display
+  var popular = filtered.filter(function(m) { return m.popular; });
+  var others = filtered.filter(function(m) { return !m.popular; });
+  var maxOthers = query ? 50 : 20;
+  if (others.length > maxOthers) others = others.slice(0, maxOthers);
+
+  dd.innerHTML = "";
+
+  if (popular.length > 0 && !query) {
+    var label = document.createElement("div");
+    label.className = "tm-model-family-label";
+    label.textContent = "POPULAR";
+    dd.appendChild(label);
+    popular.forEach(function(m) { dd.appendChild(_tmModelItem(m, true)); });
+  }
+
+  // Group others by family
+  var families = {};
+  (query ? filtered : others).forEach(function(m) {
+    if (!query && m.popular) return;
+    var f = m.family;
+    if (!families[f]) families[f] = [];
+    families[f].push(m);
+  });
+
+  Object.keys(families).sort().forEach(function(f) {
+    var label = document.createElement("div");
+    label.className = "tm-model-family-label";
+    label.textContent = f.toUpperCase();
+    dd.appendChild(label);
+    families[f].forEach(function(m) { dd.appendChild(_tmModelItem(m, false)); });
+  });
+
+  dd.classList.add("open");
+}
+
+function _tmModelItem(m, isPopular) {
+  var div = document.createElement("div");
+  var selected = document.getElementById("tm-model-search").value === m.name;
+  div.className = "tm-model-item" + (isPopular ? " tm-model-popular" : "") + (selected ? " tm-model-selected" : "");
+
+  var nameSpan = document.createElement("span");
+  nameSpan.className = "tm-model-name";
+  nameSpan.textContent = m.name;
+  div.appendChild(nameSpan);
+
+  // Meta info (image size, dataset)
+  var parts = [];
+  if (m.image_size) parts.push(m.image_size + "px");
+  if (m.dataset) parts.push(m.dataset);
+  if (parts.length > 0) {
+    var metaSpan = document.createElement("span");
+    metaSpan.className = "tm-model-meta";
+    metaSpan.textContent = parts.join(" · ");
+    div.appendChild(metaSpan);
+  }
+
+  // Tooltip with full details
+  var tip = m.name;
+  if (m.image_size) tip += "\nInput: " + m.image_size + "×" + m.image_size;
+  if (m.num_classes) tip += "\nClasses: " + m.num_classes;
+  if (m.dataset) tip += "\nPretrained: " + m.dataset;
+  tip += "\nFamily: " + m.family;
+  div.title = tip;
+
+  div.onclick = function() { tmSelectModel(m.name); };
+  return div;
+}
+
+function tmSelectModel(name) {
+  document.getElementById("tm-model-search").value = name;
+  document.getElementById("tm-model-dropdown").classList.remove("open");
+
+  // Fetch model info for image size
+  _tmFetchJson("/api/plugins/timm/models/" + encodeURIComponent(name) + "/info")
+    .then(function(info) {
+      if (info.error) {
+        document.getElementById("tm-model-info").textContent = "Error: " + info.error;
+        return;
+      }
+      document.getElementById("tm-model-info").textContent =
+        info.num_params_m + "M params · " + info.image_size + "px · " + info.num_features + "d embeddings";
+      document.getElementById("tm-imgsz").value = info.image_size || 224;
+    })
+    .catch(function(e) {
+      document.getElementById("tm-model-info").textContent = "Error: " + e;
+    });
+}
+
+// Close dropdown on outside click
+document.addEventListener("click", function(e) {
+  var dd = document.getElementById("tm-model-dropdown");
+  var search = document.getElementById("tm-model-search");
+  if (dd && !dd.contains(e.target) && e.target !== search) {
+    dd.classList.remove("open");
+  }
+});
+
+// ── Configs ─────────────────────────────────────────────────
+function tmLoadConfigs() {
+  _tmFetchJson("/api/plugins/timm/configs")
+    .then(function(data) {
+      if (data.error) { tmLog("Error loading configs: " + data.error); return; }
+      tmRenderConfigsList(Array.isArray(data) ? data : []);
+    })
+    .catch(function(e) {
+      tmLog("Error loading configs: " + String(e));
+    });
+}
+
+function tmRenderConfigsList(configs) {
+  var sel = document.getElementById("tm-config-select");
+  var currentVal = tmCurrentConfigId || "";
+  sel.innerHTML = '<option value="">New config</option>';
+  configs.forEach(function(c) {
+    var opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = (c.name || "Untitled") + " — " + _esc(c.model_name || "?") + " · " + _esc(c.task_type || "?");
+    if (c.id === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  document.getElementById("tm-delete-btn").style.display = currentVal ? "" : "none";
+}
+
+function tmOnConfigSelect(val) {
+  if (val) {
+    tmLoadConfig(val);
+  } else {
+    tmNewConfig();
+  }
+}
+
+function tmNewConfig() {
+  tmCurrentConfigId = null;
+  localStorage.removeItem(_TM_STORAGE_KEY);
+  document.getElementById("tm-config-select").value = "";
+  document.getElementById("tm-config-name").value = "";
+  document.getElementById("tm-run-name").value = "";
+  document.getElementById("tm-3lc-project").value = "";
+  document.getElementById("tm-train-url").value = "";
+  document.getElementById("tm-val-url").value = "";
+  document.getElementById("tm-use-latest").checked = false;
+  document.getElementById("tm-model-search").value = "";
+  document.getElementById("tm-model-info").textContent = "";
+  document.getElementById("tm-task-badge").textContent = "--";
+  document.getElementById("tm-task-badge").className = "plugin-task-badge";
+  document.getElementById("tm-task-detail").textContent = "";
+  document.getElementById("tm-image-col").textContent = "--";
+  document.getElementById("tm-label-col").textContent = "--";
+  document.getElementById("tm-num-classes").textContent = "";
+  document.getElementById("tm-class-names").textContent = "";
+  tmDetectedTask = null;
+  tmDetectedImageCol = "";
+  tmDetectedLabelCol = "";
+  tmSetMode("train");
+  _tmEnforceTaskMode("");
+  document.getElementById("tm-save-new-btn").style.display = "none";
+  document.getElementById("tm-delete-btn").style.display = "none";
+  tmLoadConfigs();
+}
+
+function tmLoadConfig(configId) {
+  _tmFetchJson("/api/plugins/timm/configs/" + configId)
+    .then(function(c) {
+      if (c.error) { tmLog("Error: " + c.error); return; }
+      tmCurrentConfigId = c.id;
+      localStorage.setItem(_TM_STORAGE_KEY, c.id);
+      document.getElementById("tm-config-name").value = c.name || "";
+      document.getElementById("tm-run-name").value = c.run_name || "";
+      document.getElementById("tm-3lc-project").value = c.project_name || "";
+      document.getElementById("tm-train-url").value = c.train_table_url || "";
+      document.getElementById("tm-val-url").value = c.val_table_url || "";
+      document.getElementById("tm-use-latest").checked = !!c.use_latest;
+      document.getElementById("tm-model-search").value = c.model_name || "";
+      document.getElementById("tm-task-badge").textContent = c.task_type || "--";
+      document.getElementById("tm-image-col").textContent = c.image_column || "--";
+      document.getElementById("tm-label-col").textContent = c.label_column || "--";
+      tmDetectedTask = c.task_type || null;
+      tmDetectedImageCol = c.image_column || "";
+      tmDetectedLabelCol = c.label_column || "";
+
+      tmSetMode(c.mode || "train");
+      _tmEnforceTaskMode(c.task_type || "");
+
+      // Restore params
+      var params = c.params || {};
+      var paramEls = document.querySelectorAll("[data-param-id]");
+      for (var i = 0; i < paramEls.length; i++) {
+        var el = paramEls[i];
+        var val = params[el.dataset.paramId];
+        if (val !== undefined) {
+          if (el.type === "checkbox") el.checked = val === true || val === "true";
+          else el.value = val;
+        }
+      }
+
+      // Restore pretrained model and copy checkbox
+      document.getElementById("tm-pretrained-url").value = params.pretrained_model_url || "";
+      document.getElementById("tm-copy-model").checked = params.copy_model_to_run !== false;
+
+      if (c.model_name) tmSelectModel(c.model_name);
+      document.getElementById("tm-config-select").value = c.id;
+      document.getElementById("tm-save-new-btn").style.display = "";
+      document.getElementById("tm-delete-btn").style.display = "";
+
+      // Fetch alias overrides for loaded config's train URL
+      if (c.train_table_url) {
+        _tlcFetchAndPopulateOverrides("tm", c.train_table_url,
+          (c.params || {})._alias_overrides || null);
+      }
+
+      tmLoadConfigs();
+    })
+    .catch(function(e) { tmLog("Error loading config: " + e); });
+}
+
+function tmDeleteConfig() {
+  if (!tmCurrentConfigId) return;
+  if (!confirm("Delete this timm config?")) return;
+  _tmPost("/api/plugins/timm/configs/" + tmCurrentConfigId + "/delete", {})
+    .then(function() { tmLog("Config deleted."); tmNewConfig(); })
+    .catch(function(e) { tmLog("Error: " + e); });
+}
+
+function tmSaveAsNew() {
+  var data = tmCollectFormData();
+  data.id = "";
+  if (!data.name.trim()) { alert("Please enter a config name."); return; }
+  _tmPost("/api/plugins/timm/configs", data)
+    .then(function(resp) {
+      if (resp.error) { alert("Error: " + resp.error); return; }
+      tmCurrentConfigId = resp.id;
+      localStorage.setItem(_TM_STORAGE_KEY, resp.id);
+      document.getElementById("tm-delete-btn").style.display = "";
+      tmLoadConfigs();
+      tmLog("Saved as new config.");
+    })
+    .catch(function(e) { alert("Save failed: " + e); });
+}
+
+function tmCollectFormData() {
+  var params = {};
+  var paramEls = document.querySelectorAll("[data-param-id]");
+  for (var i = 0; i < paramEls.length; i++) {
+    var el = paramEls[i];
+    params[el.dataset.paramId] = el.type === "checkbox" ? el.checked : el.value;
+  }
+
+  // Store alias overrides inside params (so they persist with the config)
+  var _tmAliasOv = _tlcGetAliasOverrides("tm");
+  if (_tmAliasOv.enabled && _tmAliasOv.overrides.length) params._alias_overrides = _tmAliasOv;
+
+  // Model fine-tuning and checkpoint params
+  var pretrainedUrl = document.getElementById("tm-pretrained-url").value.trim();
+  if (pretrainedUrl) params.pretrained_model_url = pretrainedUrl;
+  params.copy_model_to_run = document.getElementById("tm-copy-model").checked;
+
+  return {
+    id: tmCurrentConfigId || "",
+    name: document.getElementById("tm-config-name").value.trim(),
+    run_name: document.getElementById("tm-run-name").value.trim(),
+    project_name: document.getElementById("tm-3lc-project").value.trim(),
+    model_name: document.getElementById("tm-model-search").value.trim(),
+    mode: tmCurrentMode,
+    task_type: tmDetectedTask || "",
+    train_table_url: document.getElementById("tm-train-url").value.trim(),
+    val_table_url: document.getElementById("tm-val-url").value.trim(),
+    use_latest: document.getElementById("tm-use-latest").checked,
+    image_column: tmDetectedImageCol,
+    label_column: tmDetectedLabelCol,
+    params: params,
+  };
+}
+
+// ── Task Detection ───────────────────────────────────────────
+var _tmDetectDebounce = null;
+
+function tmOnTrainTableChange() {
+  clearTimeout(_tmDetectDebounce);
+  _tmDetectDebounce = setTimeout(function() {
+    var url = document.getElementById("tm-train-url").value.trim();
+    if (!url) {
+      document.getElementById("tm-task-badge").textContent = "--";
+      document.getElementById("tm-task-detail").textContent = "";
+      document.getElementById("tm-image-col").textContent = "--";
+      document.getElementById("tm-label-col").textContent = "--";
+      document.getElementById("tm-num-classes").textContent = "";
+      tmDetectedTask = null;
+      return;
+    }
+    document.getElementById("tm-task-badge").textContent = "detecting...";
+
+    _tmPost("/api/plugins/timm/detect-task", { url: url })
+      .then(function(data) {
+        if (data.error) {
+          _tmSetTaskBadge("error", data.error);
+          return;
+        }
+        tmDetectedTask = data.task;
+        tmDetectedImageCol = data.image_column || "";
+        tmDetectedLabelCol = data.label_column || "";
+
+        _tmSetTaskBadge(data.task, data.num_classes ? data.num_classes + " classes" : "");
+        document.getElementById("tm-image-col").textContent = data.image_column || "--";
+        document.getElementById("tm-label-col").textContent = data.label_column || "--";
+        document.getElementById("tm-num-classes").textContent = data.num_classes ? " (" + data.num_classes + " classes)" : "";
+
+        // Show class names
+        var classEl = document.getElementById("tm-class-names");
+        if (data.class_names && data.class_names.length > 0 && data.class_names.length <= 30) {
+          classEl.textContent = data.class_names.join(", ");
+        } else if (data.class_names && data.class_names.length > 30) {
+          classEl.textContent = data.class_names.slice(0, 30).join(", ") + " … +" + (data.class_names.length - 30) + " more";
+        } else {
+          classEl.textContent = "";
+        }
+
+        // Auto-set mode based on task: feature_extraction → collect only
+        _tmEnforceTaskMode(data.task);
+
+        if (data.project_name) {
+          var projEl = document.getElementById("tm-3lc-project");
+          if (!projEl.value.trim()) projEl.value = data.project_name;
+        }
+      })
+      .catch(function(e) {
+        _tmSetTaskBadge("error", String(e));
+      });
+  }, 500);
+}
+
+// ── Training ─────────────────────────────────────────────────
+function tmStartTraining() {
+  var data = tmCollectFormData();
+  if (!data.train_table_url.trim()) { alert("Please select a train table."); return; }
+  if (!data.model_name) { alert("Please select a model."); return; }
+  if (!data.name.trim()) {
+    var d = new Date();
+    var dateStr = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    var model = (data.model_name || "timm").replace(/\..*$/, "");
+    data.name = dateStr + " " + model + " " + (data.task_type || "train");
+  }
+
+  _tmPost("/api/plugins/timm/configs", data)
+    .then(function(resp) {
+      if (resp.error) { tmLog("Error saving: " + resp.error); return; }
+      tmCurrentConfigId = resp.id;
+      localStorage.setItem(_TM_STORAGE_KEY, resp.id);
+      tmLoadConfigs();
+
+      _tmPost("/api/plugins/timm/run", { config_id: resp.id })
+        .then(function(trainResp) {
+          if (trainResp.error) { tmLog("Error: " + trainResp.error); return; }
+          tmLog("timm job submitted: " + trainResp.job_id);
+          tmShowCurrentJob(trainResp.job_id, _tmJobLabel(data));
+        })
+        .catch(function(e) { tmLog("Error starting: " + e); });
+    })
+    .catch(function(e) { tmLog("Error: " + e); });
+}
+
+function tmStopCurrentJob() {
+  if (!_tmCurrentJobId) { console.warn("tmStopCurrentJob: no _tmCurrentJobId"); return; }
+  CancelJob.show(_tmCurrentJobId, {
+    pluginId: 'timm',
+    onDone: function(result) {
+      tmLog(result.deleted ? "Job stopped and run deleted." : "Job stopped.");
+      tmLoadQueue();
+    }
+  });
+}
+
+function tmSwapUrls() {
+  var t = document.getElementById("tm-train-url");
+  var v = document.getElementById("tm-val-url");
+  var tmp = t.value; t.value = v.value; v.value = tmp;
+  tmOnTrainTableChange();
+}
+
+// ── Queue Rendering ──────────────────────────────────────────
+function tmLoadQueue() {
+  // The per-plugin /queue endpoint was removed in the run_job migration; the
+  // generic Queue & Progress panel (host) now owns queue + cancel. Live training
+  // updates still arrive via the epoch_progress / job_status socket handlers.
+  // No-op kept so the existing call sites stay valid.
+}
+
+// Build a human label for the current-job panel from the submitted form data.
+function _tmJobLabel(data) {
+  var modeLabel = data.mode === "collect" ? "Collect" : "Train";
+  var name = (data.name || data.run_name || "Job").trim();
+  return name + " (" + (data.model_name || "timm") + " · " + modeLabel + ")";
+}
+
+// Reveal the current-job panel. The backend no longer emits the legacy
+// queue_update event (removed in the run_job migration), so the live
+// epoch_progress / job_status socket handlers drive visibility instead — every
+// one of those events carries data.job_id.
+function tmShowCurrentJob(jobId, label) {
+  if (jobId) { _tmCurrentJobId = jobId; }
+  var currentDiv = document.getElementById("tm-current-job");
+  var noCurrentDiv = document.getElementById("tm-no-current");
+  var firstReveal = currentDiv.style.display === "none" || currentDiv.style.display === "";
+  if (firstReveal) {
+    currentDiv.style.display = "block";
+    noCurrentDiv.style.display = "none";
+    var statusEl = document.getElementById("tm-current-status");
+    statusEl.textContent = "running";
+    statusEl.className = "tm-queue-status plugin-status-running";
+    document.getElementById("tm-stop-btn").style.display = "inline-block";
+  }
+  if (label) { document.getElementById("tm-current-label").textContent = label; }
+}
+
+// Mark the current-job panel terminal (completed / failed / cancelled).
+function tmFinishCurrentJob(status, projectName) {
+  var statusEl = document.getElementById("tm-current-status");
+  statusEl.textContent = status;
+  statusEl.className = "tm-queue-status plugin-status-" + status;
+  document.getElementById("tm-stop-btn").style.display = "none";
+  var runLinkEl = document.getElementById("tm-current-run-link");
+  if (runLinkEl) {
+    if (projectName) {
+      runLinkEl.href = "/projects/" + encodeURIComponent(projectName);
+      runLinkEl.style.display = "inline";
+    } else {
+      runLinkEl.style.display = "none";
+    }
+  }
+  _tmCurrentJobId = null;
+}
+
+function tmRenderQueue(data) {
+  var currentDiv = document.getElementById("tm-current-job");
+  var noCurrentDiv = document.getElementById("tm-no-current");
+  var stopBtn = document.getElementById("tm-stop-btn");
+
+  if (data.current) {
+    currentDiv.style.display = "block";
+    noCurrentDiv.style.display = "none";
+    _tmCurrentJobId = data.current.id;
+    var modeLabel = data.current.mode === "collect" ? "Collect" : "Train";
+    document.getElementById("tm-current-label").textContent =
+      (data.current.tlc_run_name || data.current.config_name || "Job") + " (" + data.current.model_name + " · " + modeLabel + ")";
+    var statusEl = document.getElementById("tm-current-status");
+    statusEl.textContent = data.current.status;
+    statusEl.className = "tm-queue-status plugin-status-" + data.current.status;
+    stopBtn.style.display = data.current.status === "running" ? "inline-block" : "none";
+    // Populate progress bar / epoch info from HTTP data so it's correct on page load
+    // (SocketIO epoch_progress will keep it live afterwards)
+    var p = data.current.progress || {};
+    if (p.epoch && p.total_epochs) {
+      var m = p.metrics || {};
+      var batch = m.batch || 0;
+      var totalBatches = m.total_batches || 0;
+      var phase = m.phase || "";
+      var epochFraction = totalBatches > 0 ? (batch / totalBatches) : 1;
+      var overallPct = Math.min(((p.epoch - 1 + epochFraction) / p.total_epochs) * 100, 100);
+      document.getElementById("tm-epoch-bar").style.width = overallPct.toFixed(1) + "%";
+      document.getElementById("tm-pct-label").textContent = Math.round(overallPct) + "%";
+      if (batch && totalBatches && phase) {
+        var phaseLabel = phase === "val" ? "Val" : "Train";
+        document.getElementById("tm-epoch-label").textContent =
+          "Epoch " + p.epoch + "/" + p.total_epochs + " · " + phaseLabel + " batch " + batch + "/" + totalBatches;
+      } else {
+        document.getElementById("tm-epoch-label").textContent = "Epoch " + p.epoch + "/" + p.total_epochs;
+      }
+      var timing = p.timing || {};
+      var parts = [];
+      if (timing.elapsed_s !== undefined) parts.push("Elapsed: " + _tmFmtDuration(timing.elapsed_s));
+      if (timing.eta_s !== undefined) parts.push("ETA: " + _tmFmtDuration(timing.eta_s));
+      if (timing.avg_epoch_s !== undefined) parts.push("Per epoch: " + _tmFmtDuration(timing.avg_epoch_s));
+      document.getElementById("tm-timing").innerHTML = parts.join(' &nbsp;|&nbsp; ');
+      tmRenderMetrics(m);
+    } else if (p.collecting_status) {
+      document.getElementById("tm-epoch-label").textContent = "Collecting metrics";
+      document.getElementById("tm-epoch-bar").style.width = "100%";
+      document.getElementById("tm-pct-label").textContent = "";
+    }
+    // Show "View Run" link if run_url is available (even while running)
+    var runLinkEl = document.getElementById("tm-current-run-link");
+    if (runLinkEl) {
+      if (data.current.tlc_project_name) {
+        runLinkEl.href = "/projects/" + encodeURIComponent(data.current.tlc_project_name);
+        runLinkEl.style.display = "inline";
+      } else {
+        runLinkEl.style.display = "none";
+      }
+    }
+  } else {
+    currentDiv.style.display = "none";
+    noCurrentDiv.style.display = "block";
+    _tmCurrentJobId = null;
+    stopBtn.style.display = "none";
+  }
+
+  // Queued + completed rendering follows same pattern as YOLO
+  var queueSection = document.getElementById("tm-queue-section");
+  var queueList = document.getElementById("tm-queue-list");
+  if (data.queued && data.queued.length > 0) {
+    queueSection.style.display = "block";
+    queueList.innerHTML = "";
+    data.queued.forEach(function(j) {
+      var item = document.createElement("div");
+      item.className = "tm-queue-item";
+      item.innerHTML = '<span class="tm-queue-status plugin-status-queued">queued</span>' +
+        '<span style="flex:1">' + _esc(j.tlc_run_name || j.config_name) + '</span>' +
+        '<button class="btn btn-ghost btn-sm" onclick="tmCancelJob(\'' + j.id + '\')" style="color:var(--danger-color)">Cancel</button>';
+      queueList.appendChild(item);
+    });
+  } else {
+    queueSection.style.display = "none";
+  }
+
+  var completedSection = document.getElementById("tm-completed-section");
+  var completedList = document.getElementById("tm-completed-list");
+  if (data.completed && data.completed.length > 0) {
+    completedSection.style.display = "block";
+    completedList.innerHTML = "";
+    data.completed.slice().reverse().forEach(function(j) {
+      var item = document.createElement("div");
+      item.className = "tm-queue-item";
+      var statusClass = j.status === "completed" ? "plugin-status-completed" :
+                        j.status === "failed" ? "plugin-status-failed" : "plugin-status-" + j.status;
+      var runLink = "";
+      if (j.tlc_project_name) {
+        runLink = ' <a class="btn btn-sm btn-secondary" href="/projects/' + encodeURIComponent(j.tlc_project_name) +
+                  '">Open</a>';
+      }
+      var errorMsg = j.error ? '<div style="font-size:10px;color:var(--danger-color);margin-top:2px">' + _esc(j.error) + '</div>' : "";
+      // Show key metrics for completed jobs
+      var metricsHtml = "";
+      var pm = (j.progress || {}).metrics || {};
+      if (j.status === "completed" && pm.val_acc !== undefined) {
+        metricsHtml = '<span class="text-sm text-muted" style="white-space:nowrap">' +
+          'val_acc ' + Number(pm.val_acc).toFixed(1) + '%' +
+          (pm.val_loss !== undefined ? ' · loss ' + Number(pm.val_loss).toFixed(3) : '') + '</span>';
+      }
+      item.innerHTML =
+        '<span class="tm-queue-status ' + statusClass + '">' + j.status + '</span>' +
+        '<span style="flex:1;min-width:0"><span style="font-size:11px">' + _esc(j.tlc_run_name || j.config_name) +
+        '</span> <span class="text-muted" style="font-size:10px">(' + _esc(j.model_name) + ')</span>' +
+        runLink + errorMsg + '</span>' + metricsHtml;
+      completedList.appendChild(item);
+    });
+  } else {
+    completedSection.style.display = "none";
+  }
+}
+
+function tmCancelJob(jobId) {
+  _tmPost("/api/plugins/jobs/" + jobId + "/cancel", {})
+    .then(function(r) { if (r.cancelled) tmLog("Job cancelled."); })
+    .catch(function(e) { tmLog("Cancel error: " + e); });
+}
+
+// ── Metrics Rendering ────────────────────────────────────────
+function tmRenderMetrics(m) {
+  var container = document.getElementById("tm-current-metrics");
+  if (!container) return;
+  var skip = { phase: 1, batch: 1, total_batches: 1, batch_frac: 1 };
+  // Metrics that are percentages (append %)
+  var pctKeys = { val_acc: 1, train_acc: 1 };
+  // Preferred display order
+  var order = ["train_loss", "val_loss", "train_acc", "val_acc", "lr"];
+  var keys = order.filter(function(k) { return m[k] !== undefined; });
+  // Add any remaining keys not in the preferred order
+  Object.keys(m).forEach(function(k) {
+    if (!skip[k] && typeof m[k] === "number" && keys.indexOf(k) === -1) keys.push(k);
+  });
+
+  var html = "";
+  keys.forEach(function(k) {
+    var v = m[k];
+    var val;
+    if (pctKeys[k]) {
+      val = v.toFixed(1) + "%";
+    } else if (k === "lr") {
+      val = v.toExponential(1);
+    } else if (v < 0.01 && v > 0) {
+      val = v.toExponential(2);
+    } else {
+      val = v < 1 ? v.toFixed(4) : v.toFixed(2);
+    }
+    html += '<div class="plugin-metric-card"><div class="plugin-metric-value">' + val + '</div>' +
+            '<div class="plugin-metric-label">' + _esc(k.replace(/_/g, " ")) + '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+// ── Auto-save ───────────────────────────────────────────────
+function tmScheduleAutoSave() {
+  clearTimeout(_tmAutoSaveTimer);
+  if (!tmCurrentConfigId) return;
+  _tmAutoSaveTimer = setTimeout(function() {
+    var data = tmCollectFormData();
+    if (!data.name.trim()) return;
+    _tmPost("/api/plugins/timm/configs", data)
+      .then(function(resp) {
+        if (!resp.error) tmLoadConfigs();
+      })
+      .catch(function() {});
+  }, 1200);
+}
+
+function _tmBindAutoSave() {
+  // Bind auto-save to all form inputs
+  var inputs = document.querySelectorAll("#tm-config-name, #tm-run-name, #tm-3lc-project, #tm-model-search, [data-param-id]");
+  for (var i = 0; i < inputs.length; i++) {
+    inputs[i].addEventListener("input", tmScheduleAutoSave);
+    inputs[i].addEventListener("change", tmScheduleAutoSave);
+  }
+  document.getElementById("tm-use-latest").addEventListener("change", tmScheduleAutoSave);
+}
+
+
+// ── Alias Override Init ───────────────────────────────────────
+(function() {
+  document.getElementById("tm-alias-override-area").innerHTML =
+    _tlcAliasOverrideHtml("tm");
+  _tlcBindAliasOverrideToggle("tm");
+
+  // Fetch aliases when train table URL changes
+  var _tmAliasDebounce = null;
+  var _origTmTrainChange = window.tmOnTrainTableChange;
+  window.tmOnTrainTableChange = function() {
+    _origTmTrainChange();
+    clearTimeout(_tmAliasDebounce);
+    _tmAliasDebounce = setTimeout(function() {
+      var url = document.getElementById("tm-train-url").value.trim();
+      _tlcFetchAndPopulateOverrides("tm", url);
+    }, 500);
+  };
+})();
+
+// ── Init ─────────────────────────────────────────────────────
+(function() {
+  tmInitSocket();
+  tmLoadModels();
+  tmLoadConfigs();
+  tmLoadQueue();
+  _tmBindAutoSave();
+
+  // Pre-fill from URL params (action buttons use action_param_names: train, val)
+  var _urlParams = new URLSearchParams(window.location.search);
+  var _trainParam = _urlParams.get('train') || '';
+  var _valParam = _urlParams.get('val') || '';
+  var _projectParam = _urlParams.get('project') || '';
+
+  // Also check generic context (table= params)
+  var ctx = (typeof PLUGIN_API !== 'undefined' && PLUGIN_API.context) ? PLUGIN_API.context : {};
+  var ctxUrls = ctx.resourceUrls || [];
+  if (!_trainParam && ctxUrls.length >= 1) _trainParam = ctxUrls[0];
+  if (!_valParam && ctxUrls.length >= 2) _valParam = ctxUrls[1];
+  if (!_projectParam && ctx.projectName) _projectParam = ctx.projectName;
+
+  if (_trainParam || _valParam) {
+    if (_trainParam) document.getElementById('tm-train-url').value = _trainParam;
+    if (_valParam) document.getElementById('tm-val-url').value = _valParam;
+    if (_projectParam) document.getElementById('tm-3lc-project').value = _projectParam;
+    if (_trainParam) tmOnTrainTableChange();
+  } else {
+    // Restore the last-selected config — but only if it still exists. A remembered
+    // id can be stale (the config was deleted, or it carried over from a prior
+    // config store), which would otherwise 404 on load and surface a spurious
+    // startup error. Verify against the list first; if the list fetch fails (e.g. a
+    // slow/transient worker) leave the pointer untouched so it is never discarded
+    // on a transient error.
+    var lastId = localStorage.getItem(_TM_STORAGE_KEY);
+    if (lastId) {
+      _tmFetchJson("/api/plugins/timm/configs")
+        .then(function(data) {
+          if (Array.isArray(data) && data.some(function(c) { return c.id === lastId; })) {
+            tmLoadConfig(lastId);
+          } else {
+            localStorage.removeItem(_TM_STORAGE_KEY);
+          }
+        })
+        .catch(function() { /* list unavailable — keep the pointer, retry next load */ });
+    }
+  }
+})();
+</script>
