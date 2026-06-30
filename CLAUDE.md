@@ -1,10 +1,9 @@
 # 3lc-compute-plugins — agent & contributor orientation
 
-This repo is the **public, first-party plugin collection** for the 3LC compute service, packaged as
-a single **umbrella distribution** `3lc-compute-plugins` built against the public
-[`3lc-plugin-sdk`](https://github.com/3lc-ai/3lc-plugin-sdk). (The umbrella is this repo's
-packaging choice — the host discovers plugins via a folder Source scanning `src/`, not by repo shape,
-so single-plugin and multi-dist repos are equally valid elsewhere.)
+This repo is the first-party, Apache-2.0 plugin collection for the 3LC compute service, packaged as
+a single **umbrella distribution** `3lc-compute-plugins`, built against the public
+[`3lc-plugin-sdk`](https://github.com/3lc-ai/3lc-plugin-sdk). The umbrella is a packaging choice —
+the host discovers plugins by scanning a folder Source (`src/`), not by repo shape.
 
 ## Layout
 
@@ -23,15 +22,13 @@ One `pyproject.toml` declares **all** plugins:
   the host venv.
 - **per-plugin extras** (`[importer]`/`[exporter]`/`[merger]`/`[splitter]`/`[table_statistics]`/
   `[image_metrics]`/`[timm]`) = each plugin's deps, installed ONLY into that plugin's provisioned
-  venv. `merger` is intentionally empty (SDK floor suffices). (SAM3 and YOLO were extracted to
-  standalone repos — `3lc-plugin-sam3` / `3lc-plugin-yolo` — for separate licensing; see the README.)
-- **`[project.entry-points."tlc_compute.plugins"]`** = one entry per plugin. Kept for the optional
-  installed-package discovery path, but **not** how the host consumes these today: the host
-  discovers via a **folder Source** pointed at `src/`, reads each bundled `plugin.toml` without
-  importing, and provisions a venv installing the `provision_extra` named in the manifest.
+  venv. `merger` is intentionally empty (SDK floor suffices).
+- **`[project.entry-points."tlc_compute.plugins"]`** = one entry per plugin, supporting the optional
+  installed-package discovery path. The primary path is a **folder Source** pointed at `src/`: the
+  host reads each bundled `plugin.toml` without importing and provisions a venv installing the
+  `provision_extra` named in the manifest.
 
-These are **real installable packages** (resolved from site-packages), not the old flat
-`package = false` + cwd-on-sys.path form.
+These are real installable packages (resolved from site-packages).
 
 ## The rules — do not break these
 
@@ -54,12 +51,11 @@ Each plugin still declares its own `plugin.toml` `version` + `min_service_versio
 `min_frontend_version` floors — that's the compatibility contract the host reads. The dist pins the
 SDK via `3lc-plugin-sdk>=X,<Y`. SemVer throughout.
 
-## Dev setup (build-out)
+## Dev setup
 
-`3lc-plugin-sdk` is unpublished during the build-out, so the umbrella resolves it from a sibling
-checkout via a **dev-only** `[tool.uv.sources] 3lc-plugin-sdk = { path = "../3lc-plugin-sdk" }`.
-torch comes from the cu126 index; 3lc from the 3lc-releases index. These dev sources revert to
-index/git pins before any real publish.
+For local development, resolve `3lc-plugin-sdk` from a sibling checkout via a **dev-only**
+(uncommitted) `[tool.uv.sources] 3lc-plugin-sdk = { path = "../3lc-plugin-sdk" }`. torch comes from
+the cu126 index; 3lc from the 3lc-releases index.
 
 ```bash
 uv sync                       # SDK floor only
@@ -77,4 +73,5 @@ build a plugin against the contract.
 ## Conventions
 
 Python 3.10+, uv, Hatchling, Litestar route handlers (`get_route_handlers()`), Ruff (line-length
-120), mypy `--strict` where deps allow. Google-style docstrings. Copyright header on new files.
+120), mypy `--strict` where deps allow. Google-style docstrings. SPDX header on new files
+(`# Copyright <year> 3LC Inc.` / `# SPDX-License-Identifier: Apache-2.0`).
