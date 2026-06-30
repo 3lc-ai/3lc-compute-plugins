@@ -9,8 +9,6 @@ pyproject.toml         # the one distribution (SDK floor + one extra per plugin 
 src/
   # every plugin is venv-isolated: its own provisioned venv, out-of-process; deps behind its extra
   tlc_plugin_timm/              # fine-tune timm image classifiers     ([timm] extra)
-  tlc_plugin_sam3/              # auto-label with SAM3                  ([sam3] extra)
-  tlc_plugin_yolo/              # fine-tune YOLO models                 ([yolo] extra)
   tlc_plugin_importer/          # import CSV/Parquet/COCO/…            ([importer] extra)
   tlc_plugin_exporter/          # export CSV/XLSX/YOLO/COCO/…          ([exporter] extra)
   tlc_plugin_merger/            # merge two tables                     ([merger] extra — empty)
@@ -31,8 +29,13 @@ Every open plugin here is **`venv`-isolated** (`runtime.isolation = "venv"` in i
 host provisions a dedicated venv per plugin — `uv sync --extra <id>` against this distribution,
 installing only that plugin's extra — and runs it out-of-process. **No plugin dep ever touches the
 host venv.** This is uniform across the light CPU plugins (importer, merger, …) and the heavy GPU
-ones (timm, sam3, yolo): it's the always-`venv` shape the static-index / shop deliverability model
-expects. The base distribution carries only the SDK floor (`3lc-plugin-sdk[shared]`).
+one (timm): it's the always-`venv` shape the static-index / shop deliverability model expects. The
+base distribution carries only the SDK floor (`3lc-plugin-sdk[shared]`).
+
+> **SAM3 and YOLO moved out.** They were extracted to standalone repos
+> (`3lc-plugin-sam3`, `3lc-plugin-yolo`) — `yolo` because `3lc-ultralytics` carries AGPL-lineage
+> licensing the open umbrella should not inherit, `sam3` alongside it. Same venv-isolation contract;
+> they're just separately-versioned, separately-licensed distributions now.
 
 `host`-mode (in-process) is reserved for the in-tree plugins (`run_insights`, `table_insights`)
 that ship inside the compute service itself — not for anything in this repo.

@@ -57,7 +57,9 @@ image_metrics = [
     "numpy",
     "pillow",
 ]
-# Heavy GPU/ML plugins.
+# Heavy GPU/ML plugin. NOTE: sam3 and yolo were extracted to their own standalone repos
+# (3lc-plugin-sam3 / 3lc-plugin-yolo) — yolo because 3lc-ultralytics carries AGPL-lineage
+# licensing the open umbrella should not inherit, sam3 alongside it on the same cadence.
 timm = [
     "timm>=1.0",
     "torch",
@@ -65,28 +67,12 @@ timm = [
     "pacmap>=0.8",
     "umap-learn>=0.5",
 ]
-sam3 = [
-    # Floor above the empty PyPI placeholder (0.0.1): that release ships no code,
-    # so a bare "sam3" lets the resolver pin it and the worker fails at import
-    # with `No module named 'sam3.model'`. 0.1.x is the real Meta SAM3.
-    "sam3>=0.1.4",
-    "torch",
-    "torchvision",
-    "umap-learn>=0.5",
-]
-yolo = [
-    "3lc-ultralytics>=0.3.3",
-    "torch",
-    "torchvision",
-]
 
 # Every plugin advertises itself here; the host iterates this group to discover them all.
 # Value = the import package; its bundled plugin.toml drives id/ui/runtime (and, for venv
 # plugins, the provision extra).
 [project.entry-points."tlc_compute.plugins"]
 timm = "tlc_plugin_timm"
-sam3 = "tlc_plugin_sam3"
-yolo = "tlc_plugin_yolo"
 importer = "tlc_plugin_importer"
 exporter = "tlc_plugin_exporter"
 merger = "tlc_plugin_merger"
@@ -97,8 +83,6 @@ image_metrics = "tlc_plugin_image_metrics"
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/tlc_plugin_timm",
-    "src/tlc_plugin_sam3",
-    "src/tlc_plugin_yolo",
     "src/tlc_plugin_importer",
     "src/tlc_plugin_exporter",
     "src/tlc_plugin_merger",
