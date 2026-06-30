@@ -20,6 +20,10 @@ name = "3lc-compute-plugins"
 version = "0.1.0"
 description = "Open, first-party plugins for the 3LC compute service (all venv-isolated)."
 requires-python = ">=3.10"
+# Apache-2.0, matching 3lc-plugin-sdk. All remaining plugins have permissive deps; the
+# AGPL-lineage one (yolo) and sam3 were extracted to their own repos. Full text in ./LICENSE.
+license = { text = "Apache-2.0" }
+classifiers = ["License :: OSI Approved :: Apache Software License"]
 # Base = the contract SDK floor ONLY. Every open plugin is now `venv`-isolated, so NO plugin
 # deps (light or heavy) live in the base — each plugin's deps ride its own extra below and are
 # installed only into that plugin's provisioned venv. The host never installs this distribution

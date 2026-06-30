@@ -1,12 +1,5 @@
-# =============================================================================
-# <copyright>
-# Copyright (c) 2026 3LC Inc. All rights reserved.
-#
-# All rights are reserved. Reproduction or transmission in whole or in part, in
-# any form or by any means, electronic, mechanical or otherwise, is prohibited
-# without the prior written permission of the copyright owner.
-# </copyright>
-# =============================================================================
+# Copyright 2026 3LC Inc.
+# SPDX-License-Identifier: Apache-2.0
 """Image quality metrics for ML training data analysis.
 
 Each metric is a pure function that takes a PIL Image (RGB) and returns a float.
