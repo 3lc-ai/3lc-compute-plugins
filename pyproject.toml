@@ -1,16 +1,9 @@
-# 3lc-compute-plugins — the open, first-party plugins for the 3LC compute service,
-# packaged as ONE distribution (an umbrella; single-plugin and multi-dist repos are equally
-# valid elsewhere — the host discovers by scanning a folder Source, not by repo shape).
-#
-# This distribution is NEVER installed into the host venv. The host discovers these plugins via a
-# folder Source pointed at `src/` (TLC_COMPUTE_EXTERNAL_PLUGIN_DIRS / --plugin-dir), reads each
-# bundled `plugin.toml` manifest WITHOUT importing, and provisions each plugin into its OWN venv.
-# Every open plugin here is `venv`-isolated: its deps live in a per-plugin extra below and are
-# installed only into that plugin's provisioned venv (selected by the manifest's
-# runtime.provision_extra, via `uv sync --extra <id>`) — never the host venv. The base
-# `dependencies` is the SDK floor only. That is the whole "manifest in the host, heavy code in the
-# venv" split. (The `tlc_compute.plugins` entry points below are kept for the optional
-# pip-installed-discovery path, but folder-Source discovery is how the host consumes these today.)
+# 3lc-compute-plugins — the open, first-party plugins for the 3LC compute service, as one
+# distribution. The host discovers each plugin from its bundled `plugin.toml` (read WITHOUT
+# importing) and provisions it into its own venv: every plugin is `venv`-isolated, its deps live in
+# a per-plugin extra below and are installed only into that plugin's venv — never the host venv.
+# The base `dependencies` is the SDK floor only. (The `tlc_compute.plugins` entry points support an
+# optional pip-installed-discovery path; folder-Source discovery is the primary one.)
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -20,16 +13,12 @@ name = "3lc-compute-plugins"
 version = "0.1.0"
 description = "Open, first-party plugins for the 3LC compute service (all venv-isolated)."
 requires-python = ">=3.10"
-# Apache-2.0, matching 3lc-plugin-sdk. All remaining plugins have permissive deps; the
-# AGPL-lineage one (yolo) and sam3 were extracted to their own repos. Full text in ./LICENSE.
+# Apache-2.0, matching 3lc-plugin-sdk. Full text in ./LICENSE.
 license = { text = "Apache-2.0" }
 classifiers = ["License :: OSI Approved :: Apache Software License"]
-# Base = the contract SDK floor ONLY. Every open plugin is now `venv`-isolated, so NO plugin
-# deps (light or heavy) live in the base — each plugin's deps ride its own extra below and are
-# installed only into that plugin's provisioned venv. The host never installs this distribution
-# into its own venv; it discovers the plugins via a folder Source and provisions each one.
-# [shared] = the SDK's optional `tlc` data plane behind `tlc_plugin_sdk.shared.*`, which every
-# plugin uses (and `tlc` directly); the bare SDK no longer pulls `tlc`.
+# Base = the SDK floor ONLY — no plugin deps live here; each plugin's deps ride its own extra
+# below and are installed only into that plugin's venv. `[shared]` adds the SDK's optional `tlc`
+# data plane (`tlc_plugin_sdk.shared.*`), which every plugin uses.
 dependencies = [
     "3lc-plugin-sdk[shared]>=0.2.0,<0.3.0",
 ]
@@ -37,7 +26,7 @@ dependencies = [
 # Per-plugin extras — installed ONLY into that plugin's provisioned venv. Provisioning opts into
 # the extra named by the plugin manifest's runtime.provision_extra (`uv sync --extra <id>`).
 [project.optional-dependencies]
-# Open CPU plugins (formerly host-mode; now venv for shop/static-index deliverability).
+# CPU plugins.
 importer = [
     "openpyxl>=3.1",
     "pyyaml",
@@ -61,9 +50,7 @@ image_metrics = [
     "numpy",
     "pillow",
 ]
-# Heavy GPU/ML plugin. NOTE: sam3 and yolo were extracted to their own standalone repos
-# (3lc-plugin-sam3 / 3lc-plugin-yolo) — yolo because 3lc-ultralytics carries AGPL-lineage
-# licensing the open umbrella should not inherit, sam3 alongside it on the same cadence.
+# Heavy GPU/ML plugin.
 timm = [
     "timm>=1.0",
     "torch",
@@ -111,14 +98,11 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
 torchvision = { index = "pytorch-cu126", marker = "sys_platform == 'linux'" }
-# 3lc and the (still-unpublished) SDK resolve from the releases index / GitHub here. This
-# is the committed form on purpose: the host consumes this umbrella as a GIT dependency, and
-# a committed `path = "../<repo>"` source breaks every remote consumer because uv reinterprets
-# the relative path as a git *subdirectory of this repo* (`#subdirectory=../3lc-plugin-sdk`),
-# which doesn't exist. For side-by-side local dev, override these UNCOMMITTED, e.g.
-#   3lc            = { path = "../tlc-monorepo",   editable = true }   # venv worker on the host's dev build
+# `3lc` resolves from the releases index, the SDK from its GitHub repo. Keep these committed —
+# a committed relative `path = ...` source breaks remote consumers (uv reads it as a subdirectory
+# of this repo). For local dev, override UNCOMMITTED, e.g.
+#   3lc            = { path = "../tlc-monorepo",   editable = true }
 #   3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
-# Drop the SDK git line once 3lc-plugin-sdk is published to an index.
 3lc = { index = "3lc-releases" }
 3lc-plugin-sdk = { git = "https://github.com/3lc-ai/3lc-plugin-sdk.git", branch = "develop" }
 
