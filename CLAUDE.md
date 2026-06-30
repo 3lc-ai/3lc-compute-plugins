@@ -21,7 +21,7 @@ One `pyproject.toml` declares **all** plugins:
   `venv`-isolated, so NO plugin deps live in the base — this distribution is never installed into
   the host venv.
 - **per-plugin extras** (`[importer]`/`[exporter]`/`[merger]`/`[splitter]`/`[table_statistics]`/
-  `[image_metrics]`/`[timm]`) = each plugin's deps, installed ONLY into that plugin's provisioned
+  `[image_metrics]`) = each plugin's deps, installed ONLY into that plugin's provisioned
   venv. `merger` is intentionally empty (SDK floor suffices).
 - **`[project.entry-points."tlc_compute.plugins"]`** = one entry per plugin, supporting the optional
   installed-package discovery path. The primary path is a **folder Source** pointed at `src/`: the
@@ -60,7 +60,6 @@ the cu126 index; 3lc from the 3lc-releases index.
 ```bash
 uv sync                       # SDK floor only
 uv sync --extra importer      # one plugin's deps (exactly what the host provisions into its venv)
-uv sync --extra timm          # a heavy GPU plugin's stack
 uv run ruff check .
 ```
 

@@ -13,7 +13,6 @@ src/
   tlc_plugin_splitter/          # train/val/test splits                ([splitter] extra)
   tlc_plugin_table_statistics/  # per-column stats + thumbnails        ([table_statistics] extra)
   tlc_plugin_image_metrics/     # image-quality metric columns         ([image_metrics] extra)
-  tlc_plugin_timm/              # fine-tune timm image classifiers     ([timm] extra)
 ```
 
 Each `src/tlc_plugin_<name>/` bundles a `plugin.toml` manifest that the host reads **without
@@ -37,7 +36,6 @@ never installs this distribution into its own venv.
 ```bash
 uv sync                       # SDK floor only
 uv sync --extra importer      # one plugin's deps (what the host provisions into its venv)
-uv sync --extra timm          # a heavy GPU plugin's stack
 uv run ruff check .
 ```
 
