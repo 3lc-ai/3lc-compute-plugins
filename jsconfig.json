@@ -1,0 +1,42 @@
+{
+  // ---------------------------------------------------------------------------
+  // Editor autocomplete for the plugin JS bridge (window.PLUGIN_API / PluginJobs)
+  // inside every src/tlc_plugin_*/ui.html — with NO node build and NO node_modules.
+  //
+  // The type declarations ship INSIDE the pip-installed `3lc-plugin-sdk` wheel, at
+  //   <site-packages>/tlc_plugin_sdk/contract/plugin-api.d.ts   (JS_CONTRACT 0.2)
+  // After `uv sync`, that resolves under this repo's own venv:
+  //   .venv/lib/python3.12/site-packages/tlc_plugin_sdk/contract/plugin-api.d.ts
+  //
+  // HOW THE RESOLUTION WORKS (verified with tsc):
+  //   * `typeRoots` points TypeScript's @types-style lookup at site-packages, so a
+  //     reference by the *import package name* `tlc_plugin_sdk` (NOT the dist name
+  //     `3lc-plugin-sdk`) resolves to the .d.ts above. The `paths`/`baseUrl`
+  //     mechanism does NOT apply to `/// <reference types>`, only `typeRoots` does.
+  //   * `types` below auto-loads the declaration into every file in the project,
+  //     so each ui.html gets PLUGIN_API/PluginJobs typed with NO line of its own.
+  //     (You may still add an explicit, self-documenting line at the top of a
+  //     <script> — it resolves the same way, though `types` above already loads
+  //     it into every ui.html so this is optional:
+  //        /// <reference types="tlc_plugin_sdk/contract/plugin-api" />)
+  //
+  // If your venv uses a different Python minor version, add its site-packages dir
+  // to `typeRoots` below. Paths are relative to this jsconfig's directory.
+  // ---------------------------------------------------------------------------
+  "compilerOptions": {
+    "checkJs": false,
+    "allowJs": true,
+    "typeRoots": [
+      ".venv/lib/python3.12/site-packages",
+      ".venv/lib/python3.13/site-packages",
+      ".venv/lib/python3.11/site-packages",
+      ".venv/lib/python3.10/site-packages"
+    ],
+    "types": [
+      "tlc_plugin_sdk/contract/plugin-api"
+    ]
+  },
+  "include": [
+    "src/**/ui.html"
+  ]
+}
