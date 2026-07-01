@@ -85,7 +85,7 @@ explicit = true
 #   3lc            = { path = "../tlc-monorepo",   editable = true }
 #   3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
 3lc = { index = "3lc-releases" }
-3lc-plugin-sdk = { git = "https://github.com/3lc-ai/3lc-plugin-sdk.git", branch = "develop" }
+3lc-plugin-sdk = { git = "https://github.com/3lc-ai/3lc-plugin-sdk.git", branch = "main" }
 
 # Ruff config mirrors 3lc-plugin-sdk for a consistent house style. CI runs ruff
 # standalone (uvx) — linting must not require resolving the heavy per-plugin ML stacks.
