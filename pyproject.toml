@@ -13,14 +13,14 @@ name = "3lc-compute-plugins"
 version = "0.1.0"
 description = "Open, first-party plugins for the 3LC compute service (all venv-isolated)."
 requires-python = ">=3.10"
-# Apache-2.0, matching 3lc-plugin-sdk. Full text in ./LICENSE.
+# Apache-2.0, matching 3lc-compute-plugin-sdk. Full text in ./LICENSE.
 license = { text = "Apache-2.0" }
 classifiers = ["License :: OSI Approved :: Apache Software License"]
 # Base = the SDK floor ONLY — no plugin deps live here; each plugin's deps ride its own extra
 # below and are installed only into that plugin's venv. `[shared]` adds the SDK's optional `tlc`
 # data plane (`tlc_plugin_sdk.shared.*`), which every plugin uses.
 dependencies = [
-    "3lc-plugin-sdk[shared]>=0.1.0,<0.2.0",
+    "3lc-compute-plugin-sdk[shared]>=0.1.0,<0.2.0",
 ]
 
 # Per-plugin extras — installed ONLY into that plugin's provisioned venv. Provisioning opts into
@@ -85,9 +85,9 @@ explicit = true
 #   3lc            = { path = "../tlc-monorepo",   editable = true }
 #   3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
 3lc = { index = "3lc-releases" }
-3lc-plugin-sdk = { git = "https://github.com/3lc-ai/3lc-plugin-sdk.git", branch = "main" }
+3lc-compute-plugin-sdk = { git = "https://github.com/3lc-ai/3lc-compute-plugin-sdk.git", branch = "main" }
 
-# Ruff config mirrors 3lc-plugin-sdk for a consistent house style. CI runs ruff
+# Ruff config mirrors 3lc-compute-plugin-sdk for a consistent house style. CI runs ruff
 # standalone (uvx) — linting must not require resolving the heavy per-plugin ML stacks.
 [tool.ruff]
 line-length = 120
