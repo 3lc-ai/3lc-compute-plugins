@@ -67,6 +67,20 @@ jobs:
           : "${UV_PUBLISH_USERNAME:?set the CLOUDREPO_USERNAME secret on the 'release' environment}"
           : "${UV_PUBLISH_PASSWORD:?set the CLOUDREPO_PASSWORD secret on the 'release' environment}"
 
+      # On manual (workflow_dispatch) runs, append the GitHub run number as a 4th release
+      # segment so every prerelease publish is unique — CloudRepo has overwrites disabled, so
+      # re-publishing the static pyproject version 409s. A 4th segment (e.g. 0.1.0.7) sorts
+      # ABOVE the base version and stays inside `<0.2.0`-style pins, so dependents still resolve
+      # it — unlike `.devN` (sorts BELOW 0.1.0, excluded by `>=0.1.0`) or `+localN` (rejected on
+      # upload). Tag (`v*`) releases skip this and publish the exact pyproject version, verified
+      # above. Mirrors the ADO wheel scheme (e.g. 3lc-hub-frontend 0.2.0.52).
+      - name: Stamp build-numbered version (dispatch runs only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          BASE=$(uv version --output-format json | jq -r '.version')
+          uv version "${BASE}.${GITHUB_RUN_NUMBER}"
+          echo "prerelease build version: ${BASE}.${GITHUB_RUN_NUMBER}"
+
       # --no-sources strips [tool.uv.sources] so the released wheel never bakes in a dev
       # index/path override (the published artifact resolves deps from the configured index).
       - name: Build
