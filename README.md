@@ -5,49 +5,54 @@ distribution `3lc-compute-plugins` built against the public
 [`3lc-plugin-sdk`](https://github.com/3lc-ai/3lc-plugin-sdk).
 
 ```
-pyproject.toml         # the one distribution (base deps + per-venv-plugin extras + entry-points)
+pyproject.toml         # the one distribution (SDK floor + per-plugin extras + entry-points)
 src/
-  # venv (own venv, provisioned out-of-process; heavy/GPU deps behind an extra)
-  tlc_plugin_timm/              # fine-tune timm image classifiers     ([timm] extra)
-  tlc_plugin_sam3/              # auto-label with SAM3                  ([sam3] extra)
-  tlc_plugin_yolo/              # fine-tune YOLO models                 ([yolo] extra)
-  # host-mode (light; installed into the host venv via 3lc-compute[plugins], runs in-process)
-  tlc_plugin_importer/          # import CSV/Parquet/COCO/…
-  tlc_plugin_exporter/          # export CSV/XLSX/YOLO/COCO/…
-  tlc_plugin_merger/            # merge two tables
-  tlc_plugin_splitter/          # train/val/test splits
-  tlc_plugin_table_statistics/  # per-column stats + thumbnails
-  tlc_plugin_image_metrics/     # image-quality metric columns
+  tlc_plugin_importer/          # import CSV/Parquet/COCO/…      ([importer] extra)
+  tlc_plugin_exporter/          # export CSV/XLSX/YOLO/COCO/…    ([exporter] extra)
+  tlc_plugin_merger/            # merge two tables               ([merger] extra, empty)
+  tlc_plugin_splitter/          # train/val/test splits          ([splitter] extra)
+  tlc_plugin_table_statistics/  # per-column stats + thumbnails  ([table_statistics] extra)
+  tlc_plugin_image_metrics/     # image-quality metric columns   ([image_metrics] extra)
 ```
 
 Each `src/tlc_plugin_<name>/` bundles its own `plugin.toml` manifest (the host reads it **without
 importing**) and advertises a `tlc_compute.plugins` entry point. One umbrella `pyproject.toml`
 declares them all; single-plugin or multi-dist repos are equally valid — the host discovers by
-entry point, not by repo shape.
+entry point (or by scanning a folder Source), not by repo shape.
 
-## Isolation tiers
+### Heavy ML plugins now live in their own repos
 
-A plugin declares `runtime.isolation` in its manifest:
+The GPU/heavy-stack plugins moved out to dedicated single-plugin repos and are **no longer here**:
 
-- **`venv`** (e.g. timm, sam3, yolo) — heavy/conflicting deps; the host provisions a dedicated venv
-  installing the plugin's heavy extra (`3lc-compute-plugins[timm]`) and runs it out-of-process. Its
-  deps never touch the host venv. Only the plugin's light code + manifest sit in the base.
-- **`host`** (e.g. importer, exporter, the light ones) — deps are light and compatible with the host
-  venv; runs in-process. Delivered as part of the host's `[plugins]` extra (base deps).
+- [`3lc-compute-plugin-timm`](https://github.com/3lc-ai/3lc-compute-plugin-timm) — fine-tune timm image classifiers
+- [`3lc-compute-plugin-sam3`](https://github.com/3lc-ai/3lc-compute-plugin-sam3) — auto-label with SAM3
+- [`3lc-compute-plugin-yolo`](https://github.com/3lc-ai/3lc-compute-plugin-yolo) — fine-tune YOLO models
 
-The rule: **anything installed into the host venv must be light.** A venv plugin's heavy stack lives
-only behind its extra, installed into its own venv.
+They build against the same `3lc-plugin-sdk` contract; the host discovers them the same way.
+
+## Isolation
+
+Every plugin in this repo is **`venv`-isolated** (`runtime.isolation = "venv"` in its manifest): the
+host provisions a dedicated venv, installs the plugin's extra (e.g. `3lc-compute-plugins[importer]`),
+and runs the plugin out-of-process. Its deps never touch the host venv.
+
+That's why the base `dependencies` is the **SDK floor only** (`3lc-plugin-sdk[shared]`) — this
+distribution is never installed into the host venv. Each plugin's real deps ride its own extra and
+land only in that plugin's provisioned venv.
+
+(`host`-mode — light deps, in-process in the host venv — is reserved for the private in-tree
+`run_insights` / `table_insights` plugins in the `3lc-compute` host repo, and is **not** used here.)
 
 ## Develop
 
 ```bash
-uv sync                  # base: host-mode plugins' light deps + the SDK
-uv sync --extra timm     # add a venv plugin's heavy stack (what the host provisions into its venv)
+uv sync                      # SDK floor only
+uv sync --extra importer     # one plugin's deps (exactly what the host provisions into its venv)
 uv run ruff check .
 ```
 
 During the build-out, `3lc-plugin-sdk` is resolved from a sibling checkout via a **dev-only**
-`[tool.uv.sources]` path — see `CLAUDE.md`. That reverts to an index/git pin before publish.
+`[tool.uv.sources]` path — see `CLAUDE.md`. The committed source pins the SDK from its GitHub repo.
 
 ### Editor autocomplete for `ui.html` (the JS bridge)
 
@@ -75,5 +80,6 @@ to self-document.
 
 ## Status
 
-Pre-1.0. License pending (see `CLAUDE.md`). The proprietary `run_insights` / `table_insights`
-plugins deliberately stay in the private `3lc-compute` host repo and are **not** here.
+Pre-1.0. Apache-2.0 (see `LICENSE`), matching `3lc-plugin-sdk`. The proprietary `run_insights` /
+`table_insights` plugins deliberately stay in the private `3lc-compute` host repo and are **not**
+here.
