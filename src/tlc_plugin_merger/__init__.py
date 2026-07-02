@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Execution logic (ported from old 3LCDataTools merger)
+# Execution logic
 # ---------------------------------------------------------------------------
 
 

@@ -26,4 +26,4 @@ entrypoint = "tlc_plugin_image_metrics:ImageMetricsPlugin"
 # Deps live behind this extra of the umbrella distribution; the host installs it ONLY
 # into this plugin's provisioned venv, never the host venv.
 provision_extra = "image_metrics"
-requires_gpu = true
+requires_gpu = false

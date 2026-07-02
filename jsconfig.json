@@ -3,7 +3,7 @@
   // Editor autocomplete for the plugin JS bridge (window.PLUGIN_API / PluginJobs)
   // inside every src/tlc_plugin_*/ui.html — with NO node build and NO node_modules.
   //
-  // The type declarations ship INSIDE the pip-installed `3lc-plugin-sdk` wheel, at
+  // The type declarations ship INSIDE the pip-installed `3lc-compute-plugin-sdk` wheel, at
   //   <site-packages>/tlc_plugin_sdk/contract/plugin-api.d.ts   (JS_CONTRACT 0.2)
   // After `uv sync`, that resolves under this repo's own venv:
   //   .venv/lib/python3.12/site-packages/tlc_plugin_sdk/contract/plugin-api.d.ts
@@ -11,7 +11,7 @@
   // HOW THE RESOLUTION WORKS (verified with tsc):
   //   * `typeRoots` points TypeScript's @types-style lookup at site-packages, so a
   //     reference by the *import package name* `tlc_plugin_sdk` (NOT the dist name
-  //     `3lc-plugin-sdk`) resolves to the .d.ts above. The `paths`/`baseUrl`
+  //     `3lc-compute-plugin-sdk`) resolves to the .d.ts above. The `paths`/`baseUrl`
   //     mechanism does NOT apply to `/// <reference types>`, only `typeRoots` does.
   //   * `types` below auto-loads the declaration into every file in the project,
   //     so each ui.html gets PLUGIN_API/PluginJobs typed with NO line of its own.

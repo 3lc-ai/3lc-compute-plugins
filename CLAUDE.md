@@ -2,7 +2,8 @@
 
 This repo is the first-party, Apache-2.0 plugin collection for the 3LC compute service, packaged as
 a single **umbrella distribution** `3lc-compute-plugins`, built against the public
-[`3lc-plugin-sdk`](https://github.com/3lc-ai/3lc-plugin-sdk). The umbrella is a packaging choice —
+[`3lc-compute-plugin-sdk`](https://github.com/3lc-ai/3lc-compute-plugin-sdk). The umbrella is a
+packaging choice —
 the host discovers plugins by scanning a folder Source (`src/`), not by repo shape.
 
 ## Layout
@@ -17,7 +18,7 @@ src/
 ```
 
 One `pyproject.toml` declares **all** plugins:
-- **base `dependencies`** = the SDK floor ONLY (`3lc-plugin-sdk[shared]`). Every plugin here is
+- **base `dependencies`** = the SDK floor ONLY (`3lc-compute-plugin-sdk[shared]`). Every plugin here is
   `venv`-isolated, so NO plugin deps live in the base — this distribution is never installed into
   the host venv.
 - **per-plugin extras** (`[importer]`/`[exporter]`/`[merger]`/`[splitter]`/`[table_statistics]`/
@@ -32,12 +33,12 @@ These are real installable packages (resolved from site-packages).
 
 ## The rules — do not break these
 
-1. **Touch the host only through `3lc-plugin-sdk`.** A plugin imports `tlc_plugin_sdk` and nothing
+1. **Touch the host only through the SDK.** A plugin imports `tlc_plugin_sdk` and nothing
    from `tlc_compute` (the host). The mental test: *could this build against just the SDK wheel, with
    the host source deleted?* It must.
 2. **Every plugin's deps are its own venv, never the host venv.** Each plugin here is `venv`-isolated
    and provisioned into its own environment from its extra; nothing in this repo installs into the
-   host venv. (`host`-mode is reserved for the private in-tree `run_insights`/`table_insights`.)
+   host venv. (`host`-mode is reserved for plugins that ship with the service itself.)
 3. **Metadata lives in `plugin.toml`, not on the class.** No `register()` at import; the class is
    behavior-only. The host stamps display identity from the manifest.
 4. **Custom events / routes are plugin-private.** Use the generic job channel
@@ -49,13 +50,14 @@ These are real installable packages (resolved from site-packages).
 The **distribution** versions as a whole (`[project] version` in the umbrella `pyproject.toml`).
 Each plugin still declares its own `plugin.toml` `version` + `min_service_version` /
 `min_frontend_version` floors — that's the compatibility contract the host reads. The dist pins the
-SDK via `3lc-plugin-sdk>=X,<Y`. SemVer throughout.
+SDK via `3lc-compute-plugin-sdk>=X,<Y`. SemVer throughout (the SDK's 0.x contract line is
+additive-only — see its README → Status).
 
 ## Dev setup
 
-For local development, resolve `3lc-plugin-sdk` from a sibling checkout via a **dev-only**
-(uncommitted) `[tool.uv.sources] 3lc-plugin-sdk = { path = "../3lc-plugin-sdk" }`. torch comes from
-the cu126 index; 3lc from the 3lc-releases index.
+The committed `[tool.uv.sources]` resolve the SDK from the 3LC prereleases index and `3lc`
+from the releases index. For local SDK development, override (uncommitted) with an editable
+path source pointing at your SDK checkout.
 
 ```bash
 uv sync                       # SDK floor only
@@ -65,9 +67,9 @@ uv run ruff check .
 
 ## Where the rest of the context lives
 
-The plugin contract and the author guide live in `3lc-plugin-sdk` (`docs/plugin-guide.md`,
-published at <https://3lc-ai.github.io/3lc-plugin-sdk/>). Read those for the "why" and for how to
-build a plugin against the contract.
+The plugin contract and the author guide live in `3lc-compute-plugin-sdk` (`docs/plugin-guide.md`,
+published at <https://3lc-ai.github.io/3lc-compute-plugin-sdk/>). Read those for the "why" and for
+how to build a plugin against the contract.
 
 ## Conventions
 

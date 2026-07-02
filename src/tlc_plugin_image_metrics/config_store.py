@@ -27,8 +27,8 @@ class ImageMetricsConfig:
     last_run: str | None = None
 
 
-# Pre-standardization location, migrated into ~/.3lc-plugin-configs/image-metrics/
-# on first store construction. Remove once the cutover is complete.
+# Back-compat: configs saved under the older location are moved into
+# ~/.3lc-plugin-configs/image-metrics/ on first store construction.
 _LEGACY_DIR = Path.home() / ".3lc-training" / "image-metrics-configs"
 
 

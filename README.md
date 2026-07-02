@@ -2,7 +2,7 @@
 
 The open, first-party plugins for the [3LC](https://3lc.ai) compute service, packaged as a single
 distribution `3lc-compute-plugins` built against the public
-[`3lc-plugin-sdk`](https://github.com/3lc-ai/3lc-plugin-sdk).
+[`3lc-compute-plugin-sdk`](https://github.com/3lc-ai/3lc-compute-plugin-sdk).
 
 ```
 pyproject.toml         # the one distribution (SDK floor + per-plugin extras + entry-points)
@@ -28,7 +28,7 @@ The GPU/heavy-stack plugins moved out to dedicated single-plugin repos and are *
 - [`3lc-compute-plugin-sam3`](https://github.com/3lc-ai/3lc-compute-plugin-sam3) — auto-label with SAM3
 - [`3lc-compute-plugin-yolo`](https://github.com/3lc-ai/3lc-compute-plugin-yolo) — fine-tune YOLO models
 
-They build against the same `3lc-plugin-sdk` contract; the host discovers them the same way.
+They build against the same `3lc-compute-plugin-sdk` contract; the host discovers them the same way.
 
 ## Isolation
 
@@ -36,12 +36,12 @@ Every plugin in this repo is **`venv`-isolated** (`runtime.isolation = "venv"` i
 host provisions a dedicated venv, installs the plugin's extra (e.g. `3lc-compute-plugins[importer]`),
 and runs the plugin out-of-process. Its deps never touch the host venv.
 
-That's why the base `dependencies` is the **SDK floor only** (`3lc-plugin-sdk[shared]`) — this
+That's why the base `dependencies` is the **SDK floor only** (`3lc-compute-plugin-sdk[shared]`) — this
 distribution is never installed into the host venv. Each plugin's real deps ride its own extra and
 land only in that plugin's provisioned venv.
 
-(`host`-mode — light deps, in-process in the host venv — is reserved for the private in-tree
-`run_insights` / `table_insights` plugins in the `3lc-compute` host repo, and is **not** used here.)
+(`host`-mode — light deps, in-process in the host venv — is reserved for plugins that ship
+with the service itself, and is **not** used here.)
 
 ## Develop
 
@@ -51,15 +51,15 @@ uv sync --extra importer     # one plugin's deps (exactly what the host provisio
 uv run ruff check .
 ```
 
-During the build-out, `3lc-plugin-sdk` is resolved from a sibling checkout via a **dev-only**
-`[tool.uv.sources]` path — see `CLAUDE.md`. The committed source pins the SDK from its GitHub repo.
+The committed source resolves `3lc-compute-plugin-sdk` from the 3LC package index. For local
+SDK development, override it (uncommitted) with an editable path source — see `CLAUDE.md`.
 
 ### Editor autocomplete for `ui.html` (the JS bridge)
 
 Each `src/tlc_plugin_*/ui.html` drives the host through `window.PLUGIN_API` /
 `window.PluginJobs`. Those are typed by a declaration that ships inside the installed
-`3lc-plugin-sdk` (`<site-packages>/tlc_plugin_sdk/contract/plugin-api.d.ts`, JS_CONTRACT
-0.2). The repo-root **`jsconfig.json`** wires it up so VS Code gives autocomplete in every
+SDK (`<site-packages>/tlc_plugin_sdk/contract/plugin-api.d.ts`, `JS_CONTRACT`). The
+repo-root **`jsconfig.json`** wires it up so VS Code gives autocomplete in every
 `ui.html` — **no node build, no `node_modules`**:
 
 ```jsonc
@@ -71,7 +71,7 @@ Each `src/tlc_plugin_*/ui.html` drives the host through `window.PLUGIN_API` /
 ```
 
 Run `uv sync` once (it installs the SDK into `.venv`) and the types resolve. Resolution
-gotchas: reference the **import name `tlc_plugin_sdk`**, not the dist name `3lc-plugin-sdk`;
+gotchas: reference the **import name `tlc_plugin_sdk`**, not the dist name `3lc-compute-plugin-sdk`;
 it must go through `typeRoots` (a `/// <reference types>` ignores `paths`); bump the
 `python3.NN` segment to match your venv. No per-file edit is needed — `types` loads the
 declaration into every `ui.html` globally; you may optionally add
@@ -80,6 +80,6 @@ to self-document.
 
 ## Status
 
-Pre-1.0. Apache-2.0 (see `LICENSE`), matching `3lc-plugin-sdk`. The proprietary `run_insights` /
-`table_insights` plugins deliberately stay in the private `3lc-compute` host repo and are **not**
-here.
+Pre-1.0; the SDK contract's 0.x line is additive-only (see the `3lc-compute-plugin-sdk`
+README → Status). Apache-2.0 (see `LICENSE`), matching the SDK. The service's built-in insights
+plugins ship with the service itself and are not part of this collection.

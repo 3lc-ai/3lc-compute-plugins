@@ -23,9 +23,9 @@ jobs:
         with:
           version: "0.8.15"
 
-      # Ruff runs STANDALONE (uvx): linting must not require resolving the per-plugin ML
-      # stacks (torch / timm / sam3 / ultralytics) — that would be slow and need extra
-      # indexes. Config lives in pyproject [tool.ruff]; pin matches 3lc-plugin-sdk.
+      # Ruff runs STANDALONE (uvx): linting must not require resolving the per-plugin
+      # dependency stacks — that would be slow and need extra indexes. Config lives in
+      # pyproject [tool.ruff]; pin matches 3lc-compute-plugin-sdk.
       - name: Ruff lint
         run: uvx --from 'ruff>=0.15,<0.16' ruff check .
 

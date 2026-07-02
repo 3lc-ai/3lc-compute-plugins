@@ -810,7 +810,7 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
 
 
 # ---------------------------------------------------------------------------
-# Execution logic (ported from old 3LCDataTools importers)
+# Execution logic
 # ---------------------------------------------------------------------------
 
 
@@ -1515,8 +1515,8 @@ def _get_image_folder(format_name: str, form_data: dict[str, Any]) -> str:
 def _unregister_primary_alias(alias_result: dict[str, Any] | None) -> None:
     """Remove the PRIMARY session alias, but only if this job created it.
 
-    Mirrors the legacy runners' cleanup: a PRIMARY alias that already existed
-    before this job is left untouched (it was registered for another reason).
+    A PRIMARY alias that already existed before this job is left untouched
+    (it was registered for another reason).
     """
     if not (alias_result and alias_result.get("primary_created")):
         return
@@ -1707,7 +1707,7 @@ class ImportPlugin(ComputePlugin):
         runs its file-format executor. Progress/metrics/result flow only through
         the generic ``ctx`` surface — no plugin-specific events — and a failure is
         raised so the host marks the job failed. The host serializes imports one
-        at a time (same as the legacy CPU queue), so multi-split imports stay
+        at a time, so multi-split imports stay
         ordered when the UI fires one ``/run`` per split.
 
         Args:

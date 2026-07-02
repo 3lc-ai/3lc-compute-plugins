@@ -1,31 +1,26 @@
 name: Release
 
-# Publish a tagged release of 3lc-compute-plugins (the open first-party plugin umbrella) to
-# 3LC CloudRepo (pypi.3lc.ai) via `uv publish`. Mirrors 3lc-plugin-sdk/.github/workflows/release.yml.
-#
-# WHY CloudRepo (not PyPI): public-PyPI publishing is still blocked, so the beta ships over
-# CloudRepo as the interim route (same workaround as 3lc-compute / 3lc-plugin-sdk). The umbrella
-# is open + beta, so it targets the PUBLIC prerelease repo. Flip to PyPI/OIDC later when unblocked.
+# Publish a tagged release of 3lc-compute-plugins (the open first-party plugin umbrella) to the
+# 3LC package index (pypi.3lc.ai) via `uv publish`. Mirrors the 3lc-compute-plugin-sdk release
+# workflow.
 #
 # === ONE-TIME SETUP ===
 # Create a GitHub Environment named "release" (repo Settings -> Environments) holding:
 #   Secrets:
-#     CLOUDREPO_USERNAME    - CloudRepo upload user (≈ the ACCESS_KEY)
-#     CLOUDREPO_PASSWORD    - CloudRepo upload password/token (≈ the SECRET_KEY)
+#     CLOUDREPO_USERNAME    - upload user
+#     CLOUDREPO_PASSWORD    - upload password/token
 #   Variables:
-#     CLOUDREPO_PUBLISH_URL - upload endpoint, mirroring 3lc-compute / 3lc-plugin-sdk:
-#                             https://pypi.3lc.ai/repositories/prereleases-public
+#     CLOUDREPO_PUBLISH_URL - upload endpoint: https://pypi.3lc.ai/repositories/prereleases-public
 #                             (NO "/public/": that path is the anonymous READ-only mount; uv publish POSTs are rejected.)
-#                             (confirm the exact UPLOAD url with whoever owns the CloudRepo.)
 # Optionally add required reviewers on the "release" environment to gate publishes.
 #
 # To cut a release: bump `version` in pyproject.toml, commit, then push a tag `vX.Y.Z`
 # that matches it (or run via workflow_dispatch).
 #
-# NOTE: `uv build --no-sources` builds the umbrella WHEEL only — it does not resolve or install the
-# per-plugin ML stacks (torch/timm/sam3/ultralytics), so no extra indexes are needed here. The
-# wheel's metadata carries `3lc-plugin-sdk[shared]>=0.1.0,<0.2.0`, resolved from the index at
-# install time (so the SDK must be published to the same/compatible index first).
+# NOTE: `uv build --no-sources` builds the umbrella WHEEL only — it does not resolve or install
+# the per-plugin dependency stacks, so no extra indexes are needed here. The wheel's metadata
+# carries `3lc-compute-plugin-sdk[shared]>=0.1.0,<0.2.0`, resolved from the index at install
+# time (so the SDK must be published to the same/compatible index first).
 
 on:
   push:
@@ -74,7 +69,7 @@ jobs:
       # ABOVE the base version and stays inside `<0.2.0`-style pins, so dependents still resolve
       # it — unlike `.devN` (sorts BELOW 0.1.0, excluded by `>=0.1.0`) or `+localN` (rejected on
       # upload). Tag (`v*`) releases skip this and publish the exact pyproject version, verified
-      # above. Mirrors the ADO wheel scheme (e.g. 3lc-hub-frontend 0.2.0.52).
+      # above.
       - name: Stamp build-numbered version (dispatch runs only)
         if: github.event_name == 'workflow_dispatch'
         run: |

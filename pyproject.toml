@@ -87,9 +87,8 @@ explicit = true
 [tool.uv.sources]
 # `3lc` resolves from the releases index, the SDK from the prereleases index. Keep these committed —
 # a committed relative `path = ...` source breaks remote consumers (uv reads it as a subdirectory
-# of this repo). For local dev, override UNCOMMITTED, e.g.
-#   3lc            = { path = "../tlc-monorepo",   editable = true }
-#   3lc-plugin-sdk = { path = "../3lc-plugin-sdk", editable = true }
+# of this repo). For local dev, override UNCOMMITTED with editable path sources pointing at your
+# own 3lc / SDK checkouts.
 3lc = { index = "3lc-releases" }
 3lc-compute-plugin-sdk = { index = "3lc-prereleases" }
 
