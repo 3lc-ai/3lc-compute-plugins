@@ -10,7 +10,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "3lc-compute-plugins"
-version = "0.1.1"
+version = "0.1.2"
 description = "Open, first-party plugins for the 3LC compute service (all venv-isolated)."
 requires-python = ">=3.10"
 # Apache-2.0, matching 3lc-compute-plugin-sdk. Full text in ./LICENSE.
