@@ -20,7 +20,7 @@ classifiers = ["License :: OSI Approved :: Apache Software License"]
 # below and are installed only into that plugin's venv. `[shared]` adds the SDK's optional `tlc`
 # data plane (`tlc_plugin_sdk.shared.*`), which every plugin uses.
 dependencies = [
-    "3lc-compute-plugin-sdk[shared]>=0.1.0,<0.2.0",
+    "3lc-compute-plugin-sdk[shared]>=0.2.0,<0.3.0",
     "3lc[pandas]>=3.0.0,<4.0.0",
 ]
 
