@@ -37,12 +37,15 @@ def get_route_handlers() -> list[BaseRouteHandler]:
     """Build the importer's custom route handlers (fresh per call, for per-app registration)."""
     # Imported lazily from the package __init__ (where the parsers / executors live)
     # to avoid a circular import: ImportPlugin lives there and imports this module.
+    from tlc_plugin_sdk.shared.url_utils import normalize_local_path
+
     from tlc_plugin_importer import (
         _EXECUTORS,
         IMPORT_STEPS,
         _enhance_error_message,
         _get_image_folder,
         _maybe_register_alias,
+        _normalize_path_fields,
         _parse_coco_folder,
         _parse_csv_file,
         _parse_yolo_splits,
@@ -62,7 +65,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         if not yaml_path.strip():
             return {"error": "yaml_path is required"}
         try:
-            return _parse_yolo_splits(yaml_path)
+            return _parse_yolo_splits(normalize_local_path(yaml_path))
         except Exception as exc:
             return {"error": str(exc)}
 
@@ -73,7 +76,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         if not annotations_dir.strip():
             return {"error": "annotations_dir is required"}
         try:
-            return _parse_coco_folder(annotations_dir)
+            return _parse_coco_folder(normalize_local_path(annotations_dir))
         except Exception as exc:
             return {"error": str(exc)}
 
@@ -88,6 +91,11 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         valid, errors = _validate(step_def, data)
         if not valid:
             return {"success": False, "message": "Validation failed: " + "; ".join(errors), "table_url": None}
+
+        try:
+            data = _normalize_path_fields(data)
+        except ValueError as exc:
+            return {"success": False, "message": str(exc), "table_url": None}
 
         executor = _EXECUTORS.get(format_name)
         if executor is None:

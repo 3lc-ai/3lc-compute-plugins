@@ -823,6 +823,29 @@ def _validate(step_def: dict[str, Any], form_data: dict[str, Any]) -> tuple[bool
     return len(errors) == 0, errors
 
 
+_PATH_FIELDS = ("dataset_yaml", "annotations_file", "image_folder", "folder_path", "csv_path", "alias_folder")
+
+
+def _normalize_path_fields(form_data: dict[str, Any]) -> dict[str, Any]:
+    """Normalize user-typed path fields at ingress: strip, expand ``~``, require absolute.
+
+    Returns a shallow copy with the fields in ``_PATH_FIELDS`` normalized; empty
+    or missing fields are left alone.
+
+    Raises:
+        ValueError: A non-empty path field is not absolute after expansion.
+
+    """
+    from tlc_plugin_sdk.shared.url_utils import normalize_local_path
+
+    normalized = dict(form_data)
+    for key in _PATH_FIELDS:
+        raw = str(normalized.get(key, "") or "").strip()
+        if raw:
+            normalized[key] = normalize_local_path(raw)
+    return normalized
+
+
 def _maybe_register_alias(form_data: dict[str, Any], image_folder: str) -> dict[str, Any] | None:
     """Register a URL alias if the user opted in.
 
@@ -1560,7 +1583,7 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
     """Run a file-format import (yolo/coco/folder/unlabeled/csv_detection).
 
     Raises:
-        ValueError: Unknown format.
+        ValueError: Unknown format, or a path field that is not absolute.
         RuntimeError: The executor failed or reported ``success=False`` — the
             host marks the job failed and surfaces the (enhanced) message.
 
@@ -1570,7 +1593,7 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
         msg = f"No executor for import format: {format_name!r}"
         raise ValueError(msg)
 
-    form_data = ctx.params
+    form_data = _normalize_path_fields(ctx.params)
     label = f"Importing {format_name}…"
     ctx.log(label)
     # Imports are a single blocking SDK call with no step granularity, so report

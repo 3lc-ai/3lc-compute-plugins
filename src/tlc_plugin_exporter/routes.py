@@ -95,6 +95,13 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         if not output_path:
             return {"success": False, "message": "Output path is required."}
 
+        from tlc_plugin_sdk.shared.url_utils import normalize_local_path
+
+        try:
+            output_path = normalize_local_path(output_path)
+        except ValueError as exc:
+            return {"success": False, "message": str(exc)}
+
         executor = _EXECUTORS.get(format_name)
         if not executor:
             return {"success": False, "message": f"No executor for format: {format_name}"}
