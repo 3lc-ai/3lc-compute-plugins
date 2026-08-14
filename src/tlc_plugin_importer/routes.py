@@ -10,15 +10,15 @@ submission / cancellation / queue state stay host-managed via
 contract, so this module no longer defines its own delegating ``/run``.
 
 Most handlers are ``def`` (Litestar runs them in a threadpool) because they touch
-the file-format parsers and the ``tlc`` SDK, which block. The two multipart upload
-handlers (``/csv/parse`` and ``/upload-temp``) stay ``async def`` because they await
-``UploadFile.read()``.
+the file-format parsers and the ``tlc`` SDK, which block. The ``/csv/parse``
+multipart upload handler stays ``async def`` because it awaits ``UploadFile.read()``.
+The ``/browse`` and ``/upload-temp`` routes come from the SDK's shared data-source
+route helpers.
 """
 
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
 from litestar import get, post
@@ -143,26 +143,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         result["session_id"] = session_id
         return result
 
-    @post("/upload-temp", status_code=200)
-    async def upload_temp(
-        data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
-    ) -> dict[str, Any]:
-        """Upload a file to a temp directory and return the server-side path.
-
-        Used by drag-and-drop form fields that need a server-side file path.
-        """
-        import tempfile
-
-        file_bytes = await data.read()
-        filename = data.filename or "upload"
-
-        # Write to a temp dir that persists until the process ends
-        tmp_dir = Path(tempfile.gettempdir()) / "tlc-uploads"
-        tmp_dir.mkdir(exist_ok=True)
-        dest = tmp_dir / filename
-        dest.write_bytes(file_bytes)
-
-        return {"path": str(dest), "filename": filename}
+    from tlc_plugin_sdk.shared.data_source_routes import data_source_route_handlers
 
     return [
         list_formats,
@@ -170,5 +151,5 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         parse_coco,
         execute_import,
         csv_parse,
-        upload_temp,
+        *data_source_route_handlers(),
     ]

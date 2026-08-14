@@ -501,11 +501,13 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
         "form_fields": [
             {
                 "id": "dataset_yaml",
-                "label": "Dataset YAML Path",
-                "type": "text",
+                "label": "Dataset YAML",
+                "type": "data_source",
                 "placeholder": "/path/to/dataset.yaml",
                 "required": True,
                 "help": "Path to the YOLO dataset YAML file (e.g. coco128.yaml).",
+                "accept": "*.yaml,*.yml",
+                "mode": "file",
             },
             {
                 "id": "split",
@@ -575,18 +577,21 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
             {
                 "id": "annotations_file",
                 "label": "Annotations Path",
-                "type": "text",
+                "type": "data_source",
                 "placeholder": "/path/to/annotations/ or .../instances_train2017.json",
                 "required": True,
                 "help": "Path to a JSON file, or an annotations folder to auto-detect splits.",
+                "accept": "*.json",
+                "mode": "file",
             },
             {
                 "id": "image_folder",
-                "label": "Images Folder Path",
-                "type": "text",
+                "label": "Images Folder",
+                "type": "data_source",
                 "placeholder": "/path/to/images/train2017/",
                 "required": True,
                 "help": "Path to the folder containing the images.",
+                "mode": "folder",
             },
             {
                 "id": "task",
@@ -642,10 +647,11 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
             {
                 "id": "folder_path",
                 "label": "Folder Path",
-                "type": "text",
+                "type": "data_source",
                 "placeholder": "/path/to/images/",
                 "required": True,
                 "help": "Path to folder of images. Use subdirectory-per-class for classification datasets (e.g. images/cat/, images/dog/).",  # noqa: E501
+                "mode": "folder",
             },
             {
                 "id": "project_name",
@@ -690,10 +696,11 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
             {
                 "id": "folder_path",
                 "label": "Folder Path",
-                "type": "text",
+                "type": "data_source",
                 "placeholder": "/path/to/images/",
                 "required": True,
                 "help": "Path to a folder of images (scans recursively).",
+                "mode": "folder",
             },
             {
                 "id": "modality",
@@ -750,19 +757,22 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
             {
                 "id": "csv_path",
                 "label": "CSV File",
-                "type": "file_upload",
-                "accept": ".csv",
+                "type": "data_source",
+                "accept": "*.csv",
                 "placeholder": "/path/to/annotations.csv",
                 "required": True,
                 "help": "CSV with columns: ImageId, class, bbox (space-separated x0 y0 x1 y1, normalized 0-1).",
+                "mode": "file",
+                "allow_upload": True,
             },
             {
                 "id": "image_folder",
-                "label": "Image Folder Path",
-                "type": "text",
+                "label": "Image Folder",
+                "type": "data_source",
                 "placeholder": "/path/to/images/",
                 "required": True,
                 "help": "Folder containing images as {ImageId}.png (or .jpg).",
+                "mode": "folder",
             },
             {
                 "id": "project_name",
@@ -1706,15 +1716,20 @@ class ImportPlugin(ComputePlugin):
         """Return the self-contained import wizard HTML+JS+CSS fragment."""
         if self._ui_cache is None:
             from tlc_plugin_sdk.shared.alias_ui import alias_ui_script
+            from tlc_plugin_sdk.shared.data_source_ui import data_source_ui_script
             from tlc_plugin_sdk.shared.job_tracker import job_tracker_script
 
             ui_path = Path(__file__).resolve().parent / "ui.html"
             raw = ui_path.read_text(encoding="utf-8")
-            # Inject the shared alias UI + generic job-tracker JS right after the
-            # opening <script> tag (the wizard drives jobs via window.PluginJobs).
             self._ui_cache = raw.replace(
                 "<script>\n(function() {\n  'use strict';",
-                "<script>\n" + alias_ui_script() + "\n" + job_tracker_script() + "\n(function() {\n  'use strict';",
+                "<script>\n"
+                + data_source_ui_script()
+                + "\n"
+                + alias_ui_script()
+                + "\n"
+                + job_tracker_script()
+                + "\n(function() {\n  'use strict';",
             )
         return self._ui_cache
 

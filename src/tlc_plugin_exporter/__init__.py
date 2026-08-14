@@ -395,11 +395,12 @@ class ExportPlugin(ComputePlugin):
         """Return the self-contained export wizard HTML+JS+CSS fragment."""
         if self._ui_cache is None:
             from tlc_plugin_sdk.shared.alias_override_ui import alias_override_ui_script
+            from tlc_plugin_sdk.shared.data_source_ui import data_source_ui_script
             from tlc_plugin_sdk.shared.ui_inject import inject_scripts
 
             ui_path = Path(__file__).resolve().parent / "ui.html"
             raw = ui_path.read_text(encoding="utf-8")
-            self._ui_cache = inject_scripts(raw, alias_override_ui_script())
+            self._ui_cache = inject_scripts(raw, data_source_ui_script(), alias_override_ui_script())
         return self._ui_cache
 
     def compute(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -408,6 +409,8 @@ class ExportPlugin(ComputePlugin):
 
     def get_route_handlers(self) -> list[Any]:
         """Serve the export plugin's custom routes as relative Litestar handlers."""
+        from tlc_plugin_sdk.shared.data_source_routes import data_source_route_handlers
+
         from tlc_plugin_exporter import routes as _routes
 
-        return _routes.get_route_handlers()
+        return [*_routes.get_route_handlers(), *data_source_route_handlers()]
