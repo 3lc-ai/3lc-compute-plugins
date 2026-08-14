@@ -92,6 +92,14 @@ explicit = true
 3lc = { index = "3lc-releases" }
 3lc-compute-plugin-sdk = { index = "3lc-prereleases" }
 
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 # Ruff config mirrors 3lc-compute-plugin-sdk for a consistent house style. CI runs ruff
 # standalone (uvx) — linting must not require resolving the heavy per-plugin ML stacks.
 [tool.ruff]
