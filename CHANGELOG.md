@@ -28,9 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - User-typed paths are normalized at every ingress (`~` expands, bare-relative paths are
   rejected), and CSV/XLSX exports expand URL aliases to absolute paths — exported files no
   longer carry 3LC-internal alias tokens or user-relative paths (#9).
-- Export jobs are stamped with the launch project, so they appear in the Queue & Progress
-  panel's active/done stacks — previously they ran unattributed and the panel's project
-  filter hid them from every view (#9).
+- Export jobs are attributed to the exported table's own project (falling back to the
+  launch context), so they appear in that project's Queue & Progress stacks — previously
+  a bare sidebar launch ran the job unattributed and the panel's project filter hid it
+  from every view (#9).
 
 ## [0.1.2] - 2026-07-03
 

@@ -124,7 +124,9 @@ def get_route_handlers() -> list[BaseRouteHandler]:
                 col_type = _classify_column_type(col_schema, name) if col_schema else "other"
                 columns.append({"name": name, "type": col_type})
 
-            return {"columns": columns, "row_count": table.row_count}
+            # project_name rides along so the UI can attribute the export job to the
+            # table's own project — the launch context is empty for bare sidebar launches.
+            return {"columns": columns, "row_count": table.row_count, "project_name": table.project_name or ""}
         except Exception:
             logger.warning("Failed to list columns for %s", table_url, exc_info=True)
             return {"error": "Failed to load table columns"}

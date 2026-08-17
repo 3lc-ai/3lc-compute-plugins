@@ -133,6 +133,7 @@
   var formats = [];
   var selectedFormat = null;
   var tableColumns = [];
+  var tableProject = '';  // the exported table's own project (from /columns)
 
   var urlParams = new URLSearchParams(window.location.search);
   var prefillUrl = '';
@@ -185,8 +186,11 @@
 
   function loadColumns(tableUrl) {
     if (!tableUrl) return;
+    tableProject = '';
+    // The column list only exists for needs_column_select formats; this also runs
+    // for yolo/coco purely to resolve the table's project for job attribution.
     var list = document.getElementById('export-col-list');
-    list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Loading columns…</div>';
+    if (list) list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Loading columns…</div>';
     API.authFetch(computeUrl + '/api/plugins/exporter/columns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -195,14 +199,15 @@
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data.error) {
-          list.innerHTML = '<div style="color:var(--error);font-size:12px;padding:8px 0">' + _esc(data.error) + '</div>';
+          if (list) list.innerHTML = '<div style="color:var(--error);font-size:12px;padding:8px 0">' + _esc(data.error) + '</div>';
           return;
         }
+        tableProject = data.project_name || '';
         tableColumns = data.columns || [];
         renderColumnList();
       })
       .catch(function(err) {
-        list.innerHTML = '<div style="color:var(--error);font-size:12px;padding:8px 0">Failed: ' + _esc(err.message) + '</div>';
+        if (list) list.innerHTML = '<div style="color:var(--error);font-size:12px;padding:8px 0">Failed: ' + _esc(err.message) + '</div>';
       });
   }
 
@@ -288,10 +293,11 @@
     if (!outputPath) { showResult({ success: false, message: 'Output path is required.' }); return; }
 
     // project_name doubles as the Queue & Progress panel's project filter on the
-    // host — without it the job is stamped '' and appears in no project's panel.
+    // host. The exported TABLE's project wins: on a bare sidebar launch the
+    // context project is '', and an unattributed job appears in no panel.
     var body = {
       format: selectedFormat, table_url: tableUrl, output_path: outputPath,
-      project_name: (API.context && API.context.projectName) || urlParams.get('project') || ''
+      project_name: tableProject || (API.context && API.context.projectName) || urlParams.get('project') || ''
     };
     var fmt = formats.find(function(f) { return f.name === selectedFormat; });
     if (fmt && fmt.options) {
@@ -383,11 +389,8 @@
   document.getElementById('export-browse-btn').addEventListener('click', function() {
     if (typeof openTablePicker === 'function') {
       openTablePicker('export-table-url', function() {
-        var fmt = formats.find(function(f) { return f.name === selectedFormat; });
-        if (fmt && fmt.needs_column_select) {
-          tableColumns = [];
-          loadColumns(document.getElementById('export-table-url').value.trim());
-        }
+        tableColumns = [];
+        loadColumns(document.getElementById('export-table-url').value.trim());
       });
     } else {
       showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
@@ -398,11 +401,10 @@
   document.getElementById('export-table-url').addEventListener('input', function() {
     clearTimeout(_colDebounce);
     _colDebounce = setTimeout(function() {
-      var fmt = formats.find(function(f) { return f.name === selectedFormat; });
-      if (fmt && fmt.needs_column_select) {
-        tableColumns = [];
-        loadColumns(document.getElementById('export-table-url').value.trim());
-      }
+      // Always resolve — for yolo/coco this only refreshes the table's project
+      // for job attribution; the column list renders only where it exists.
+      tableColumns = [];
+      loadColumns(document.getElementById('export-table-url').value.trim());
     }, 500);
   });
 
