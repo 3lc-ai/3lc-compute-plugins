@@ -73,23 +73,16 @@ packages = [
     "src/tlc_plugin_image_metrics",
 ]
 
-# 3lc releases index — 3lc versions not yet on public PyPI.
-[[tool.uv.index]]
-name = "3lc-releases"
-url = "https://pypi.3lc.ai/public/repositories/releases-public"
-explicit = true
-
 [[tool.uv.index]]
 name = "3lc-prereleases"
 url = "https://pypi.3lc.ai/public/repositories/prereleases-public"
 explicit = true
 
 [tool.uv.sources]
-# `3lc` resolves from the releases index, the SDK from the prereleases index. Keep these committed —
-# a committed relative `path = ...` source breaks remote consumers (uv reads it as a subdirectory
-# of this repo). For local dev, override UNCOMMITTED with editable path sources pointing at your
-# own 3lc / SDK checkouts.
-3lc = { index = "3lc-releases" }
+# `3lc` resolves from public PyPI (its home since the 3.2 rust release); the SDK from the
+# prereleases index. Keep this committed — a committed relative `path = ...` source breaks remote
+# consumers (uv reads it as a subdirectory of this repo). For local dev, override UNCOMMITTED
+# with editable path sources pointing at your own 3lc / SDK checkouts.
 3lc-compute-plugin-sdk = { index = "3lc-prereleases" }
 
 # Ruff config mirrors 3lc-compute-plugin-sdk for a consistent house style. CI runs ruff
