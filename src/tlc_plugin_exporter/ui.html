@@ -287,7 +287,12 @@
     if (!selectedFormat) { showResult({ success: false, message: 'Please select an export format.' }); return; }
     if (!outputPath) { showResult({ success: false, message: 'Output path is required.' }); return; }
 
-    var body = { format: selectedFormat, table_url: tableUrl, output_path: outputPath };
+    // project_name doubles as the Queue & Progress panel's project filter on the
+    // host — without it the job is stamped '' and appears in no project's panel.
+    var body = {
+      format: selectedFormat, table_url: tableUrl, output_path: outputPath,
+      project_name: (API.context && API.context.projectName) || urlParams.get('project') || ''
+    };
     var fmt = formats.find(function(f) { return f.name === selectedFormat; });
     if (fmt && fmt.options) {
       fmt.options.forEach(function(opt) {
