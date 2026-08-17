@@ -8,9 +8,12 @@ import csv
 import json
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from tlc_plugin_sdk import ComputePlugin
+
+if TYPE_CHECKING:
+    from tlc_plugin_sdk import JobContext
 
 logger = logging.getLogger(__name__)
 
@@ -396,16 +399,54 @@ class ExportPlugin(ComputePlugin):
         if self._ui_cache is None:
             from tlc_plugin_sdk.shared.alias_override_ui import alias_override_ui_script
             from tlc_plugin_sdk.shared.data_source_ui import data_source_ui_script
+            from tlc_plugin_sdk.shared.job_tracker import job_tracker_script
             from tlc_plugin_sdk.shared.ui_inject import inject_scripts
 
             ui_path = Path(__file__).resolve().parent / "ui.html"
             raw = ui_path.read_text(encoding="utf-8")
-            self._ui_cache = inject_scripts(raw, data_source_ui_script(), alias_override_ui_script())
+            self._ui_cache = inject_scripts(raw, data_source_ui_script(), alias_override_ui_script(), job_tracker_script())
         return self._ui_cache
 
     def compute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Return export format definitions."""
         return {"formats": list(EXPORT_FORMATS.values())}
+
+    def run_job(self, ctx: JobContext) -> None:
+        """Run one export as a host-managed job.
+
+        Long exports (a YOLO export copies every image and can run for minutes)
+        must not ride a single synchronous request: the Hub's fetch gives up at
+        its timeout and reports failure for work that then completes anyway. On
+        the job channel, progress reaches the generic Queue & Progress panel,
+        completion is a broadcast instead of a held connection, and the rich
+        result reaches the fragment as an ``export_result`` event.
+
+        Args:
+            ctx: Host-provided job context. ``ctx.params`` carries the same body
+                the ``/execute`` route accepts: ``format``, ``table_url``,
+                ``output_path``, format-specific options, and optional
+                ``alias_overrides``.
+
+        Raises:
+            ValueError: When the export fails, so the host marks the job failed
+                and the message reaches the UI via the generic channel.
+
+        """
+        from tlc_plugin_exporter.routes import run_export
+
+        format_name = str(ctx.params.get("format", "") or "")
+        label = f"Exporting to {format_name.upper()}…" if format_name else "Exporting…"
+        ctx.progress(percent=-1, label=label)
+
+        result = run_export(ctx.params)
+
+        payload = dict(result)
+        payload["job_id"] = ctx.job_id
+        ctx.emit("export_result", payload)
+
+        if not result.get("success"):
+            raise ValueError(str(result.get("message") or "Export failed"))
+        ctx.progress(percent=100, label="Export complete")
 
     def get_route_handlers(self) -> list[Any]:
         """Serve the export plugin's custom routes as relative Litestar handlers."""
