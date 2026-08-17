@@ -64,8 +64,10 @@
       <!-- Table URL -->
       <div class="form-group">
         <label class="form-label required">Table URL</label>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="export-table-url" class="form-control"
+        <!-- Same row recipe as the importer's table_picker and the SDK data-source widget
+             (gap 6px, centered, input flex:1) so the two Browse… buttons render identically. -->
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="export-table-url" class="form-control" style="flex:1"
                  placeholder="Paste table URL or click Browse…">
           <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
                   id="export-browse-btn">Browse…</button>
