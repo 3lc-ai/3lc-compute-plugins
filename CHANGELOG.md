@@ -8,7 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- Importer and exporter adopt the SDK's shared data-source picker (7 importer fields across
+  5 formats, plus the exporter output path): one consistent browse/upload widget instead of
+  bespoke `file_upload`/`text` fields, with the importer's ad-hoc upload route promoted to
+  the SDK's shared `/browse` + `/upload-temp` handlers. Requires SDK 0.2.2 (#9).
+- CI: ruff lint/format gate, lockfile freshness check (`uv lock --check`), and a pytest suite
+  covering manifests, import formats, and plugin-class instantiation; `uv.lock` is now
+  committed (#9).
+
+### Changed
+- Exports run as host-managed jobs instead of one held request, so long exports (a YOLO
+  export copies every image) survive request timeouts and report progress through the
+  generic queue panel (#10).
+- `3lc` resolves from public PyPI, its home since the 3.2 rust release; the SDK keeps its
+  prereleases-index pin until its own PyPI move (#11).
+
+### Fixed
+- User-typed paths are normalized at every ingress (`~` expands, bare-relative paths are
+  rejected), and CSV/XLSX exports expand URL aliases to absolute paths — exported files no
+  longer carry 3LC-internal alias tokens or user-relative paths (#9).
 
 ## [0.1.2] - 2026-07-03
 
