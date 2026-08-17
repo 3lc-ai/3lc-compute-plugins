@@ -269,6 +269,13 @@
     container.innerHTML = html;
   }
 
+  // The export runs as a host-managed job (POST /run -> run_job), not a held
+  // request: a YOLO export copying images runs for minutes, far past any fetch
+  // timeout. Progress arrives on the generic job channel; the rich result dict
+  // arrives as the plugin's own 'export_result' event, matched on job_id.
+  var _resultUnsub = null;
+  var _resultShown = false;
+
   function executeExport() {
     var tableUrl = document.getElementById('export-table-url').value.trim();
     var outputPath = document.getElementById('export-output-path').value.trim();
@@ -295,20 +302,55 @@
     submitBtn.disabled = true;
     spinner.style.display = 'inline-block';
     status.style.display = 'inline';
+    _resultShown = false;
 
-    API.authFetch(computeUrl + '/api/plugins/exporter/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-      .then(function(r) { return r.json(); })
-      .then(function(data) { showResult(data); })
-      .catch(function(err) { showResult({ success: false, message: 'Request failed: ' + err.message }); })
-      .finally(function() {
-        submitBtn.disabled = false;
-        spinner.style.display = 'none';
-        status.style.display = 'none';
-      });
+    function cleanup() {
+      submitBtn.disabled = false;
+      spinner.style.display = 'none';
+      status.style.display = 'none';
+      status.textContent = '';
+      if (_resultUnsub) { _resultUnsub(); _resultUnsub = null; }
+    }
+
+    // Subscribe to the rich result before starting, so a fast export can't
+    // finish between the /run response and the subscription.
+    var jobId = null;
+    var pendingResult = null;
+    if (_resultUnsub) _resultUnsub();
+    _resultUnsub = PluginJobs.on('/exporter', 'export_result', function(payload) {
+      if (jobId === null) { pendingResult = payload; return; }
+      if (payload && payload.job_id === jobId) { _resultShown = true; showResult(payload); }
+    });
+
+    PluginJobs.run('exporter', body, {
+      onUpdate: function(job) {
+        var label = job && job.progress && job.progress.label;
+        if (label) status.textContent = label;
+      },
+      onDone: function() {
+        cleanup();
+        if (!_resultShown) {
+          showResult({ success: true, message: 'Export completed. Output at: ' + outputPath });
+        }
+      },
+      onError: function(job) {
+        cleanup();
+        if (!_resultShown) {
+          var label = (job && job.progress && job.progress.label) || 'Export failed — see the Queue page for details.';
+          showResult({ success: false, message: label });
+        }
+      },
+    }).then(function(resp) {
+      jobId = resp && resp.job_id;
+      if (pendingResult && pendingResult.job_id === jobId) {
+        _resultShown = true;
+        showResult(pendingResult);
+      }
+      pendingResult = null;
+    }).catch(function(err) {
+      cleanup();
+      showResult({ success: false, message: 'Failed to start export: ' + err.message });
+    });
   }
 
   function showResult(data) {
