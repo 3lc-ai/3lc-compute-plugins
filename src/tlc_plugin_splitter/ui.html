@@ -356,8 +356,15 @@
     status.style.display = 'inline';
     progressArea.style.display = '';
 
+    // Attribute the job to the SPLIT table's project — the launch context is ''
+    // for a bare sidebar launch, and an unattributed job appears in no project's
+    // Queue & Progress panel. TlcData is the picker's own cache, so a picked
+    // table always resolves; the SDK tracker's context default stays the fallback.
+    var _pickedTable = (typeof TlcData !== 'undefined')
+      ? TlcData.getTables().find(function(t) { return t.url === tableUrl; }) : null;
     var body = {
       table_url: tableUrl,
+      project_name: (_pickedTable && _pickedTable.project_name) || (API.context && API.context.projectName) || '',
       strategy: document.getElementById('split-strategy').value,
       train_pct: train,
       val_pct: val,

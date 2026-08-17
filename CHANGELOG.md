@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   launch context), so they appear in that project's Queue & Progress stacks — previously
   a bare sidebar launch ran the job unattributed and the panel's project filter hid it
   from every view (#9).
+- Splitter and image-metrics jobs get the same table-project attribution: the splitter
+  relied on the launch-context default (empty on a bare sidebar launch), and image-metrics
+  bypassed the SDK job tracker entirely so every one of its jobs ran unattributed (#9).
 
 ## [0.1.2] - 2026-07-03
 
