@@ -256,41 +256,6 @@
 
   // Alias UI uses shared functions injected below (see {{ALIAS_UI_SCRIPT}})
 
-  // ── Upload a file to compute service temp dir ──────────
-  function _uploadTempFile(file, fieldId) {
-    var zone = document.getElementById('import-dropzone-' + fieldId);
-    var hiddenInput = document.getElementById('import-' + fieldId);
-    var infoEl = document.getElementById('import-file-info-' + fieldId);
-
-    infoEl.style.display = '';
-    infoEl.textContent = 'Uploading ' + file.name + '…';
-    zone.style.opacity = '0.6';
-    zone.style.pointerEvents = 'none';
-
-    var formData = new FormData();
-    formData.append('data', file);
-
-    API.authFetch(computeUrl + '/api/plugins/importer/upload-temp', {
-      method: 'POST',
-      body: formData,
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(result) {
-      hiddenInput.value = result.path;
-      infoEl.innerHTML = '<span style="color:var(--success)">✓</span> ' + _esc(file.name) +
-        ' <span style="color:var(--text-muted)">→ ' + _esc(result.path) + '</span>';
-      zone.querySelector('.csv-upload-title').textContent = file.name;
-      zone.querySelector('.csv-upload-sub').textContent = 'Click or drop to replace';
-    })
-    .catch(function(err) {
-      infoEl.innerHTML = '<span style="color:var(--error)">Upload failed:</span> ' + _esc(String(err));
-    })
-    .finally(function() {
-      zone.style.opacity = '';
-      zone.style.pointerEvents = '';
-    });
-  }
-
   // ── Load formats from compute service ───────────────────
   function loadFormats() {
     API.authFetch(computeUrl + '/api/plugins/importer/formats')
@@ -426,16 +391,13 @@
                 (f.required ? ' required' : '') + ' style="flex:1">';
         html += '<button type="button" class="btn btn-secondary btn-sm" onclick="if(typeof openTablePicker===\'function\')openTablePicker(\'import-' + f.id + '\')">Browse…</button>';
         html += '</div>';
-      } else if (f.type === 'file_upload') {
-        // Drop zone + hidden field for server-side path
-        var accept = f.accept || '.csv,.xlsx,.xls';
-        html += '<input type="hidden" name="' + f.id + '" id="import-' + f.id + '">';
-        html += '<div class="csv-upload-zone" id="import-dropzone-' + f.id + '" data-field-id="' + f.id + '" data-accept="' + _esc(accept) + '">';
-        html += '<div class="csv-upload-title">Drop file here</div>';
-        html += '<div class="csv-upload-sub">or click to browse — ' + _esc(accept) + ' supported</div>';
-        html += '<input type="file" id="import-file-' + f.id + '" accept="' + _esc(accept) + '" style="display:none">';
-        html += '</div>';
-        html += '<div id="import-file-info-' + f.id + '" style="display:none;font-size:11px;color:var(--text-muted);margin-top:4px"></div>';
+      } else if (f.type === 'data_source') {
+        html += _tlcDataSourceHtml('import-' + f.id, {
+          placeholder: f.placeholder || '',
+          accept: f.accept || '',
+          mode: f.mode || 'file',
+          allowUpload: f.allow_upload || false,
+        });
       } else if (f.type === 'select') {
         html += '<select name="' + f.id + '" id="import-' + f.id + '" class="form-control"' +
                 (f.required ? ' required' : '') + '>';
@@ -519,24 +481,14 @@
     });
     document.getElementById('import-cancel-btn').addEventListener('click', _resetToFormatGrid);
 
-    // Bind file upload drop zones
-    var dropZones = area.querySelectorAll('.csv-upload-zone[data-field-id]');
-    dropZones.forEach(function(zone) {
-      var fieldId = zone.getAttribute('data-field-id');
-      var fileInput = document.getElementById('import-file-' + fieldId);
-      var hiddenInput = document.getElementById('import-' + fieldId);
-      var infoEl = document.getElementById('import-file-info-' + fieldId);
-
-      zone.addEventListener('click', function() { fileInput.click(); });
-      zone.addEventListener('dragover', function(e) { e.preventDefault(); zone.classList.add('dragging'); });
-      zone.addEventListener('dragleave', function() { zone.classList.remove('dragging'); });
-      zone.addEventListener('drop', function(e) {
-        e.preventDefault(); zone.classList.remove('dragging');
-        if (e.dataTransfer.files.length > 0) _uploadTempFile(e.dataTransfer.files[0], fieldId);
-      });
-      fileInput.addEventListener('change', function() {
-        if (fileInput.files.length > 0) _uploadTempFile(fileInput.files[0], fieldId);
-      });
+    // Bind data source widgets (browse + upload)
+    fields.forEach(function(f) {
+      if (f.type === 'data_source') {
+        _tlcBindDataSource('import-' + f.id, computeUrl, 'importer', {
+          accept: f.accept || '',
+          mode: f.mode || 'file',
+        });
+      }
     });
 
     // YOLO: auto-detect splits from YAML

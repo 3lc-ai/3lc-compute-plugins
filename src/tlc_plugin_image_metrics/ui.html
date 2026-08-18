@@ -579,8 +579,13 @@
     // Submit one job per table
     tableEntries.forEach(function(entry) {
       var outputName = entry.name + '-' + suffix;
+      // Attribute each job to ITS table's project (entries can span projects, and
+      // this direct POST bypasses the SDK tracker's context default entirely).
+      var _t = (typeof TlcData !== 'undefined')
+        ? TlcData.getTables().find(function(t) { return t.url === entry.url; }) : null;
       _apiPost('/api/plugins/image-metrics/run', {
         table_url: entry.url,
+        project_name: (_t && _t.project_name) || (PLUGIN_API.context && PLUGIN_API.context.projectName) || '',
         metric_ids: metricIds,
         image_columns: entry.imageCols,
         output_name: outputName,

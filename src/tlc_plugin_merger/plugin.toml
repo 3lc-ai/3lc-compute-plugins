@@ -4,7 +4,7 @@
 id = "merger"
 name = "Merge"
 description = "Combine two tables into one by merging rows or columns."
-version = "0.1.2"
+version = "0.2.0"
 min_service_version = "0.1.0"
 icon = "⇌"
 icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h3v8H4zM9 4h3v8H9z"/><path d="M7 8h2"/></svg>'

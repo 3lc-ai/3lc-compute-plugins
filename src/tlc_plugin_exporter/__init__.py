@@ -74,7 +74,8 @@ EXPORT_FORMATS: dict[str, dict[str, Any]] = {
     "csv": {
         "name": "csv",
         "display_name": "CSV",
-        "description": "Export table columns to CSV spreadsheet. Complex types are serialized as JSON strings.",
+        "description": "Export table columns to CSV spreadsheet. Complex types are serialized as JSON strings; "
+        "URL aliases are expanded to absolute paths.",
         "icon": "⊞",
         "file_extension": ".csv",
         "needs_column_select": True,
@@ -99,7 +100,8 @@ EXPORT_FORMATS: dict[str, dict[str, Any]] = {
     "xlsx": {
         "name": "xlsx",
         "display_name": "Excel (XLSX)",
-        "description": "Export table columns to Excel spreadsheet. Complex types are serialized as JSON strings.",
+        "description": "Export table columns to Excel spreadsheet. Complex types are serialized as JSON strings; "
+        "URL aliases are expanded to absolute paths.",
         "icon": "⊞",
         "file_extension": ".xlsx",
         "needs_column_select": True,
@@ -121,14 +123,20 @@ EXPORT_FORMATS: dict[str, dict[str, Any]] = {
 # ---------------------------------------------------------------------------
 
 
-def _serialize_value(value: Any) -> Any:
+def _serialize_value(value: Any, *, is_url: bool = False) -> Any:
     """Serialize a cell value for CSV/XLSX export.
 
     Simple types pass through. Complex types (dict, list) become JSON strings.
-    Bytes are hex-encoded.
+    Bytes are hex-encoded. URL-column values (``is_url``) have alias tokens
+    like ``<PYRO_IMAGES>/a.jpg`` expanded to absolute paths — alias form is
+    3LC-internal representation and should not leak into exported files.
     """
     if value is None:
         return ""
+    if is_url and isinstance(value, str) and value:
+        import tlc
+
+        return tlc.Url(value).expand_aliases(allow_unexpanded=True).to_str()
     if isinstance(value, (str, int, float, bool)):
         return value
     if isinstance(value, bytes):
@@ -263,6 +271,10 @@ def _execute_csv(table_url: str, output_path: str, options: dict[str, Any]) -> d
     all_columns = list(table.table_rows[0].keys())
     columns = selected_columns or all_columns
 
+    from tlc_plugin_sdk.shared.url_utils import get_url_column_names
+
+    url_columns = set(get_url_column_names(table))
+
     # Write CSV
     row_count = 0
     with open(p, "w", newline="", encoding="utf-8") as f:
@@ -279,7 +291,7 @@ def _execute_csv(table_url: str, output_path: str, options: dict[str, Any]) -> d
         for row in table.table_rows:
             if weight_threshold > 0 and weights_col and cast("float", row.get(weights_col, 1.0)) < weight_threshold:
                 continue
-            writer.writerow({col: _serialize_value(row.get(col)) for col in columns})
+            writer.writerow({col: _serialize_value(row.get(col), is_url=col in url_columns) for col in columns})
             row_count += 1
 
     return {
@@ -314,13 +326,17 @@ def _execute_xlsx(table_url: str, output_path: str, options: dict[str, Any]) -> 
     all_columns = list(table.table_rows[0].keys())
     columns = selected_columns or all_columns
 
+    from tlc_plugin_sdk.shared.url_utils import get_url_column_names
+
+    url_columns = set(get_url_column_names(table))
+
     # Collect rows
     rows: list[dict[str, Any]] = []
     weights_col = table.weights_column_name if hasattr(table, "weights_column_name") else None
     for row in table.table_rows:
         if weight_threshold > 0 and weights_col and cast("float", row.get(weights_col, 1.0)) < weight_threshold:
             continue
-        rows.append({col: _serialize_value(row.get(col)) for col in columns})
+        rows.append({col: _serialize_value(row.get(col), is_url=col in url_columns) for col in columns})
 
     # Write XLSX using openpyxl
     from openpyxl import Workbook
@@ -382,12 +398,15 @@ class ExportPlugin(ComputePlugin):
         """Return the self-contained export wizard HTML+JS+CSS fragment."""
         if self._ui_cache is None:
             from tlc_plugin_sdk.shared.alias_override_ui import alias_override_ui_script
+            from tlc_plugin_sdk.shared.data_source_ui import data_source_ui_script
             from tlc_plugin_sdk.shared.job_tracker import job_tracker_script
             from tlc_plugin_sdk.shared.ui_inject import inject_scripts
 
             ui_path = Path(__file__).resolve().parent / "ui.html"
             raw = ui_path.read_text(encoding="utf-8")
-            self._ui_cache = inject_scripts(raw, alias_override_ui_script(), job_tracker_script())
+            self._ui_cache = inject_scripts(
+                raw, data_source_ui_script(), alias_override_ui_script(), job_tracker_script()
+            )
         return self._ui_cache
 
     def compute(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -433,6 +452,8 @@ class ExportPlugin(ComputePlugin):
 
     def get_route_handlers(self) -> list[Any]:
         """Serve the export plugin's custom routes as relative Litestar handlers."""
+        from tlc_plugin_sdk.shared.data_source_routes import data_source_route_handlers
+
         from tlc_plugin_exporter import routes as _routes
 
-        return _routes.get_route_handlers()
+        return [*_routes.get_route_handlers(), *data_source_route_handlers()]

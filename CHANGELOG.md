@@ -10,6 +10,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [0.2.0] - 2026-08-18
+
+### Added
+- Importer and exporter adopt the SDK's shared data-source picker (7 importer fields across
+  5 formats, plus the exporter output path): one consistent browse/upload widget instead of
+  bespoke `file_upload`/`text` fields, with the importer's ad-hoc upload route promoted to
+  the SDK's shared `/browse` + `/upload-temp` handlers. Requires SDK 0.2.2 (#9).
+- CI: ruff lint/format gate, lockfile freshness check (`uv lock --check`), and a pytest suite
+  covering manifests, import formats, and plugin-class instantiation; `uv.lock` is now
+  committed (#9).
+
+### Changed
+- Exports run as host-managed jobs instead of one held request, so long exports (a YOLO
+  export copies every image) survive request timeouts and report progress through the
+  generic queue panel (#10).
+- **Distribution moved to PyPI**: `3lc-compute-plugins` is now published to public
+  [PyPI](https://pypi.org/project/3lc-compute-plugins/) via Trusted Publishing; the private
+  CloudRepo index (pypi.3lc.ai) is no longer needed to install the plugins. Manual prerelease
+  builds keep publishing to CloudRepo for a grace period (#9).
+- All dependencies resolve from public PyPI: `3lc` (its home since the 3.2 rust release, #11)
+  and the plugin SDK (`3lc-compute-plugin-sdk[shared]>=0.2.2,<0.3.0`, on PyPI since 0.2.2) —
+  no custom package indexes remain (#9).
+
+### Fixed
+- User-typed paths are normalized at every ingress (`~` expands, bare-relative paths are
+  rejected), and CSV/XLSX exports expand URL aliases to absolute paths — exported files no
+  longer carry 3LC-internal alias tokens or user-relative paths (#9).
+- Export jobs are attributed to the exported table's own project (falling back to the
+  launch context), so they appear in that project's Queue & Progress stacks — previously
+  a bare sidebar launch ran the job unattributed and the panel's project filter hid it
+  from every view (#9).
+- Splitter and image-metrics jobs get the same table-project attribution: the splitter
+  relied on the launch-context default (empty on a bare sidebar launch), and image-metrics
+  bypassed the SDK job tracker entirely so every one of its jobs ran unattributed (#9).
+
 ## [0.1.2] - 2026-07-03
 
 ### Fixed

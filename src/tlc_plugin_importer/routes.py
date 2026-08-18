@@ -10,15 +10,15 @@ submission / cancellation / queue state stay host-managed via
 contract, so this module no longer defines its own delegating ``/run``.
 
 Most handlers are ``def`` (Litestar runs them in a threadpool) because they touch
-the file-format parsers and the ``tlc`` SDK, which block. The two multipart upload
-handlers (``/csv/parse`` and ``/upload-temp``) stay ``async def`` because they await
-``UploadFile.read()``.
+the file-format parsers and the ``tlc`` SDK, which block. The ``/csv/parse``
+multipart upload handler stays ``async def`` because it awaits ``UploadFile.read()``.
+The ``/browse`` and ``/upload-temp`` routes come from the SDK's shared data-source
+route helpers.
 """
 
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
 from litestar import get, post
@@ -37,12 +37,15 @@ def get_route_handlers() -> list[BaseRouteHandler]:
     """Build the importer's custom route handlers (fresh per call, for per-app registration)."""
     # Imported lazily from the package __init__ (where the parsers / executors live)
     # to avoid a circular import: ImportPlugin lives there and imports this module.
+    from tlc_plugin_sdk.shared.url_utils import normalize_local_path
+
     from tlc_plugin_importer import (
         _EXECUTORS,
         IMPORT_STEPS,
         _enhance_error_message,
         _get_image_folder,
         _maybe_register_alias,
+        _normalize_path_fields,
         _parse_coco_folder,
         _parse_csv_file,
         _parse_yolo_splits,
@@ -62,7 +65,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         if not yaml_path.strip():
             return {"error": "yaml_path is required"}
         try:
-            return _parse_yolo_splits(yaml_path)
+            return _parse_yolo_splits(normalize_local_path(yaml_path))
         except Exception as exc:
             return {"error": str(exc)}
 
@@ -73,7 +76,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         if not annotations_dir.strip():
             return {"error": "annotations_dir is required"}
         try:
-            return _parse_coco_folder(annotations_dir)
+            return _parse_coco_folder(normalize_local_path(annotations_dir))
         except Exception as exc:
             return {"error": str(exc)}
 
@@ -88,6 +91,11 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         valid, errors = _validate(step_def, data)
         if not valid:
             return {"success": False, "message": "Validation failed: " + "; ".join(errors), "table_url": None}
+
+        try:
+            data = _normalize_path_fields(data)
+        except ValueError as exc:
+            return {"success": False, "message": str(exc), "table_url": None}
 
         executor = _EXECUTORS.get(format_name)
         if executor is None:
@@ -135,26 +143,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         result["session_id"] = session_id
         return result
 
-    @post("/upload-temp", status_code=200)
-    async def upload_temp(
-        data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
-    ) -> dict[str, Any]:
-        """Upload a file to a temp directory and return the server-side path.
-
-        Used by drag-and-drop form fields that need a server-side file path.
-        """
-        import tempfile
-
-        file_bytes = await data.read()
-        filename = data.filename or "upload"
-
-        # Write to a temp dir that persists until the process ends
-        tmp_dir = Path(tempfile.gettempdir()) / "tlc-uploads"
-        tmp_dir.mkdir(exist_ok=True)
-        dest = tmp_dir / filename
-        dest.write_bytes(file_bytes)
-
-        return {"path": str(dest), "filename": filename}
+    from tlc_plugin_sdk.shared.data_source_routes import data_source_route_handlers
 
     return [
         list_formats,
@@ -162,5 +151,5 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         parse_coco,
         execute_import,
         csv_parse,
-        upload_temp,
+        *data_source_route_handlers(),
     ]
