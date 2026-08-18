@@ -20,7 +20,7 @@ classifiers = ["License :: OSI Approved :: Apache Software License"]
 # below and are installed only into that plugin's venv. `[shared]` adds the SDK's optional `tlc`
 # data plane (`tlc_plugin_sdk.shared.*`), which every plugin uses.
 dependencies = [
-    "3lc-compute-plugin-sdk[shared]>=0.2.1,<0.3.0",
+    "3lc-compute-plugin-sdk[shared]>=0.2.2,<0.3.0",
     "3lc[pandas]>=3.0.0,<4.0.0",
 ]
 
@@ -73,17 +73,10 @@ packages = [
     "src/tlc_plugin_image_metrics",
 ]
 
-[[tool.uv.index]]
-name = "3lc-prereleases"
-url = "https://pypi.3lc.ai/public/repositories/prereleases-public"
-explicit = true
-
-[tool.uv.sources]
-# `3lc` resolves from public PyPI (its home since the 3.2 rust release); the SDK from the
-# prereleases index. Keep this committed — a committed relative `path = ...` source breaks remote
-# consumers (uv reads it as a subdirectory of this repo). For local dev, override UNCOMMITTED
-# with editable path sources pointing at your own 3lc / SDK checkouts.
-3lc-compute-plugin-sdk = { index = "3lc-prereleases" }
+# Both `3lc` and `3lc-compute-plugin-sdk` resolve from public PyPI (the SDK's home since
+# 0.2.2) — no custom indexes. For local dev against an in-progress SDK/3lc checkout, add an
+# UNCOMMITTED [tool.uv.sources] override with editable path sources (a committed relative
+# `path = ...` source breaks remote consumers: uv reads it as a subdirectory of this repo).
 
 [dependency-groups]
 dev = [
