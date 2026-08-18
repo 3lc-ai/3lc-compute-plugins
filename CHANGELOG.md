@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.2.0] - 2026-08-18
+
 ### Added
 - Importer and exporter adopt the SDK's shared data-source picker (7 importer fields across
   5 formats, plus the exporter output path): one consistent browse/upload widget instead of
@@ -21,8 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exports run as host-managed jobs instead of one held request, so long exports (a YOLO
   export copies every image) survive request timeouts and report progress through the
   generic queue panel (#10).
-- `3lc` resolves from public PyPI, its home since the 3.2 rust release; the SDK keeps its
-  prereleases-index pin until its own PyPI move (#11).
+- **Distribution moved to PyPI**: `3lc-compute-plugins` is now published to public
+  [PyPI](https://pypi.org/project/3lc-compute-plugins/) via Trusted Publishing; the private
+  CloudRepo index (pypi.3lc.ai) is no longer needed to install the plugins. Manual prerelease
+  builds keep publishing to CloudRepo for a grace period (#9).
+- All dependencies resolve from public PyPI: `3lc` (its home since the 3.2 rust release, #11)
+  and the plugin SDK (`3lc-compute-plugin-sdk[shared]>=0.2.2,<0.3.0`, on PyPI since 0.2.2) —
+  no custom package indexes remain (#9).
 
 ### Fixed
 - User-typed paths are normalized at every ingress (`~` expands, bare-relative paths are
