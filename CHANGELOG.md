@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [0.2.1] - 2026-08-21
+
+### Changed
+- Packaging: added a PyPI project README (`README-wheel.md`) and tightened the distribution
+  description. No functional or contract change.
+
 ## [0.2.0] - 2026-08-18
 
 ### Added
