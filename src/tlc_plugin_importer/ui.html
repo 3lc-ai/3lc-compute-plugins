@@ -117,6 +117,9 @@
     <div style="font-size:13px;color:var(--text-muted)">Loading formats…</div>
   </div>
 
+  <!-- Running-import notice (seeded from the host's job list on mount) -->
+  <div id="import-running-notice" class="alert alert-info" style="display:none;margin-bottom:14px"></div>
+
   <!-- Form area (standard formats) -->
   <div id="import-form-area"></div>
 
@@ -1109,7 +1112,8 @@
       onError: function(job) {
         progressEl.style.display = 'none';
         _reset();
-        showResult({ success: false, message: (job && (job.subtitle || (job.progress && job.progress.label))) || 'Import failed' });
+        // Failure text rides `error`; older hosts put it on `subtitle`.
+        showResult({ success: false, message: (job && (job.error || job.subtitle || (job.progress && job.progress.label))) || 'Import failed' });
       },
     });
   }
@@ -1185,6 +1189,68 @@
           failed.push(sj.label); states[i].status = 'failed'; _renderImportQueue(states); _settle();
         },
       });
+    });
+  }
+
+  // ── Seed from the host's job list on mount ─────────────────────────────
+  // The fragment is torn down on navigation and job_update is live-only, so an import
+  // started before this mount (a long YOLO/COCO import, a queued multi-split batch)
+  // would otherwise show nothing but the empty format grid. Ask the host for this
+  // plugin's queued/running jobs and render a compact running state that keeps
+  // tracking them. The host serializes imports, so a new one can still be set up
+  // below — it queues behind these.
+  function _seedFromHost() {
+    if (typeof PluginJobs === 'undefined' || !PluginJobs.list) return;
+    PluginJobs.list('importer')
+      .then(function(jobs) {
+        var live = jobs.filter(function(j) { return j.status === 'queued' || j.status === 'running'; });
+        if (live.length) _renderRunningNotice(live);
+      })
+      .catch(function() {});
+  }
+
+  function _renderRunningNotice(jobs) {
+    var el = document.getElementById('import-running-notice');
+    if (!el) return;
+    var latest = {};
+    jobs.forEach(function(j) { latest[j.id] = j; });
+
+    function _draw() {
+      var all = jobs.map(function(j) { return latest[j.id]; });
+      var live = all.filter(function(j) { return j.status === 'queued' || j.status === 'running'; }).length;
+      var heading = live === 0 ? 'Your imports have finished'
+        : live === 1 ? 'An import is running'
+        : live + ' imports are queued or running';
+      var html = '<span class="alert-icon">' + (live ? '⟳' : '✓') + '</span><div style="flex:1">';
+      html += '<div><strong>' + heading + '</strong> — <a href="/queue">watch in the Queue</a></div>';
+      all.forEach(function(j) {
+        var s = j.status;
+        var badge = s === 'running' ? '<span class="badge badge-status-running">running</span>'
+          : s === 'completed' ? '<span class="badge badge-status-completed">completed</span>'
+          : (s === 'failed' || s === 'cancelled') ? '<span class="badge badge-status-failed">' + s + '</span>'
+          : '<span class="badge badge-status-queued">queued</span>';
+        var detail = s === 'failed' ? (j.error || j.subtitle || '') : ((j.progress && j.progress.label) || j.subtitle || '');
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px">';
+        html += '<span style="flex:1">' + _esc(j.title || 'Import') +
+                (detail ? ' <span style="color:var(--text-muted)">— ' + _esc(detail) + '</span>' : '') + '</span>';
+        html += badge;
+        if (s === 'completed' && j.run_url) {
+          var r = _resultFromJob(j);
+          html += r.project_name
+            ? ' <a href="/projects/' + encodeURIComponent(r.project_name) + '?dataset=' + encodeURIComponent(r.dataset_name || '') +
+              '&table=' + encodeURIComponent(r.table_url) + '#datasets" class="btn btn-secondary btn-sm">View in Project</a>'
+            : '';
+        }
+        html += '</div>';
+      });
+      el.innerHTML = html + '</div>';
+      el.style.display = '';
+    }
+
+    _draw();
+    jobs.forEach(function(j) {
+      // track() fires onUpdate for every update, terminal ones included.
+      PluginJobs.track('/importer', j.id, { onUpdate: function(u) { latest[j.id] = u; _draw(); } });
     });
   }
 
@@ -1667,12 +1733,14 @@
       },
       onError: function(job) {
         _csvReset();
-        _csvShow({ success: false, message: (job && (job.subtitle || (job.progress && job.progress.label))) || 'Import failed' });
+        // Failure text rides `error`; older hosts put it on `subtitle`.
+        _csvShow({ success: false, message: (job && (job.error || job.subtitle || (job.progress && job.progress.label))) || 'Import failed' });
       },
     });
   });
 
   // ── Init ────────────────────────────────────────────
   loadFormats();
+  _seedFromHost();
 })();
 </script>

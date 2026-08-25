@@ -159,6 +159,9 @@
     </div>
 </div>
 
+<!-- ── Running-job notice (seeded from the host's job list on mount) ── -->
+<div id="im-running-notice" class="alert alert-info" style="display:none;margin-bottom:16px"></div>
+
 <!-- ── Config Bar ─────────────────────────────────────────── -->
 <div class="plugin-config-bar">
   <span class="bar-label">Config</span>
@@ -321,6 +324,7 @@
 
     _loadMetrics();
     _connectSocket();
+    _seedFromHost();
     _checkUrlParams();
 
     // Listen for hidden picker input
@@ -640,9 +644,7 @@
       socket.on('complete', function(data) {
         _setProgress(100, 'Done!');
         _setStatus('Complete');
-        document.getElementById('im-cancel-btn').style.display = 'none';
-        document.getElementById('im-run-btn').disabled = false;
-        currentJobId = null;
+        _clearRunningState();
         _addLog('Complete: ' + (data.table_name || ''));
         _showResult(data);
       });
@@ -650,15 +652,106 @@
       socket.on('error', function(data) {
         _setStatus('Error: ' + (data.message || 'Unknown error'));
         _addLog('ERROR: ' + (data.message || ''));
-        document.getElementById('im-cancel-btn').style.display = 'none';
-        document.getElementById('im-run-btn').disabled = false;
-        currentJobId = null;
+        _clearRunningState();
       });
 
       socket.on('queue_update', function() {});
     } catch (e) {
       console.error('SocketIO connection failed:', e);
     }
+  }
+
+  /* ── Seed from the host's job list on mount ──
+     The fragment is torn down on navigation and the socket events above are live-only,
+     so a job started before this mount shows nothing until it next progresses (or never,
+     if it already finished). Ask the host for this plugin's queued/running jobs and
+     re-attach to the first one: the page then shows its running state, not the empty form. */
+  function _seedFromHost() {
+    if (typeof PluginJobs === 'undefined' || !PluginJobs.list) return;
+    PluginJobs.list('image-metrics')
+      .then(function(jobs) {
+        var live = jobs.filter(function(j) { return j.status === 'queued' || j.status === 'running'; });
+        if (live.length) _showRunningState(live[0], live.length);
+      })
+      .catch(function() {});
+  }
+
+  function _showRunningState(job, liveCount) {
+    currentJobId = job.id;
+    var notice = document.getElementById('im-running-notice');
+    if (notice) {
+      notice.innerHTML =
+        '<span class="alert-icon">⟳</span>' +
+        '<div><strong>' +
+          (liveCount > 1 ? liveCount + ' Image Metrics jobs are running' : 'An Image Metrics job is running') +
+        '</strong>' + (job.title ? ' — ' + _esc(job.title) : '') +
+        '. Progress shows below; you can also <a href="/queue">watch it in the Queue</a>.</div>';
+      notice.style.display = '';
+    }
+    document.getElementById('im-progress-card').style.display = '';
+    document.getElementById('im-run-btn').disabled = true;
+    document.getElementById('im-cancel-btn').style.display = '';
+    _applyJobUpdate(job);
+    _setStatus(job.status === 'queued' ? 'Queued' : 'Running');
+
+    PluginJobs.track('/image-metrics', job.id, {
+      onUpdate: _applyJobUpdate,
+      onDone: function(j) {
+        // The plugin's own `complete` event (above) already rendered the result and
+        // reset the buttons; fill in only when it didn't (cancelled, or the terminal
+        // events raced this mount).
+        if (currentJobId !== j.id) return;
+        _clearRunningState();
+        if (j.status === 'cancelled') { _setStatus('Cancelled'); _addLog('Cancelled'); return; }
+        _setProgress(100, 'Done!');
+        _setStatus('Complete');
+        _showResult(_resultFromJob(j));
+      },
+      onError: function(j) {
+        if (currentJobId !== j.id) return;
+        _clearRunningState();
+        // Failure text rides `error`; older hosts put it on `subtitle`.
+        var msg = j.error || j.subtitle || 'Unknown error';
+        _setStatus('Error: ' + msg);
+        _addLog('ERROR: ' + msg);
+      },
+    });
+  }
+
+  function _applyJobUpdate(job) {
+    var p = job.progress || {};
+    var pct = (p.percent == null || p.percent < 0) ? 0 : p.percent;
+    _setProgress(pct, p.label || job.subtitle || (job.status === 'queued' ? 'Queued...' : 'Processing...'));
+  }
+
+  function _clearRunningState() {
+    var notice = document.getElementById('im-running-notice');
+    if (notice) notice.style.display = 'none';
+    document.getElementById('im-cancel-btn').style.display = 'none';
+    document.getElementById('im-run-btn').disabled = false;
+    currentJobId = null;
+  }
+
+  // Rebuild the result banner's inputs from the generic job record: `run_url` is the
+  // output table (its /projects/<p>/datasets/<d>/ path gives the View-in-Project link)
+  // and the `rows` metric its row count.
+  function _resultFromJob(job) {
+    var url = job.run_url || '';
+    var parts = url.replace(/\\/g, '/').split('/');
+    var project = '', dataset = '';
+    for (var i = 0; i < parts.length - 1; i++) {
+      if (parts[i] === 'projects') project = parts[i + 1];
+      if (parts[i] === 'datasets') dataset = parts[i + 1];
+    }
+    var metrics = {};
+    (job.metrics || []).forEach(function(m) { metrics[m.label] = m.value; });
+    return {
+      result_url: url,
+      table_name: url ? url.replace(/\/+$/, '').split('/').pop() : '',
+      row_count: metrics.rows,
+      project_name: project,
+      dataset_name: dataset,
+    };
   }
 
   /* ── UI helpers ── */

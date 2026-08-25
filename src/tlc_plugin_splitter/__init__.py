@@ -154,12 +154,11 @@ class SplitterPlugin(ComputePlugin):
     def get_ui_fragment(self) -> str:
         """Return the self-contained split wizard HTML+JS+CSS fragment."""
         if self._ui_cache is None:
-            from tlc_plugin_sdk.shared.job_tracker import job_tracker_script
-
+            # window.PluginJobs (the generic job-channel client the UI drives the split
+            # job with, and receives split_result through) is injected by the SDK's /ui
+            # handler — nothing to prepend here.
             ui_path = Path(__file__).resolve().parent / "ui.html"
-            # Inject window.PluginJobs so the UI can drive the split job over the
-            # generic job_update channel and receive the structured split_result event.
-            self._ui_cache = "<script>\n" + job_tracker_script() + "\n</script>\n" + ui_path.read_text(encoding="utf-8")
+            self._ui_cache = ui_path.read_text(encoding="utf-8")
         return self._ui_cache
 
     def compute(self, params: dict[str, Any]) -> dict[str, Any]:

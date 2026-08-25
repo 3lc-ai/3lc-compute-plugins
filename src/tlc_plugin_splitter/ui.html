@@ -397,7 +397,8 @@
         offResult();
         clearInterval(elapsedTimer);
         resetUI();
-        showResult({ success: false, message: (job && job.subtitle) || 'Split failed.' });
+        // Failure text rides `error`; older hosts put it on `subtitle`.
+        showResult({ success: false, message: (job && (job.error || job.subtitle)) || 'Split failed.' });
       },
     });
   }

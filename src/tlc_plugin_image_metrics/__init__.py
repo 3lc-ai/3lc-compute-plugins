@@ -131,8 +131,8 @@ class ImageMetricsPlugin(ComputePlugin):
     def run_job(self, ctx: JobContext) -> None:
         """Compute image metrics for a table and write an EditedTable with lineage.
 
-        Driven entirely by ``ctx``: ``ctx.progress`` / ``ctx.metric`` / ``ctx.log``
-        feed the generic Queue & Progress panel, while ``ctx.emit`` re-broadcasts the
+        Driven entirely by ``ctx``: ``ctx.progress`` / ``ctx.metric`` / ``ctx.log`` /
+        ``ctx.result`` feed the generic Queue & Progress panel, while ``ctx.emit`` re-broadcasts the
         plugin's own ``/image-metrics`` events (``status`` / ``progress`` /
         ``complete`` / ``error``) for the embedded UI. Cancellation is cooperative
         via ``ctx.cancelled``.
@@ -276,6 +276,7 @@ class ImageMetricsPlugin(ComputePlugin):
             )
 
             ctx.progress(percent=100.0, label="Done")
+            ctx.result(result_url)
             ctx.metric("rows", row_count)
             ctx.metric("metric values", len(metric_ids) * len(image_columns) * row_count)
 

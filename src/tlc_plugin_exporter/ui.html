@@ -348,7 +348,8 @@
       onError: function(job) {
         cleanup();
         if (!_resultShown) {
-          var label = (job && job.progress && job.progress.label) || 'Export failed — see the Queue page for details.';
+          // Failure text rides `error`; older hosts put it on the progress label.
+          var label = (job && (job.error || (job.progress && job.progress.label))) || 'Export failed — see the Queue page for details.';
           showResult({ success: false, message: label });
         }
       },
