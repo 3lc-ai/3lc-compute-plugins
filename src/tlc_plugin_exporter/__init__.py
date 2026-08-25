@@ -397,16 +397,14 @@ class ExportPlugin(ComputePlugin):
     def get_ui_fragment(self) -> str:
         """Return the self-contained export wizard HTML+JS+CSS fragment."""
         if self._ui_cache is None:
-            from tlc_plugin_sdk.shared.alias_override_ui import alias_override_ui_script
             from tlc_plugin_sdk.shared.data_source_ui import data_source_ui_script
-            from tlc_plugin_sdk.shared.job_tracker import job_tracker_script
             from tlc_plugin_sdk.shared.ui_inject import inject_scripts
 
             ui_path = Path(__file__).resolve().parent / "ui.html"
             raw = ui_path.read_text(encoding="utf-8")
-            self._ui_cache = inject_scripts(
-                raw, data_source_ui_script(), alias_override_ui_script(), job_tracker_script()
-            )
+            # window.PluginJobs is injected by the SDK's /ui handler; the fragment uses
+            # only the shared data-source picker beyond that.
+            self._ui_cache = inject_scripts(raw, data_source_ui_script())
         return self._ui_cache
 
     def compute(self, params: dict[str, Any]) -> dict[str, Any]:

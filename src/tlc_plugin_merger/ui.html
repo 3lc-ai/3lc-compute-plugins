@@ -271,7 +271,8 @@
       onError: function(job) {
         clearInterval(elapsedTimer);
         resetUI();
-        showResult({ success: false, message: (job && job.subtitle) || 'Merge failed.' });
+        // Failure text rides `error`; older hosts put it on `subtitle`.
+        showResult({ success: false, message: (job && (job.error || job.subtitle)) || 'Merge failed.' });
       },
     });
   }

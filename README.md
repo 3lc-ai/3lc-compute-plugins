@@ -58,7 +58,7 @@ SDK development, override it (uncommitted) with an editable path source — see 
 
 Each `src/tlc_plugin_*/ui.html` drives the host through `window.PLUGIN_API` /
 `window.PluginJobs`. Those are typed by a declaration that ships inside the installed
-SDK (`<site-packages>/tlc_plugin_sdk/contract/plugin-api.d.ts`, `JS_CONTRACT`). The
+SDK (`<site-packages>/tlc_plugin_sdk/contract/plugin-api.d.ts`, versioned with the SDK). The
 repo-root **`jsconfig.json`** wires it up so VS Code gives autocomplete in every
 `ui.html` — **no node build, no `node_modules`**:
 

@@ -1648,7 +1648,7 @@ def _report_result(ctx: JobContext, result: dict[str, Any]) -> None:
         ctx.metric("dataset", dataset)
     table_url = result.get("table_url")
     if table_url:
-        ctx.result(run_url=str(table_url))
+        ctx.result(str(table_url))
     ctx.progress(percent=100, label=message)
     if message:
         ctx.log(message)
@@ -1782,20 +1782,13 @@ class ImportPlugin(ComputePlugin):
         if self._ui_cache is None:
             from tlc_plugin_sdk.shared.alias_ui import alias_ui_script
             from tlc_plugin_sdk.shared.data_source_ui import data_source_ui_script
-            from tlc_plugin_sdk.shared.job_tracker import job_tracker_script
+            from tlc_plugin_sdk.shared.ui_inject import inject_scripts
 
             ui_path = Path(__file__).resolve().parent / "ui.html"
             raw = ui_path.read_text(encoding="utf-8")
-            self._ui_cache = raw.replace(
-                "<script>\n(function() {\n  'use strict';",
-                "<script>\n"
-                + data_source_ui_script()
-                + "\n"
-                + alias_ui_script()
-                + "\n"
-                + job_tracker_script()
-                + "\n(function() {\n  'use strict';",
-            )
+            # window.PluginJobs is injected by the SDK's /ui handler; only the shared
+            # data-source and alias form helpers are prepended here.
+            self._ui_cache = inject_scripts(raw, data_source_ui_script(), alias_ui_script())
         return self._ui_cache
 
     def compute(self, params: dict[str, Any]) -> dict[str, Any]:

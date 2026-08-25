@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The Import and Image Metrics pages now pick up a job that is already queued or running
+  when you navigate back to them, instead of showing the empty form as if nothing were
+  happening: a compact "job running — watch it in the Queue" notice with the live status,
+  and the result (or failure message) when it finishes. Previously a long import or metrics
+  run was only visible from the page you started it on, until you found it in the Queue.
+- Image Metrics reports its output table as the job's result, so the generic Queue card now
+  has an Open link for it like the importer, merger, and splitter already had.
+
+### Changed
+- Built against plugin SDK 0.3 (`3lc-compute-plugin-sdk>=0.3.0,<0.4.0`): `ctx.result(url)` is
+  positional, and the shared `PluginJobs` client is injected by the SDK's `/ui` handler, so
+  the plugins no longer prepend it themselves. Hosts and frontends on the 0.3 contract show a
+  failed job's message on the generic Queue card; the plugin pages read it from the same
+  field (falling back to the older status-line placement on older hosts).
+
 ### Fixed
 - The COCO importer's Annotations Path field now lets you select a folder from the browse
   dialog, not just individual JSON files — the field already accepted a folder (auto-detecting
