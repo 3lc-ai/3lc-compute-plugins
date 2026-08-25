@@ -526,6 +526,29 @@
     var isYoloMulti = _currentFormFmt.name === 'yolo' && _yoloDetectedSplits.length > 0;
     // For COCO with auto-detect: skip 'annotations_file' and 'image_folder' (handled per-split)
     var isCocoMulti = _currentFormFmt.name === 'coco' && _cocoDetectedSplits.length > 0;
+    // A folder that failed detection still leaves annotations_file non-empty — don't let
+    // that read as "ready" (it would reach the backend as a raw, unresolved directory).
+    if (_currentFormFmt.name === 'coco' && _cocoDetectFailed) ready = false;
+
+    // Multi-split (YOLO or COCO): every split gets its own dataset_name, so a shared
+    // table_name isn't disambiguating anything — grey it out rather than let it look
+    // like it needs a distinct value per split.
+    var tnInput = document.getElementById('import-table_name');
+    if (tnInput) {
+      var tnGroup = tnInput.closest('.form-group');
+      var tnHelp = tnGroup ? tnGroup.querySelector('.form-help') : null;
+      if (isYoloMulti || isCocoMulti) {
+        if (!tnInput.disabled) tnInput.dataset.userValue = tnInput.value;
+        tnInput.disabled = true;
+        tnInput.value = '';
+        tnInput.placeholder = 'initial';
+        if (tnHelp) tnHelp.textContent = "Applied to every split's dataset — each split already has its own dataset name.";
+      } else if (tnInput.disabled) {
+        tnInput.disabled = false;
+        tnInput.value = tnInput.dataset.userValue || '';
+        if (tnHelp) tnHelp.textContent = "Table revision name. Leave blank for 'initial'.";
+      }
+    }
 
     for (var i = 0; i < fields.length; i++) {
       var f = fields[i];
@@ -705,6 +728,10 @@
   var _cocoCheckedSplits = {};     // e.g. {train: true, val: true}
   var _cocoBaseName = '';
   var _cocoDetectTimer = null;
+  // True when the last detect call couldn't resolve the current path to a COCO
+  // annotation file — blocks "Ready" so a bad path can't reach the backend as a
+  // raw directory (see _checkImportReady).
+  var _cocoDetectFailed = false;
 
   function _setupCocoAutoDetect() {
     var annInput = document.getElementById('import-annotations_file');
@@ -730,26 +757,44 @@
   var _cocoAllTypes = [];         // [{type, splits}]
   var _cocoSelectedType = '';      // e.g. 'instances'
 
+  function _cocoShowDetectError(message) {
+    _cocoDetectedSplits = [];
+    _cocoAllTypes = [];
+    _cocoDetectFailed = true;
+    var panel = document.getElementById('coco-splits-panel');
+    if (panel) {
+      panel.style.display = '';
+      panel.innerHTML = '<div class="form-help" style="color:var(--error)">' + _esc(message) +
+        ' Point at a specific .json file, or a folder containing .json files directly ' +
+        '(e.g. instances_train2017.json), or train/val/test subfolders each with ' +
+        '_annotations.coco.json.</div>';
+    }
+    // Re-show image_folder if it was hidden
+    var imgInput = document.getElementById('import-image_folder');
+    if (imgInput) {
+      var imgGroup = imgInput.closest('.form-group');
+      if (imgGroup) imgGroup.style.display = '';
+    }
+    _checkImportReady();
+  }
+
   function _cocoDetect(annPath) {
-    if (!annPath || !annPath.trim()) return;
+    if (!annPath || !annPath.trim()) {
+      _cocoDetectFailed = false;
+      var panel = document.getElementById('coco-splits-panel');
+      if (panel) panel.style.display = 'none';
+      return;
+    }
     var trimmed = annPath.trim();
 
     API.authFetch(computeUrl + '/api/plugins/importer/parse-coco?annotations_dir=' + encodeURIComponent(trimmed))
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data.error || !data.splits || data.splits.length === 0) {
-          _cocoDetectedSplits = [];
-          _cocoAllTypes = [];
-          var panel = document.getElementById('coco-splits-panel');
-          if (panel) panel.style.display = 'none';
-          // Re-show image_folder if it was hidden
-          var imgInput = document.getElementById('import-image_folder');
-          if (imgInput) {
-            var imgGroup = imgInput.closest('.form-group');
-            if (imgGroup) imgGroup.style.display = '';
-          }
+          _cocoShowDetectError(data.error || 'No COCO annotations found at this path.');
           return;
         }
+        _cocoDetectFailed = false;
 
         _cocoAllTypes = data.types || [];
         _cocoSelectedType = data.default_type || '';
@@ -805,7 +850,9 @@
         }
         _checkImportReady();
       })
-      .catch(function() {});
+      .catch(function() {
+        _cocoShowDetectError('Failed to inspect this path.');
+      });
   }
 
   function _cocoSelectType(typeName) {

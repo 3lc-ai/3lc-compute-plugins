@@ -445,6 +445,15 @@
       html += '</div>';
     }
 
+    // No single deep-link target — a split produces several sibling tables (train/val/test),
+    // not one — so this points at the project root rather than a specific dataset/table.
+    if (data.success && data.project_name) {
+      html += '<div style="margin-top:10px">';
+      html += '<a href="/projects/' + encodeURIComponent(data.project_name) +
+              '#datasets" class="btn btn-secondary btn-sm">View in Project</a>';
+      html += '</div>';
+    }
+
     html += '</div></div>';
     el.innerHTML = html;
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

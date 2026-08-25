@@ -582,7 +582,7 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
                 "required": True,
                 "help": "Path to a JSON file, or an annotations folder to auto-detect splits.",
                 "accept": "*.json",
-                "mode": "file",
+                "mode": "folder",
             },
             {
                 "id": "image_folder",
@@ -1223,18 +1223,83 @@ def _execute_yolo(form_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _resolve_coco_annotations(annotations_file: str, image_folder: str) -> tuple[str, str]:
+    """Resolve a user-supplied Annotations Path into a concrete JSON file.
+
+    A directory reaches here when the UI's auto-detect either wasn't triggered or
+    failed silently (e.g. a stale client). Re-run the same detection server-side so a
+    folder still resolves when unambiguous, and fail with the same guidance the UI's
+    auto-detect panel would have shown rather than letting a directory reach ``tlc``.
+
+    Returns:
+        The resolved ``(annotations_file, image_folder)``, `image_folder` filled in
+        from the detected split's hint when the caller left it blank.
+
+    Raises:
+        ValueError: The path doesn't exist, has no detectable COCO annotations, or is
+            ambiguous (multiple annotation types or splits) and needs the UI's picker.
+
+    """
+    ann_path = Path(annotations_file)
+    if not ann_path.is_dir():
+        if not ann_path.is_file():
+            msg = f"Annotations Path '{annotations_file}' does not exist."
+            raise ValueError(msg)
+        return annotations_file, image_folder
+
+    parsed = _parse_coco_folder(annotations_file)
+    error = parsed.get("error")
+    if error:
+        msg = (
+            f"'{annotations_file}' is a folder and {error[0].lower()}{error[1:]}. "
+            "Point Annotations Path at a specific .json file, or a folder containing .json files "
+            "directly (e.g. instances_train2017.json), or train/val/test subfolders each with "
+            "_annotations.coco.json."
+        )
+        raise ValueError(msg)
+    types = parsed.get("types") or []
+    if len(types) > 1:
+        type_names = ", ".join(t["type"] for t in types)
+        msg = (
+            f"'{annotations_file}' has multiple annotation types ({type_names}). Re-select it in "
+            "the Annotations Path field so the auto-detect panel appears, then choose one."
+        )
+        raise ValueError(msg)
+    splits = parsed.get("splits") or []
+    if len(splits) > 1:
+        split_names = ", ".join(s.get("split") or Path(s["file"]).name for s in splits)
+        msg = (
+            f"'{annotations_file}' has multiple splits ({split_names}). Re-select it in the "
+            "Annotations Path field so the auto-detect panel appears, then choose which to import."
+        )
+        raise ValueError(msg)
+    if not splits:
+        msg = f"No COCO annotation JSON files were found under '{annotations_file}'."
+        raise ValueError(msg)
+    resolved = splits[0]
+    return resolved["file"], image_folder or resolved.get("images_hint", "")
+
+
 def _execute_coco(form_data: dict[str, Any]) -> dict[str, Any]:
     """Execute COCO import."""
     import tlc
 
-    image_folder = form_data["image_folder"].strip()
+    annotations_file, image_folder = _resolve_coco_annotations(
+        form_data["annotations_file"].strip(), form_data["image_folder"].strip()
+    )
+    if not image_folder:
+        msg = "Images Folder is required."
+        raise ValueError(msg)
+    if not Path(image_folder).is_dir():
+        msg = f"Images Folder '{image_folder}' does not exist or is not a directory."
+        raise ValueError(msg)
 
     # The SDK defaults to "detect"; translate the form's task so segmentation
     # datasets are imported with the correct annotation schema.
     task = _YOLO_TASK_MAP.get(form_data["task"], form_data["task"])
 
     table = tlc.Table.from_coco(
-        annotations_file=form_data["annotations_file"].strip(),
+        annotations_file=annotations_file,
         image_folder=image_folder,
         task=task,
         project_name=form_data["project_name"].strip(),
