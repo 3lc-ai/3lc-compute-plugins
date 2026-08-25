@@ -96,6 +96,11 @@ def _execute_split(form_data: dict[str, Any]) -> dict[str, Any]:
         "success": True,
         "message": f"Split {n} rows into {', '.join(summary_parts)}.",
         "splits": results,
+        # Echoes the request's project_name (already the authoritative value used for
+        # job attribution above) so the UI can link back to the project — a split
+        # produces multiple sibling tables, so there's no single dataset/table to
+        # deep-link to the way a single-table result would.
+        "project_name": form_data.get("project_name", "").strip(),
         "details": {
             "source_rows": n,
             "strategy": strategy,

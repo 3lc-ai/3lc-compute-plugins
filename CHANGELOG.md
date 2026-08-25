@@ -8,7 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- The COCO importer's Annotations Path field now lets you select a folder from the browse
+  dialog, not just individual JSON files — the field already accepted a folder (auto-detecting
+  splits/types), but the widget's `mode` was locked to `"file"`, which never offered a "Select
+  This Folder" option. Individual `.json` file selection still works the same as before.
+- The COCO importer no longer crashes with a raw `OSError: Is a directory` traceback when a
+  folder doesn't auto-detect (client-side detection failed silently, leaving an unresolved
+  folder path submittable). The backend now re-resolves the folder itself — importing directly
+  when there's exactly one split, or raising a clear, actionable error (no JSON files found;
+  multiple types/splits need the picker) instead of ever handing a directory to `tlc`. The UI
+  also now surfaces detection failures inline instead of silently hiding the splits panel, and
+  blocks "Ready" until the path actually resolves.
+
+### Changed
+- The importer's Table Name field is greyed out during a multi-split YOLO or COCO import
+  (each split already gets its own dataset name, so a shared table name isn't disambiguating
+  anything) instead of looking like it needs a distinct value per split.
+- The splitter now shows a "View in Project" link on a successful split, matching the importer,
+  merger, and image-metrics plugins — it previously had no way to navigate to the resulting
+  tables from the result panel.
 
 ## [0.2.1] - 2026-08-21
 
