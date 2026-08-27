@@ -4,7 +4,7 @@
 id = "splitter"
 name = "Split"
 description = "Split a table into train, validation, and test sets with random or stratified sampling."
-version = "0.2.1"
+version = "0.2.2"
 min_service_version = "0.1.0"
 icon = "✂"
 icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="4.5" cy="4.5" r="2"/><circle cx="4.5" cy="11.5" r="2"/><path d="M6.2 5.8L13 12M6.2 10.2L13 4"/></svg>'
