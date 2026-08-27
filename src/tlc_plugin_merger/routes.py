@@ -33,8 +33,11 @@ def get_route_handlers() -> list[BaseRouteHandler]:
             request: The incoming request; ``url`` query param is the table URL.
 
         Returns:
-            A response carrying ``{"columns": [...], "row_count": <int|null>}`` on
-            success, ``{"error": ...}`` (status 400) when ``url`` is missing, or
+            A response carrying
+            ``{"columns": [...], "row_count": <int|null>, "project_name": <str>,
+            "dataset_name": <str>}`` on success — the project/dataset names let the UI
+            resolve the output naming authoritatively instead of parsing the URL —
+            ``{"error": ...}`` (status 400) when ``url`` is missing, or
             ``{"error": ...}`` (status 200) when the table cannot be loaded — so the
             UI can render the failure gracefully.
         """
@@ -49,10 +52,17 @@ def get_route_handlers() -> list[BaseRouteHandler]:
             table = tlc.Table.from_url(normalize_url(url))
             column_names: list[str] = list(table.columns)
             row_count = table.row_count
+            project_name: str | None = table.project_name
+            dataset_name: str | None = table.dataset_name
         except Exception as e:
             # Surface any load failure to the UI as data so it can render gracefully.
             return Response({"error": str(e)})
 
-        return Response({"columns": column_names, "row_count": row_count})
+        return Response({
+            "columns": column_names,
+            "row_count": row_count,
+            "project_name": project_name,
+            "dataset_name": dataset_name,
+        })
 
     return [columns]

@@ -27,8 +27,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the plugins no longer prepend it themselves. Hosts and frontends on the 0.3 contract show a
   failed job's message on the generic Queue card; the plugin pages read it from the same
   field (falling back to the older status-line placement on older hosts).
+- The exporter's destination-folder picker now uses the shared browse widget's output mode
+  (`purpose: 'output'`): it lists all folders and flags non-writable ones, instead of hiding
+  inaccessible folders the way input pickers now do. Input pickers keep the default behaviour.
 
 ### Fixed
+- Merge Tables no longer leaves the **Merge Tables** button disabled when two tables with
+  matching schemas are selected. The output project/dataset are now read from the loaded
+  table object on the backend (`/api/plugins/merger/columns` returns `project_name` and
+  `dataset_name`) instead of string-parsing the table URL for a `projects/` segment that real
+  table URLs don't contain — so the output naming resolves and the button enables. URL parsing
+  remains only as an instant pre-fetch display fallback.
 - The exporter's column list (CSV/Excel formats) now labels float columns as **number**
   instead of **other**. The classifier read the column type out of the schema's serialized
   JSON, but `tlc` omits default-valued fields there and float32 is the default scalar type —

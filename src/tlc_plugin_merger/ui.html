@@ -256,6 +256,14 @@
         return;
       }
 
+      // Table A loaded OK — set the output naming from the authoritative backend
+      // values (the URL parser above is only an instant pre-fetch fallback and can
+      // fail on real table URLs that have no literal `projects/` segment).
+      var outProj = document.getElementById('merge-out-project');
+      var outDs = document.getElementById('merge-out-dataset');
+      outProj.textContent = ra.project_name || outProj.textContent;
+      outDs.textContent = ra.dataset_name || outDs.textContent;
+
       var colsA = ra.columns || [];
       var colsB = rb.columns || [];
       var setA = {}, setB = {};
