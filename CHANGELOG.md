@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- The Merge Tables page now checks schema compatibility before you can start a merge: it
+  loads both tables' columns (via a new `/api/plugins/merger/columns` route), keeps the merge
+  button disabled until two distinct tables are chosen, the output project/dataset resolve, and
+  the schemas are compatible, and shows an inline "schemas match / differ / can't load" status.
 - The Import and Image Metrics pages now pick up a job that is already queued or running
   when you navigate back to them, instead of showing the empty form as if nothing were
   happening: a compact "job running — watch it in the Queue" notice with the live status,
@@ -31,6 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so every plain float column (image metrics, width/height, and the like) fell through to
   "other". It now reads the live schema object first, which also makes the old
   `col_name == "weight"` special case unnecessary. (#17)
+- Merge Tables now describes and performs its operation truthfully as a **vertical join
+  (row concatenation)** — stacking the selected tables' rows into one table — instead of the
+  previous, incorrect "column join by row index" labelling (the underlying operation was always
+  vertical). Removed the bogus equal-row-count constraint (vertical join does not require it) and
+  the disabled "Union (Row Concatenation) — coming soon" option (that behavior *is* what the
+  plugin does). Schema-incompatibility failures now surface a clear, actionable message.
 - The COCO importer's Annotations Path field now lets you select a folder from the browse
   dialog, not just individual JSON files — the field already accepted a folder (auto-detecting
   splits/types), but the widget's `mode` was locked to `"file"`, which never offered a "Select
