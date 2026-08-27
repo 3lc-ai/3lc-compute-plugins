@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JSON, but `tlc` omits default-valued fields there and float32 is the default scalar type —
   so every plain float column (image metrics, width/height, and the like) fell through to
   "other". It now reads the live schema object first, which also makes the old
-  `col_name == "weight"` special case unnecessary.
+  `col_name == "weight"` special case unnecessary. (#17)
 - The COCO importer's Annotations Path field now lets you select a folder from the browse
   dialog, not just individual JSON files — the field already accepted a folder (auto-detecting
   splits/types), but the widget's `mode` was locked to `"file"`, which never offered a "Select
