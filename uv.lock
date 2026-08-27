@@ -75,20 +75,16 @@ pandas = [
 
 [[package]]
 name = "3lc-compute-plugin-sdk"
-version = "0.3.0"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "3lc", extra = ["pandas"] },
     { name = "litestar" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/7f/7eee9db661090d406062dd10ad37a76a65fe8910691923ce9b46202d2f43/3lc_compute_plugin_sdk-0.3.0.tar.gz", hash = "sha256:7976042adbcf939524d1494ef5b5206b1bd63ba41d622b8e8d23fc7d436e1247", size = 219392, upload-time = "2026-08-25T13:19:59.281Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6c/c0/7047e1585668f4e995e90376588cf20042f0ca66105c5fd578097e4bec03/3lc_compute_plugin_sdk-0.3.1.tar.gz", hash = "sha256:b8d3f3e2b141584eea7937891e48f1d93657dc394a1752dec856bccc4bac3924", size = 223156, upload-time = "2026-08-27T12:13:32.37Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ea/fd/7acb935c8ba73d35bd042a3d2c09871f13c3a39cdbde706afc2d16e7ed7b/3lc_compute_plugin_sdk-0.3.0-py3-none-any.whl", hash = "sha256:56e7b05c41186967dac88c2c90487becf6d389d4ec763f2c897d7187ec1a3ed1", size = 73065, upload-time = "2026-08-25T13:19:58.288Z" },
-]
-
-[package.optional-dependencies]
-shared = [
-    { name = "3lc", extra = ["pandas"] },
+    { url = "https://files.pythonhosted.org/packages/3d/51/0823f6f42b32bdae48cb3fbd9dee6f287cfae77ed9b33c5506f9e346473b/3lc_compute_plugin_sdk-0.3.1-py3-none-any.whl", hash = "sha256:3a7de2501913aab2a6153847cc65e01ec03285c993e5788e5c61d4ffa65c2ff1", size = 75050, upload-time = "2026-08-27T12:13:30.979Z" },
 ]
 
 [[package]]
@@ -96,8 +92,7 @@ name = "3lc-compute-plugins"
 version = "0.2.1"
 source = { editable = "." }
 dependencies = [
-    { name = "3lc", extra = ["pandas"] },
-    { name = "3lc-compute-plugin-sdk", extra = ["shared"] },
+    { name = "3lc-compute-plugin-sdk" },
 ]
 
 [package.optional-dependencies]
@@ -131,8 +126,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "3lc", extras = ["pandas"], specifier = ">=3.0.0,<4.0.0" },
-    { name = "3lc-compute-plugin-sdk", extras = ["shared"], specifier = ">=0.3.0,<0.4.0" },
+    { name = "3lc-compute-plugin-sdk", specifier = ">=0.3.1,<0.4.0" },
     { name = "datasets", marker = "extra == 'importer'" },
     { name = "numpy", marker = "extra == 'image-metrics'" },
     { name = "numpy", marker = "extra == 'importer'" },

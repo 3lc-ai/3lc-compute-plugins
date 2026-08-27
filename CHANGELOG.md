@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   has an Open link for it like the importer, merger, and splitter already had.
 
 ### Changed
+- Requires plugin SDK `3lc-compute-plugin-sdk>=0.3.1,<0.4.0`, pinned without the `[shared]`
+  extra: since SDK 0.3.1 the `3lc` data plane is a base dependency of the SDK, and the extra is a
+  deprecated no-op.
 - Built against plugin SDK 0.3 (`3lc-compute-plugin-sdk>=0.3.0,<0.4.0`): `ctx.result(url)` is
   positional, and the shared `PluginJobs` client is injected by the SDK's `/ui` handler, so
   the plugins no longer prepend it themselves. Hosts and frontends on the 0.3 contract show a

@@ -36,7 +36,7 @@ Every plugin in this repo is **`venv`-isolated** (`runtime.isolation = "venv"` i
 host provisions a dedicated venv, installs the plugin's extra (e.g. `3lc-compute-plugins[importer]`),
 and runs the plugin out-of-process. Its deps never touch the host venv.
 
-That's why the base `dependencies` is the **SDK floor only** (`3lc-compute-plugin-sdk[shared]`) — this
+That's why the base `dependencies` is the **SDK floor only** (`3lc-compute-plugin-sdk`) — this
 distribution is never installed into the host venv. Each plugin's real deps ride its own extra and
 land only in that plugin's provisioned venv.
 
