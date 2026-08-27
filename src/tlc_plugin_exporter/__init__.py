@@ -160,6 +160,17 @@ def _classify_column_type(schema: Any, col_name: str = "") -> str:
     string_role = str(value.get("string_role", "")).lower() if isinstance(value, dict) else ""
     has_values = "values" in schema_json  # complex nested type (bbs, segmentation)
 
+    # Prefer the live schema object: to_json() omits default-valued fields, and
+    # float32 is the default scalar type, so the serialized form carries no
+    # value.type for the most common numeric columns.
+    try:
+        value_obj = getattr(schema, "value", None)
+        if value_obj is not None:
+            value_type = str(getattr(value_obj, "type", "") or value_type).lower()
+            string_role = str(getattr(value_obj, "string_role", "") or string_role).lower()
+    except Exception:
+        pass
+
     # Image columns (string_role contains "image")
     if "image" in string_role:
         return "image"
@@ -172,9 +183,6 @@ def _classify_column_type(schema: Any, col_name: str = "") -> str:
     # Embeddings (by column name convention)
     if "embedding" in col_name.lower():
         return "embedding"
-    # Weight column
-    if "sample_weight" in full_str or col_name == "weight":
-        return "number"
     # Simple numeric types
     if value_type in ("int32", "int64", "float32", "float64", "double"):
         return "number"
