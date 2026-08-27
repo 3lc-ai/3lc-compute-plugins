@@ -423,8 +423,9 @@
   dsContainer.innerHTML = _tlcDataSourceHtml('export-output-path', {
     placeholder: '/path/to/output/folder',
     mode: 'folder',
+    purpose: 'output',
   });
-  _tlcBindDataSource('export-output-path', computeUrl, 'exporter', { mode: 'folder' });
+  _tlcBindDataSource('export-output-path', computeUrl, 'exporter', { mode: 'folder', purpose: 'output' });
 
   if (prefillUrl) document.getElementById('export-table-url').value = prefillUrl;
   loadFormats();

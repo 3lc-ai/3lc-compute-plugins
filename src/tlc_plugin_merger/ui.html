@@ -38,13 +38,13 @@
 
 <div class="plugin-page">
   <div class="plugin-hero">
-    <h2>⇌ Merge Datasets</h2>
-    <p>Join columns from two 3LC tables into a single merged table with full revision history.</p>
+    <h2>⇌ Merge Tables</h2>
+    <p>Vertically join two 3LC tables — stack their rows into a single table with full revision history.</p>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
       <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12l-2 2a2.83 2.83 0 1 1-4-4l2-2a2.83 2.83 0 0 1 4 0M12 8l2-2a2.83 2.83 0 1 1 4 4l-2 2a2.83 2.83 0 0 1-4 0"/><path d="M7 13l6-6"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Column Join</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Combine columns from two tables</div>
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="3.5" rx="1"/><rect x="3" y="8.25" width="14" height="3.5" rx="1"/><path d="M10 14v3M8 15.5l2 1.5 2-1.5"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Vertical Join</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Stack rows from both tables</div>
       </div>
       <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
         <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9M8 17V5M12 17V8M16 17V3"/></svg></div>
@@ -52,9 +52,9 @@
         <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Tracks in DAG view</div>
       </div>
       <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2L5 11h5l-1 7 6-9h-5l1-7z"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Index-Based</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Matches rows by position</div>
+        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="14" rx="1"/><rect x="12" y="3" width="5" height="14" rx="1"/></svg></div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Schema-Aware</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Tables must share the same columns</div>
       </div>
     </div>
     <div class="plugin-workflow" style="margin-top:10px">
@@ -95,16 +95,6 @@
       <!-- Compatibility check -->
       <div id="merge-compat-check"></div>
 
-      <!-- Merge type -->
-      <div class="form-group">
-        <label class="form-label required">Merge Type</label>
-        <select id="merge-type" class="form-control" style="max-width:320px">
-          <option value="join" selected>Join (Column Join) — combine columns by row index</option>
-          <option value="union" disabled>Union (Row Concatenation) — coming soon</option>
-        </select>
-        <div class="form-help">Join requires both tables to have the same number of rows.</div>
-      </div>
-
       <!-- Output naming -->
       <div class="form-group" id="merge-output-group">
         <label class="form-label required">Output Table Name</label>
@@ -121,7 +111,7 @@
 
       <hr class="divider">
       <div style="display:flex;gap:10px;align-items:center">
-        <button type="button" class="btn btn-primary btn-lg" id="merge-submit-btn">⇌ Merge Tables</button>
+        <button type="button" class="btn btn-primary btn-lg" id="merge-submit-btn" disabled>⇌ Merge Tables</button>
         <span class="spinner" id="merge-spinner" style="display:none"></span>
         <span id="merge-status" style="display:none;font-size:12px;color:var(--text-muted)">
           Merging… this may take a moment.</span>
@@ -138,12 +128,10 @@
     <div class="card-header"><div class="card-title">About Merging</div></div>
     <div class="card-body">
       <div style="font-size:13px;color:var(--text-secondary)">
-        <p style="margin-bottom:8px"><strong>Join:</strong> Creates a JoinedTable that combines columns
-        from multiple tables (similar to a SQL JOIN on row index). Both tables must have the same
-        number of rows.</p>
-        <p style="margin-bottom:8px"><strong>Union:</strong> Concatenates rows from multiple tables
-        that share the same schema. <em>(Coming soon)</em></p>
-        <p>Merged tables maintain full revision history and can be viewed in the DAG view.</p>
+        <p style="margin-bottom:8px">Merge stacks the rows of the selected tables into a single new
+        table, in the order selected (a vertical join). The tables must have compatible schemas —
+        the same columns. Row counts may differ.</p>
+        <p>The merged table keeps full revision history and appears in the DAG view.</p>
       </div>
     </div>
   </div>
@@ -193,16 +181,147 @@
     document.getElementById('merge-out-dataset').textContent = ds || '—';
   }
 
-  document.getElementById('merge-table-a').addEventListener('change', updateOutputNaming);
-  updateOutputNaming();
+  // ── Compatibility check + submit-button gating ─────────
+  // compatState: 'none' | 'checking' | 'ok' | 'warn' | 'err'
+  var compatState = 'none';
+  var _compatToken = 0;         // guards against out-of-order fetch responses
+  var _compatDebounce = null;
+
+  function _tableInputs() {
+    return {
+      a: document.getElementById('merge-table-a').value.trim(),
+      b: document.getElementById('merge-table-b').value.trim(),
+    };
+  }
+
+  function renderCompat(cls, html) {
+    var el = document.getElementById('merge-compat-check');
+    el.innerHTML = cls ? '<div class="merge-compat ' + cls + '">' + html + '</div>' : '';
+  }
+
+  // Enable the merge button only when every gate holds: two distinct tables,
+  // a resolvable project/dataset, and a compatible (or cautiously compatible) schema.
+  function updateSubmitState() {
+    var t = _tableInputs();
+    var proj = document.getElementById('merge-out-project').textContent;
+    var ds = document.getElementById('merge-out-dataset').textContent;
+
+    var twoDistinct = !!t.a && !!t.b && t.a !== t.b;
+    var namingOk = proj !== '—' && ds !== '—';
+    var schemaOk = compatState === 'ok';
+
+    document.getElementById('merge-submit-btn').disabled = !(twoDistinct && namingOk && schemaOk);
+  }
+
+  function fetchColumns(url) {
+    return API.authFetch(computeUrl + '/api/plugins/merger/columns?url=' + encodeURIComponent(url), {
+      headers: { 'Accept': 'application/json' },
+    }).then(function(r) { return r.json(); });
+  }
+
+  function refreshCompat() {
+    var t = _tableInputs();
+
+    // Fewer than 2 distinct tables — nothing to check.
+    if (!t.a || !t.b || t.a === t.b) {
+      compatState = 'none';
+      renderCompat('', '');
+      updateSubmitState();
+      return;
+    }
+
+    var token = ++_compatToken;
+    compatState = 'checking';
+    renderCompat('', '');  // neutral, no colour box
+    document.getElementById('merge-compat-check').innerHTML =
+      '<div class="merge-compat" style="color:var(--text-muted)">Checking table compatibility…</div>';
+    updateSubmitState();
+
+    Promise.all([fetchColumns(t.a), fetchColumns(t.b)]).then(function(res) {
+      if (token !== _compatToken) { return; }  // superseded by a newer check
+      var ra = res[0] || {};
+      var rb = res[1] || {};
+
+      if (ra.error) {
+        compatState = 'err';
+        renderCompat('merge-compat-err', '✗ Table A could not be loaded: ' + _esc(ra.error));
+        updateSubmitState();
+        return;
+      }
+      if (rb.error) {
+        compatState = 'err';
+        renderCompat('merge-compat-err', '✗ Table B could not be loaded: ' + _esc(rb.error));
+        updateSubmitState();
+        return;
+      }
+
+      // Table A loaded OK — set the output naming from the authoritative backend
+      // values (the URL parser above is only an instant pre-fetch fallback and can
+      // fail on real table URLs that have no literal `projects/` segment).
+      var outProj = document.getElementById('merge-out-project');
+      var outDs = document.getElementById('merge-out-dataset');
+      outProj.textContent = ra.project_name || outProj.textContent;
+      outDs.textContent = ra.dataset_name || outDs.textContent;
+
+      var colsA = ra.columns || [];
+      var colsB = rb.columns || [];
+      var setA = {}, setB = {};
+      colsA.forEach(function(c) { setA[c] = true; });
+      colsB.forEach(function(c) { setB[c] = true; });
+
+      var onlyA = colsA.filter(function(c) { return !setB[c]; });
+      var onlyB = colsB.filter(function(c) { return !setA[c]; });
+      if (onlyA.length === 0 && onlyB.length === 0) {
+        compatState = 'ok';
+        renderCompat('merge-compat-ok', '✓ Schemas match — ' + colsA.length + ' columns');
+      } else {
+        // Any column difference fails a vertical join — rows can't be stacked when the
+        // tables don't share the same columns — so block rather than warn, and name the
+        // columns that differ so the mismatch is clear before pressing Merge.
+        compatState = 'err';
+        var diff = [];
+        if (onlyA.length) { diff.push('only in A: ' + onlyA.join(', ')); }
+        if (onlyB.length) { diff.push('only in B: ' + onlyB.join(', ')); }
+        renderCompat('merge-compat-err',
+          '✗ Schemas don\'t match — vertical join needs the same columns in both tables (' +
+          diff.join('; ') + ').');
+      }
+      updateSubmitState();
+    }).catch(function(e) {
+      if (token !== _compatToken) { return; }
+      compatState = 'err';
+      renderCompat('merge-compat-err', '✗ Could not check table compatibility: ' + _esc(String(e)));
+      updateSubmitState();
+    });
+  }
+
+  function scheduleCompat() {
+    clearTimeout(_compatDebounce);
+    _compatDebounce = setTimeout(refreshCompat, 300);
+  }
+
+  // React to any change that affects naming or compatibility.
+  function onInputsChanged() {
+    updateOutputNaming();
+    updateSubmitState();
+    scheduleCompat();
+  }
+
+  var tableAEl = document.getElementById('merge-table-a');
+  var tableBEl = document.getElementById('merge-table-b');
+  tableAEl.addEventListener('change', onInputsChanged);
+  tableAEl.addEventListener('input', onInputsChanged);
+  tableBEl.addEventListener('change', onInputsChanged);
+  tableBEl.addEventListener('input', onInputsChanged);
+  document.getElementById('merge-table-name').addEventListener('input', updateSubmitState);
 
   // ── Execute merge ──────────────────────────────────────
   function executeMerge() {
     var tableA = document.getElementById('merge-table-a').value.trim();
     var tableB = document.getElementById('merge-table-b').value.trim();
     var tableName = document.getElementById('merge-table-name').value.trim();
-    var mergeType = document.getElementById('merge-type').value;
 
+    // Defensive final guard — the live state normally blocks these before we get here.
     if (!tableA || !tableB) {
       showResult({ success: false, message: 'Select both Table A and Table B.' });
       return;
@@ -245,7 +364,6 @@
     // reconstructs the result from the final job's run_url + metrics.
     PluginJobs.run('merger', {
       table_urls: [tableA, tableB],
-      merge_type: mergeType,
       project_name: proj,
       dataset_name: ds,
       table_name: tableName,
@@ -278,10 +396,10 @@
   }
 
   function resetUI() {
-    document.getElementById('merge-submit-btn').disabled = false;
     document.getElementById('merge-spinner').style.display = 'none';
     document.getElementById('merge-status').style.display = 'none';
     document.getElementById('merge-progress-area').style.display = 'none';
+    updateSubmitState();  // re-enable only if the gates still hold
   }
 
   // ── Result display ─────────────────────────────────────
@@ -321,14 +439,14 @@
   // ── Table picker (Browse buttons) ──────────────────────
   document.getElementById('merge-browse-a').addEventListener('click', function() {
     if (typeof openTablePicker === 'function') {
-      openTablePicker('merge-table-a');
+      openTablePicker('merge-table-a', onInputsChanged);
     } else {
       showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
     }
   });
   document.getElementById('merge-browse-b').addEventListener('click', function() {
     if (typeof openTablePicker === 'function') {
-      openTablePicker('merge-table-b');
+      openTablePicker('merge-table-b', onInputsChanged);
     } else {
       showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
     }
@@ -344,5 +462,10 @@
     d.textContent = s;
     return d.innerHTML;
   }
+
+  // ── Initial state (context may have pre-filled both tables) ──
+  updateOutputNaming();
+  updateSubmitState();
+  refreshCompat();
 })();
 </script>

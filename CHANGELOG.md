@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- The Merge Tables page now checks schema compatibility before you can start a merge: it
+  loads both tables' columns (via a new `/api/plugins/merger/columns` route) and keeps the merge
+  button disabled until two distinct tables are chosen, the output project/dataset resolve, and
+  the columns match. When they don't, it blocks the merge and names the differing columns inline
+  (e.g. "only in A: segmentations; only in B: bbs") instead of letting a doomed merge start.
 - The Import and Image Metrics pages now pick up a job that is already queued or running
   when you navigate back to them, instead of showing the empty form as if nothing were
   happening: a compact "job running — watch it in the Queue" notice with the live status,
@@ -23,14 +28,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the plugins no longer prepend it themselves. Hosts and frontends on the 0.3 contract show a
   failed job's message on the generic Queue card; the plugin pages read it from the same
   field (falling back to the older status-line placement on older hosts).
+- The exporter's destination-folder picker now uses the shared browse widget's output mode
+  (`purpose: 'output'`): it lists all folders and flags non-writable ones, instead of hiding
+  inaccessible folders the way input pickers now do. Input pickers keep the default behaviour.
 
 ### Fixed
+- Merge Tables no longer leaves the **Merge Tables** button disabled when two tables with
+  matching schemas are selected. The output project/dataset are now read from the loaded
+  table object on the backend (`/api/plugins/merger/columns` returns `project_name` and
+  `dataset_name`) instead of string-parsing the table URL for a `projects/` segment that real
+  table URLs don't contain — so the output naming resolves and the button enables. URL parsing
+  remains only as an instant pre-fetch display fallback.
+- A failed merge now surfaces a concise, plain-language message (e.g. the tables' columns don't
+  match) instead of a raw exception carrying the underlying `tlc` schema-key dump. Expected
+  failures use the SDK's clean job-failure path, so they no longer appear as unhandled worker
+  tracebacks in the logs either.
 - The exporter's column list (CSV/Excel formats) now labels float columns as **number**
   instead of **other**. The classifier read the column type out of the schema's serialized
   JSON, but `tlc` omits default-valued fields there and float32 is the default scalar type —
   so every plain float column (image metrics, width/height, and the like) fell through to
   "other". It now reads the live schema object first, which also makes the old
   `col_name == "weight"` special case unnecessary. (#17)
+- Merge Tables now describes and performs its operation truthfully as a **vertical join
+  (row concatenation)** — stacking the selected tables' rows into one table — instead of the
+  previous, incorrect "column join by row index" labelling (the underlying operation was always
+  vertical). Removed the bogus equal-row-count constraint (vertical join does not require it) and
+  the disabled "Union (Row Concatenation) — coming soon" option (that behavior *is* what the
+  plugin does). Schema-incompatibility failures now surface a clear, actionable message.
 - The COCO importer's Annotations Path field now lets you select a folder from the browse
   dialog, not just individual JSON files — the field already accepted a folder (auto-detecting
   splits/types), but the widget's `mode` was locked to `"file"`, which never offered a "Select

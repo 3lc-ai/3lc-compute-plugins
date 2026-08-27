@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tlc_plugin_sdk import JobContext
+from tlc_plugin_sdk import JobContext, JobFailed
 
 SRC = Path(__file__).resolve().parent.parent / "src"
 PLUGIN_PACKAGES = sorted(p.name for p in SRC.iterdir() if p.is_dir() and p.name.startswith("tlc_plugin_"))
@@ -52,7 +52,7 @@ def test_merger_invalid_request_raises_without_custom_failure_event(tmp_path: Pa
     import tlc_plugin_merger as merger
 
     events: list[dict[str, Any]] = []
-    with pytest.raises(ValueError, match="at least 2 tables"):
+    with pytest.raises(JobFailed, match="at least 2 tables"):
         merger.MergePlugin().run_job(_ctx(events, {"table_urls": ["only-one"]}, tmp_path))
     assert not any(e["event"] in {"result", "custom"} for e in events)
 
