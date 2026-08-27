@@ -18,7 +18,7 @@ import pytest
 pytest.importorskip("tlc_plugin_sdk")
 merger = pytest.importorskip("tlc_plugin_merger")
 
-from tlc_plugin_sdk import JobContext  # noqa: E402  (after importorskip guard)
+from tlc_plugin_sdk import JobContext, JobFailed  # noqa: E402  (after importorskip guard)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,7 +30,7 @@ def _ctx(events: list[dict[str, Any]], params: dict[str, Any], tmp_path: Path) -
 
 def test_run_job_requires_at_least_two_tables(tmp_path: Path) -> None:
     events: list[dict[str, Any]] = []
-    with pytest.raises(ValueError, match="at least 2 tables"):
+    with pytest.raises(JobFailed, match="at least 2 tables"):
         merger.MergePlugin().run_job(_ctx(events, {"table_urls": ["only-one"]}, tmp_path))
     assert not any(e["event"] in {"result", "custom"} for e in events)
 
@@ -43,7 +43,7 @@ def test_run_job_requires_output_names(tmp_path: Path) -> None:
         "dataset_name": "",
         "table_name": "",
     }
-    with pytest.raises(ValueError, match="Project, dataset, and table name are required"):
+    with pytest.raises(JobFailed, match="Project, dataset, and table name are required"):
         merger.MergePlugin().run_job(_ctx(events, params, tmp_path))
     assert not any(e["event"] in {"result", "custom"} for e in events)
 
@@ -113,5 +113,5 @@ def test_execute_merge_reports_incompatible_schemas_friendlily(monkeypatch: pyte
         {"table_urls": ["a", "b"], "project_name": "p", "dataset_name": "d", "table_name": "m"}
     )
     assert result["success"] is False
-    assert "schemas are incompatible" in result["message"]
+    assert "columns don't match" in result["message"]
     assert "stacks rows" in result["message"]

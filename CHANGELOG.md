@@ -10,9 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - The Merge Tables page now checks schema compatibility before you can start a merge: it
-  loads both tables' columns (via a new `/api/plugins/merger/columns` route), keeps the merge
+  loads both tables' columns (via a new `/api/plugins/merger/columns` route) and keeps the merge
   button disabled until two distinct tables are chosen, the output project/dataset resolve, and
-  the schemas are compatible, and shows an inline "schemas match / differ / can't load" status.
+  the columns match. When they don't, it blocks the merge and names the differing columns inline
+  (e.g. "only in A: segmentations; only in B: bbs") instead of letting a doomed merge start.
 - The Import and Image Metrics pages now pick up a job that is already queued or running
   when you navigate back to them, instead of showing the empty form as if nothing were
   happening: a compact "job running — watch it in the Queue" notice with the live status,
@@ -38,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `dataset_name`) instead of string-parsing the table URL for a `projects/` segment that real
   table URLs don't contain — so the output naming resolves and the button enables. URL parsing
   remains only as an instant pre-fetch display fallback.
+- A failed merge now surfaces a concise, plain-language message (e.g. the tables' columns don't
+  match) instead of a raw exception carrying the underlying `tlc` schema-key dump. Expected
+  failures use the SDK's clean job-failure path, so they no longer appear as unhandled worker
+  tracebacks in the logs either.
 - The exporter's column list (CSV/Excel formats) now labels float columns as **number**
   instead of **other**. The classifier read the column type out of the schema's serialized
   JSON, but `tlc` omits default-valued fields there and float32 is the default scalar type —

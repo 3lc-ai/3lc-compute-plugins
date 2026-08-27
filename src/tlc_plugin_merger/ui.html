@@ -22,7 +22,6 @@
 .merge-compat { font-size: 11px; padding: 6px 10px; border-radius: 6px; margin-top: 6px; }
 .merge-compat-ok { background: rgba(34,197,94,0.08); color: var(--success); }
 .merge-compat-err { background: rgba(239,68,68,0.08); color: var(--error); }
-.merge-compat-warn { background: rgba(245,158,11,0.10); color: #b45309; }
 
 /* Progress bar */
 .merge-progress-wrap {
@@ -209,7 +208,7 @@
 
     var twoDistinct = !!t.a && !!t.b && t.a !== t.b;
     var namingOk = proj !== '—' && ds !== '—';
-    var schemaOk = compatState === 'ok' || compatState === 'warn';
+    var schemaOk = compatState === 'ok';
 
     document.getElementById('merge-submit-btn').disabled = !(twoDistinct && namingOk && schemaOk);
   }
@@ -272,22 +271,20 @@
 
       var onlyA = colsA.filter(function(c) { return !setB[c]; });
       var onlyB = colsB.filter(function(c) { return !setA[c]; });
-      var common = colsA.filter(function(c) { return setB[c]; });
-
       if (onlyA.length === 0 && onlyB.length === 0) {
         compatState = 'ok';
         renderCompat('merge-compat-ok', '✓ Schemas match — ' + colsA.length + ' columns');
-      } else if (common.length === 0) {
-        // Completely disjoint columns — a hard error.
-        compatState = 'err';
-        renderCompat('merge-compat-err',
-          '✗ Schemas are completely different (no columns in common) — vertical join needs matching columns.');
       } else {
-        // Overlap but not identical — caution, but let the backend attempt the schema merge.
-        compatState = 'warn';
-        renderCompat('merge-compat-warn',
-          '⚠ Schemas differ (A has ' + onlyA.length + ', B has ' + onlyB.length +
-          ' not in common) — vertical join needs matching columns.');
+        // Any column difference fails a vertical join — rows can't be stacked when the
+        // tables don't share the same columns — so block rather than warn, and name the
+        // columns that differ so the mismatch is clear before pressing Merge.
+        compatState = 'err';
+        var diff = [];
+        if (onlyA.length) { diff.push('only in A: ' + onlyA.join(', ')); }
+        if (onlyB.length) { diff.push('only in B: ' + onlyB.join(', ')); }
+        renderCompat('merge-compat-err',
+          '✗ Schemas don\'t match — vertical join needs the same columns in both tables (' +
+          diff.join('; ') + ').');
       }
       updateSubmitState();
     }).catch(function(e) {

@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from tlc_plugin_sdk import ComputePlugin, JobContext
+from tlc_plugin_sdk import ComputePlugin, JobContext, JobFailed
 
 if TYPE_CHECKING:
     from litestar.handlers import BaseRouteHandler
@@ -76,17 +76,21 @@ def _execute_merge(data: dict[str, Any]) -> dict[str, Any]:
             },
         }
     except Exception as e:
-        logger.exception("Merge failed")
+        # Incompatible schemas is an expected, user-driven outcome — log it plainly
+        # (no traceback) and return a concise message. The raw tlc schema diff is
+        # noise for the user; the UI's pre-merge compatibility check already names
+        # the differing columns.
         if "incompatible schemas" in str(e):
+            logger.warning("Merge rejected: incompatible schemas (%s)", e)
             return {
                 "success": False,
                 "message": (
-                    "Cannot vertically join these tables: their schemas are incompatible. "
-                    "Vertical join stacks rows, so the tables must have matching columns. "
-                    f"({e})"
+                    "Cannot vertically join these tables: their columns don't match. "
+                    "Vertical join stacks rows, so every table must have the same columns."
                 ),
                 "details": {},
             }
+        logger.exception("Merge failed")
         return {"success": False, "message": f"Merge failed: {e}", "details": {}}
 
 
@@ -133,22 +137,23 @@ class MergePlugin(ComputePlugin):
                 ``project_name``, ``dataset_name``, ``table_name``.
 
         Raises:
-            ValueError: When the request is invalid.
-            RuntimeError: When the merge itself fails.
+            JobFailed: When the request is invalid or the merge itself fails. Raising
+                the SDK's clean-failure type surfaces the message to the UI without a
+                traceback, since these are expected, user-facing outcomes.
 
         """
         data = ctx.params
         if len(data.get("table_urls", [])) < 2:
             msg = "Select at least 2 tables to merge."
-            raise ValueError(msg)
+            raise JobFailed(msg)
         if not all((data.get(k) or "").strip() for k in ("project_name", "dataset_name", "table_name")):
             msg = "Project, dataset, and table name are required."
-            raise ValueError(msg)
+            raise JobFailed(msg)
 
         ctx.progress(percent=10, label="Merging tables")
         result = _execute_merge(data)
         if not result.get("success"):
-            raise RuntimeError(result.get("message") or "Merge failed")
+            raise JobFailed(result.get("message") or "Merge failed")
 
         details = result.get("details", {})
         if details.get("input_count"):
