@@ -109,9 +109,12 @@ def test_execute_merge_reports_incompatible_schemas_friendlily(monkeypatch: pyte
     import sys
 
     monkeypatch.setitem(sys.modules, "tlc", fake_tlc)
-    result = merger._execute_merge(
-        {"table_urls": ["a", "b"], "project_name": "p", "dataset_name": "d", "table_name": "m"}
-    )
+    result = merger._execute_merge({
+        "table_urls": ["a", "b"],
+        "project_name": "p",
+        "dataset_name": "d",
+        "table_name": "m",
+    })
     assert result["success"] is False
     assert "columns don't match" in result["message"]
     assert "stacks rows" in result["message"]
