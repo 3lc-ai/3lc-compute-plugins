@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-27
+
 ### Added
 - The Merge Tables page now checks schema compatibility before you can start a merge: it
   loads both tables' columns (via a new `/api/plugins/merger/columns` route) and keeps the merge
@@ -23,17 +25,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   has an Open link for it like the importer, merger, and splitter already had.
 
 ### Changed
-- Requires plugin SDK `3lc-compute-plugin-sdk>=0.3.1,<0.4.0`, pinned without the `[shared]`
-  extra: since SDK 0.3.1 the `3lc` data plane is a base dependency of the SDK, and the extra is a
-  deprecated no-op.
-- Built against plugin SDK 0.3 (`3lc-compute-plugin-sdk>=0.3.0,<0.4.0`): `ctx.result(url)` is
-  positional, and the shared `PluginJobs` client is injected by the SDK's `/ui` handler, so
+- Built against plugin SDK 0.3 (`3lc-compute-plugin-sdk>=0.3.1,<0.4.0`, pinned without the
+  deprecated `[shared]` extra — since 0.3.1 the SDK brings the `3lc` data plane itself):
+  `ctx.result(url)` is positional, and the shared `PluginJobs` client is injected by the SDK's `/ui` handler, so
   the plugins no longer prepend it themselves. Hosts and frontends on the 0.3 contract show a
   failed job's message on the generic Queue card; the plugin pages read it from the same
   field (falling back to the older status-line placement on older hosts).
 - The exporter's destination-folder picker now uses the shared browse widget's output mode
   (`purpose: 'output'`): it lists all folders and flags non-writable ones, instead of hiding
   inaccessible folders the way input pickers now do. Input pickers keep the default behaviour.
+- The importer's Table Name field is greyed out during a multi-split YOLO or COCO import
+  (each split already gets its own dataset name, so a shared table name isn't disambiguating
+  anything) instead of looking like it needs a distinct value per split.
+- The splitter now shows a "View in Project" link on a successful split, matching the importer,
+  merger, and image-metrics plugins — it previously had no way to navigate to the resulting
+  tables from the result panel.
 
 ### Fixed
 - Merge Tables no longer leaves the **Merge Tables** button disabled when two tables with
@@ -69,14 +75,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   multiple types/splits need the picker) instead of ever handing a directory to `tlc`. The UI
   also now surfaces detection failures inline instead of silently hiding the splits panel, and
   blocks "Ready" until the path actually resolves.
-
-### Changed
-- The importer's Table Name field is greyed out during a multi-split YOLO or COCO import
-  (each split already gets its own dataset name, so a shared table name isn't disambiguating
-  anything) instead of looking like it needs a distinct value per split.
-- The splitter now shows a "View in Project" link on a successful split, matching the importer,
-  merger, and image-metrics plugins — it previously had no way to navigate to the resulting
-  tables from the result panel.
 
 ## [0.2.1] - 2026-08-21
 
