@@ -18,11 +18,10 @@ requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 classifiers = ["License :: OSI Approved :: Apache Software License"]
 # Base = the SDK floor ONLY — no plugin deps live here; each plugin's deps ride its own extra
-# below and are installed only into that plugin's venv. `[shared]` adds the SDK's optional `tlc`
-# data plane (`tlc_plugin_sdk.shared.*`), which every plugin uses.
+# below and are installed only into that plugin's venv. The SDK brings the `tlc` data plane
+# (`3lc[pandas]`) and the `tlc_plugin_sdk.shared.*` helpers every plugin uses.
 dependencies = [
-    "3lc-compute-plugin-sdk[shared]>=0.3.0,<0.4.0",
-    "3lc[pandas]>=3.0.0,<4.0.0",
+    "3lc-compute-plugin-sdk>=0.3.1,<0.4.0",
 ]
 
 # Per-plugin extras — installed ONLY into that plugin's provisioned venv. Provisioning opts into

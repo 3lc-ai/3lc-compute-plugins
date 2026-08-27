@@ -18,7 +18,7 @@ src/
 ```
 
 One `pyproject.toml` declares **all** plugins:
-- **base `dependencies`** = the SDK floor ONLY (`3lc-compute-plugin-sdk[shared]`). Every plugin here is
+- **base `dependencies`** = the SDK floor ONLY (`3lc-compute-plugin-sdk`). Every plugin here is
   `venv`-isolated, so NO plugin deps live in the base — this distribution is never installed into
   the host venv.
 - **per-plugin extras** (`[importer]`/`[exporter]`/`[merger]`/`[splitter]`/`[table_statistics]`/
