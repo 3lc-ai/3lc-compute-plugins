@@ -75,7 +75,7 @@
         <label class="form-label required">Table A</label>
         <div style="display:flex;gap:8px">
           <input type="text" id="merge-table-a" class="form-control"
-                 placeholder="Select first table…">
+                 placeholder="Select first table…" required>
           <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
                   id="merge-browse-a">Browse…</button>
         </div>
@@ -86,7 +86,7 @@
         <label class="form-label required">Table B</label>
         <div style="display:flex;gap:8px">
           <input type="text" id="merge-table-b" class="form-control"
-                 placeholder="Select second table…">
+                 placeholder="Select second table…" required>
           <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
                   id="merge-browse-b">Browse…</button>
         </div>
@@ -97,7 +97,7 @@
 
       <!-- Output naming -->
       <div class="form-group" id="merge-output-group">
-        <label class="form-label required">Output Table Name</label>
+        <label class="form-label">Output Table Name</label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
           <span style="font-size:12px;padding:2px 8px;border-radius:4px;background:var(--accent-light);color:var(--accent);font-weight:600" id="merge-out-project">—</span>
           <span style="font-size:12px;color:var(--text-muted)">/</span>

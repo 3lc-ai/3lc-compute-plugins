@@ -68,7 +68,7 @@
              (gap 6px, centered, input flex:1) so the two Browse… buttons render identically. -->
         <div style="display:flex;gap:6px;align-items:center">
           <input type="text" id="export-table-url" class="form-control" style="flex:1"
-                 placeholder="Paste table URL or click Browse…">
+                 placeholder="Paste table URL or click Browse…" required>
           <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
                   id="export-browse-btn">Browse…</button>
         </div>
@@ -426,6 +426,8 @@
     purpose: 'output',
   });
   _tlcBindDataSource('export-output-path', computeUrl, 'exporter', { mode: 'folder', purpose: 'output' });
+  // The SDK widget has no required flag; the host's required-field cue keys off the attribute.
+  document.getElementById('export-output-path').required = true;
 
   if (prefillUrl) document.getElementById('export-table-url').value = prefillUrl;
   loadFormats();
