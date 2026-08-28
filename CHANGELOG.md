@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inline styles, so they render as flat, non-interactive tiles in both themes (the inline
   background and shadow made them look like clickable cards in dark mode). Requires a Hub
   frontend that styles `.plugin-hero-badge` itself.
+- Image Metrics launches its jobs through the SDK's `PluginJobs.start` instead of a hand-rolled
+  `POST /run`. Each job is still attributed to its own table's project; when the table's project
+  is unknown the job now falls back to the project page it was launched from, so it appears in
+  that project's Queue & Progress panel. When the host answers that the plugin environment is
+  still being built (or its build failed), the log says so instead of failing on a missing job id.
 
 ## [0.2.2] - 2026-08-27
 
