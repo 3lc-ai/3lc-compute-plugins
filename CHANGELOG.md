@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Required text inputs on the Import, Export, Merge and Split pages now carry the `required`
+  attribute alongside a placeholder, so the Hub's shared required-field cue (the muted wash that
+  clears once a value is entered) applies to them the same way it does everywhere else in the Hub.
+  The importer's own amber "guide pulse" on the next empty field is gone in favour of that shared
+  cue; the form still auto-focuses the first missing field when it opens.
+- The Merge page no longer marks Output Table Name as required — leaving it blank auto-names the
+  table, and the label now says so consistently.
+- The hero "what this does" badges use the host's shared `.plugin-hero-badge` styling instead of
+  inline styles, so they render as flat, non-interactive tiles in both themes (the inline
+  background and shadow made them look like clickable cards in dark mode). Requires a Hub
+  frontend that styles `.plugin-hero-badge` itself.
+
 ## [0.2.2] - 2026-08-27
 
 ### Added

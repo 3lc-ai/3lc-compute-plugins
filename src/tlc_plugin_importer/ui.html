@@ -4,16 +4,6 @@
 <!-- All styles provided by main.css + plugin-common.css -->
 
 <style>
-/* Guide pulse — draws attention to the next required empty field */
-@keyframes guide-pulse {
-  0%, 100% { background: var(--bg-card); box-shadow: 0 0 0 0 rgba(217,119,6,0); }
-  50% { background: rgba(217,119,6,0.1); box-shadow: 0 0 0 3px rgba(217,119,6,0.25); }
-}
-.form-control.guide-next {
-  animation: guide-pulse 2s ease-in-out infinite;
-  border-color: var(--warning, #d97706);
-}
-
 /* CSV wizard styles */
 .csv-wizard { font-size: 12px; }
 .csv-step { display: none; }
@@ -180,11 +170,11 @@
         <div id="csv-mode-create" style="display:block">
           <div class="form-group">
             <label class="form-label required">Project Name</label>
-            <input type="text" id="csv-project" class="form-control" placeholder="my-project" style="font-size:11px">
+            <input type="text" id="csv-project" class="form-control" placeholder="my-project" style="font-size:11px" required>
           </div>
           <div class="form-group">
             <label class="form-label required">Dataset Name</label>
-            <input type="text" id="csv-dataset" class="form-control" placeholder="my-dataset" style="font-size:11px">
+            <input type="text" id="csv-dataset" class="form-control" placeholder="my-dataset" style="font-size:11px" required>
           </div>
           <div class="form-group">
             <label class="form-label">Table Name</label>
@@ -202,7 +192,7 @@
         <div id="csv-mode-extend" style="display:none">
           <div class="form-group">
             <label class="form-label required">Source Table URL</label>
-            <input type="text" id="csv-extend-url" class="form-control" placeholder="Table URL to extend" style="font-size:11px">
+            <input type="text" id="csv-extend-url" class="form-control" placeholder="Table URL to extend" style="font-size:11px" required>
           </div>
           <div class="form-group">
             <label class="form-label">Output Table Name</label>
@@ -372,7 +362,7 @@
     html += '</div></div>';
     html += '<div class="card-body">';
     html += '<div id="import-result"></div>';
-    html += '<form id="import-exec-form" onsubmit="return false;">';
+    html += '<form id="import-exec-form" onsubmit="return false;" novalidate>';
     html += '<div class="form-row">';
 
     var fields = fmt.form_fields || [];
@@ -484,13 +474,16 @@
     });
     document.getElementById('import-cancel-btn').addEventListener('click', _resetToFormatGrid);
 
-    // Bind data source widgets (browse + upload)
+    // Bind data source widgets (browse + upload). The SDK widget has no required flag,
+    // so mark the input afterwards — the host's required-field cue keys off the attribute.
     fields.forEach(function(f) {
       if (f.type === 'data_source') {
         _tlcBindDataSource('import-' + f.id, computeUrl, 'importer', {
           accept: f.accept || '',
           mode: f.mode || 'file',
         });
+        var dsInput = document.getElementById('import-' + f.id);
+        if (dsInput && f.required) dsInput.required = true;
       }
     });
 
@@ -512,11 +505,15 @@
       el.addEventListener('change', _checkImportReady);
     });
     // Auto-focus the first empty required field
-    var firstGuide = area.querySelector('.guide-next');
-    if (firstGuide) setTimeout(function() { firstGuide.focus(); }, 100);
+    if (_importFirstMissing) {
+      var firstMissing = _importFirstMissing;
+      setTimeout(function() { firstMissing.focus(); }, 100);
+    }
   }
 
   var _currentFormFmt = null;
+  // First visible required field without a value, as of the last _checkImportReady().
+  var _importFirstMissing = null;
 
   function _checkImportReady() {
     var btn = document.getElementById('import-submit-btn');
@@ -553,6 +550,7 @@
       }
     }
 
+    _importFirstMissing = null;
     for (var i = 0; i < fields.length; i++) {
       var f = fields[i];
       if (!f.required) continue;
@@ -567,7 +565,7 @@
       var group = el.closest('.form-group');
       if (group && group.style.display === 'none') continue;
 
-      if (!(el.value || '').trim()) { ready = false; break; }
+      if (!(el.value || '').trim()) { ready = false; _importFirstMissing = el; break; }
     }
 
     // For YOLO multi-split: need at least one split checked
@@ -582,30 +580,6 @@
     }
 
     btn.disabled = !ready;
-
-    // Guide pulse: highlight the first empty required field
-    var area = document.getElementById('import-form-area');
-    if (area) {
-      area.querySelectorAll('.form-control.guide-next').forEach(function(el) {
-        el.classList.remove('guide-next');
-      });
-    }
-    if (!ready) {
-      for (var gi = 0; gi < fields.length; gi++) {
-        var gf = fields[gi];
-        if (!gf.required) continue;
-        if (isYoloMulti && gf.id === 'split') continue;
-        if (isCocoMulti && (gf.id === 'annotations_file' || gf.id === 'image_folder')) continue;
-        var gel = document.getElementById('import-' + gf.id);
-        if (!gel) continue;
-        var gg = gel.closest('.form-group');
-        if (gg && gg.style.display === 'none') continue;
-        if (!(gel.value || '').trim()) {
-          gel.classList.add('guide-next');
-          break;
-        }
-      }
-    }
   }
 
   // ── YOLO auto-detect splits from dataset.yaml ──────────
