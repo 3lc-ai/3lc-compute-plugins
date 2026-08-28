@@ -567,6 +567,7 @@
 
     var metricIds = Object.keys(selectedMetrics);
     if (metricIds.length === 0) { alert('Please select at least one metric.'); return; }
+    if (typeof PluginJobs === 'undefined') { alert('Job tracker unavailable — reload the page.'); return; }
 
     var suffix = (document.getElementById('im-output-name').value || 'metrics').trim();
 
@@ -583,20 +584,25 @@
     // Submit one job per table
     tableEntries.forEach(function(entry) {
       var outputName = entry.name + '-' + suffix;
-      // Attribute each job to ITS table's project (entries can span projects, and
-      // this direct POST bypasses the SDK tracker's context default entirely).
+      // Launch through the SDK's PluginJobs client. Attribute each job to ITS table's
+      // project (entries can span projects); an explicit project_name wins, and when
+      // the table is unknown PluginJobs falls back to the launch context's project.
       var _t = (typeof TlcData !== 'undefined')
         ? TlcData.getTables().find(function(t) { return t.url === entry.url; }) : null;
-      _apiPost('/api/plugins/image-metrics/run', {
+      PluginJobs.start('image-metrics', {
         table_url: entry.url,
-        project_name: (_t && _t.project_name) || (PLUGIN_API.context && PLUGIN_API.context.projectName) || '',
+        project_name: (_t && _t.project_name) || '',
         metric_ids: metricIds,
         image_columns: entry.imageCols,
         output_name: outputName,
       })
       .then(function(data) {
-        if (data.error) {
-          _addLog('Error for ' + entry.name + ': ' + data.error);
+        if (!data || data.error) {
+          _addLog('Error for ' + entry.name + ': ' + ((data && data.error) || 'failed to start job'));
+        } else if (!data.job_id) {
+          // The host answers {status, provisioning} instead of a job while the
+          // plugin's environment is still being built (or its last build failed).
+          _addLog('Not started for ' + entry.name + ': ' + _notStartedMessage(data));
         } else {
           currentJobId = data.job_id;
           _addLog('Queued: ' + entry.name + ' (job ' + data.job_id.substring(0, 8) + ')');
@@ -609,6 +615,19 @@
 
     _setStatus('Jobs submitted');
   };
+
+  function _notStartedMessage(resp) {
+    var prov = resp.provisioning || {};
+    var state = prov.state || resp.status || 'unknown';
+    if (state === 'failed') {
+      return 'plugin environment build failed' + (prov.error ? ' (' + prov.error + ')' : '') +
+        ' — see Settings → Plugins';
+    }
+    if (state === 'provisioning' || state === 'unprovisioned') {
+      return 'plugin environment is still being set up (' + state + ') — try again in a moment';
+    }
+    return 'job was not started (status: ' + state + ')';
+  }
 
   /* ── Cancel job ── */
   window.imCancelJob = function() {
