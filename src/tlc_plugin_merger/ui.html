@@ -41,17 +41,17 @@
     <h2>⇌ Merge Tables</h2>
     <p>Vertically join two 3LC tables — stack their rows into a single table with full revision history.</p>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
-      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+      <div class="plugin-hero-badge">
         <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="3.5" rx="1"/><rect x="3" y="8.25" width="14" height="3.5" rx="1"/><path d="M10 14v3M8 15.5l2 1.5 2-1.5"/></svg></div>
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Vertical Join</div>
         <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Stack rows from both tables</div>
       </div>
-      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+      <div class="plugin-hero-badge">
         <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9M8 17V5M12 17V8M16 17V3"/></svg></div>
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Full Lineage</div>
         <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Tracks in DAG view</div>
       </div>
-      <div class="plugin-hero-badge" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+      <div class="plugin-hero-badge">
         <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="14" rx="1"/><rect x="12" y="3" width="5" height="14" rx="1"/></svg></div>
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Schema-Aware</div>
         <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Tables must share the same columns</div>
@@ -75,7 +75,7 @@
         <label class="form-label required">Table A</label>
         <div style="display:flex;gap:8px">
           <input type="text" id="merge-table-a" class="form-control"
-                 placeholder="Select first table…">
+                 placeholder="Select first table…" required>
           <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
                   id="merge-browse-a">Browse…</button>
         </div>
@@ -86,7 +86,7 @@
         <label class="form-label required">Table B</label>
         <div style="display:flex;gap:8px">
           <input type="text" id="merge-table-b" class="form-control"
-                 placeholder="Select second table…">
+                 placeholder="Select second table…" required>
           <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
                   id="merge-browse-b">Browse…</button>
         </div>
@@ -97,7 +97,7 @@
 
       <!-- Output naming -->
       <div class="form-group" id="merge-output-group">
-        <label class="form-label required">Output Table Name</label>
+        <label class="form-label">Output Table Name</label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
           <span style="font-size:12px;padding:2px 8px;border-radius:4px;background:var(--accent-light);color:var(--accent);font-weight:600" id="merge-out-project">—</span>
           <span style="font-size:12px;color:var(--text-muted)">/</span>
