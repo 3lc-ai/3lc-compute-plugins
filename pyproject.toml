@@ -10,7 +10,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "3lc-compute-plugins"
-version = "0.2.2"
+version = "0.2.3"
 description = "Open, first-party plugins for the 3LC compute service."
 readme = "README-wheel.md"
 requires-python = ">=3.10"

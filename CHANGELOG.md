@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-08-31
+
 ### Changed
 - Required text inputs on the Import, Export, Merge and Split pages now carry the `required`
   attribute alongside a placeholder, so the Hub's shared required-field cue (the muted wash that
