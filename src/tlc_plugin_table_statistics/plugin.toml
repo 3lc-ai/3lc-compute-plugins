@@ -2,7 +2,7 @@
 id = "table-statistics"
 name = "Table Statistics"
 description = "Compute per-column statistics and serve image thumbnails for tables."
-version = "0.2.2"
+version = "0.2.3"
 min_service_version = "0.1.0"
 icon = "▥"
 icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13V9M6 13V5M9 13V7M12 13V3"/><path d="M2 14h12" stroke-width="1"/></svg>'
