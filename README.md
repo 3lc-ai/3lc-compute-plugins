@@ -80,6 +80,8 @@ to self-document.
 
 ## Status
 
-Pre-1.0; the SDK contract's 0.x line is additive-only (see the `3lc-compute-plugin-sdk`
-README → Status). Apache-2.0 (see `LICENSE`), matching the SDK. The service's built-in insights
-plugins ship with the service itself and are not part of this collection.
+This dist tracks the SDK's `0.3` contract line (see the `3lc-compute-plugin-sdk` README →
+Status): within 0.x the contract still evolves, mostly additively.
+
+The two proprietary insights plugins (`run-insights`, `table-insights`) live in a separate,
+private `3lc-compute-plugin-insights` repo and are not part of this collection.
