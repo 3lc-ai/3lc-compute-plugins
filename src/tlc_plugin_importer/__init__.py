@@ -1280,6 +1280,73 @@ def _resolve_coco_annotations(annotations_file: str, image_folder: str) -> tuple
     return resolved["file"], image_folder or resolved.get("images_hint", "")
 
 
+def _reconcile_coco_image_folder(annotations_file: str, image_folder: str) -> str:
+    """Adjust image_folder to avoid duplicated path segments with COCO file_name values.
+
+    COCO datasets vary in what ``file_name`` contains: some use bare filenames
+    (``001.jpg``), others include subdirectory segments (``train/images/001.jpg``).
+    When ``image_folder`` already includes those segments, ``Table.from_coco`` joins
+    them naively and duplicates the path.  This function peeks at the annotations to
+    detect and strip the overlap before the SDK call.
+    """
+    import json
+
+    try:
+        with open(annotations_file) as f:
+            coco = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return image_folder
+
+    images = coco.get("images") or []
+    if not images:
+        return image_folder
+
+    sample_names: list[str] = []
+    for img in images[:10]:
+        fn = img.get("file_name")
+        if fn:
+            sample_names.append(str(fn).replace("\\", "/"))
+        if len(sample_names) >= 5:
+            break
+    if not sample_names:
+        return image_folder
+
+    from pathlib import PurePosixPath
+
+    representative = PurePosixPath(sample_names[0])
+    dir_parts = representative.parts[:-1]
+    if not dir_parts:
+        return image_folder
+
+    folder_path = Path(image_folder)
+
+    # If the naive join already resolves to an existing file, no adjustment needed.
+    if (folder_path / sample_names[0]).exists():
+        return image_folder
+
+    # Find the longest suffix of image_folder parts that matches a prefix of the
+    # file_name's directory components, and strip it.
+    folder_parts = folder_path.parts
+    for overlap_len in range(min(len(folder_parts), len(dir_parts)), 0, -1):
+        folder_suffix = folder_parts[-overlap_len:]
+        file_prefix = dir_parts[:overlap_len]
+        if all(a == b for a, b in zip(folder_suffix, file_prefix)):
+            if len(folder_parts) > overlap_len:
+                adjusted = Path(*folder_parts[:-overlap_len])
+            else:
+                adjusted = Path(folder_path.anchor or ".")
+            if (adjusted / sample_names[0]).exists():
+                logger.info(
+                    "Adjusted image_folder from '%s' to '%s' (COCO file_name paths contain '%s')",
+                    image_folder,
+                    adjusted,
+                    "/".join(file_prefix),
+                )
+                return str(adjusted)
+
+    return image_folder
+
+
 def _execute_coco(form_data: dict[str, Any]) -> dict[str, Any]:
     """Execute COCO import."""
     import tlc
@@ -1293,6 +1360,8 @@ def _execute_coco(form_data: dict[str, Any]) -> dict[str, Any]:
     if not Path(image_folder).is_dir():
         msg = f"Images Folder '{image_folder}' does not exist or is not a directory."
         raise ValueError(msg)
+
+    image_folder = _reconcile_coco_image_folder(annotations_file, image_folder)
 
     # The SDK defaults to "detect"; translate the form's task so segmentation
     # datasets are imported with the correct annotation schema.
