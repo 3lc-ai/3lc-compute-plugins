@@ -50,7 +50,9 @@ def test_yolo_local_yaml_still_resolves_on_disk(tmp_path: Path) -> None:
     (tmp_path / "data.yaml").write_text("train: images/train\nval: images/val\nnames:\n  0: cat\n")
     images, categories = imp._parse_yolo_yaml_for_split(str(tmp_path / "data.yaml"), "val")
     assert images == str((tmp_path / "images" / "val").resolve()) and categories == {0: "cat"}
-    assert imp._parse_yolo_image_root(str(tmp_path / "data.yaml"), "val") == str((tmp_path / "images" / "val").resolve())
+    assert imp._parse_yolo_image_root(str(tmp_path / "data.yaml"), "val") == str(
+        (tmp_path / "images" / "val").resolve()
+    )
 
 
 def test_coco_images_folder_is_inferred_next_to_bucket_annotations(monkeypatch: pytest.MonkeyPatch) -> None:

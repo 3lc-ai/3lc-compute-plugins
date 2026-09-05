@@ -172,6 +172,7 @@
             <label class="form-label required">Project Name</label>
             <input type="text" id="csv-project" class="form-control" placeholder="my-project" style="font-size:11px" required>
           </div>
+          <div id="csv-project-location"></div>
           <div class="form-group">
             <label class="form-label required">Dataset Name</label>
             <input type="text" id="csv-dataset" class="form-control" placeholder="my-dataset" style="font-size:11px" required>
@@ -428,6 +429,7 @@
         break;
       }
     }
+    html += _tlcProjectLocationHtml('import');
     html += _tlcAliasSettingsHtml('import', prefillProject, initFolder);
 
     html += '<hr class="divider">';
@@ -463,7 +465,8 @@
         break;
       }
     }
-    _tlcBindAliasAutoUpdate('import', 'import-project_name', folderFieldId);
+    _tlcBindProjectLocation('import', 'importer');
+    _tlcBindAliasAutoUpdate('import', 'import-project_name', folderFieldId, 'importer', 'import-project-root');
 
     var form = document.getElementById('import-exec-form');
     form.addEventListener('submit', function(e) {
@@ -936,6 +939,7 @@
     formData.alias_folder = alias.alias_folder;
     formData.alias_copy_to_root = alias.alias_copy_to_root ? 'true' : 'false';
     formData.alias_copy_target = alias.alias_copy_target;
+    formData.project_root_url = _tlcGetProjectRoot('import');
 
     // YOLO multi-split: build queue of split imports
     if (fmt.name === 'yolo' && _yoloDetectedSplits.length > 0) {
@@ -1357,6 +1361,8 @@
     _csvSelected = {};
     _csvColConfig = {};
     _csvMode = 'create_new';
+    var csvLoc = document.getElementById('csv-project-location');
+    if (csvLoc && !csvLoc.innerHTML) { csvLoc.innerHTML = _tlcProjectLocationHtml('csv'); _tlcBindProjectLocation('csv', 'importer'); }
     csvGoStep(1);
     document.getElementById('csv-file-info').style.display = 'none';
     document.getElementById('csv-preview-area').style.display = 'none';
@@ -1616,7 +1622,7 @@
         var proj = document.getElementById('csv-project').value.trim();
         aliasArea.innerHTML = _tlcAliasSettingsHtml('csv', proj, '');
         _tlcBindAliasToggle('csv');
-        _tlcBindAliasAutoUpdate('csv', 'csv-project', null);
+        _tlcBindAliasAutoUpdate('csv', 'csv-project', null, 'importer', 'csv-project-root');
       } else {
         aliasArea.innerHTML = '';
       }
@@ -1662,6 +1668,7 @@
       payload.alias_token = csvAlias.alias_token;
       payload.alias_copy_to_root = csvAlias.alias_copy_to_root;
       payload.alias_copy_target = csvAlias.alias_copy_target;
+      payload.project_root_url = _tlcGetProjectRoot('csv');
     } else {
       payload.table_url = document.getElementById('csv-extend-url').value.trim();
       payload.output_table_name = document.getElementById('csv-extend-name').value.trim() || 'extended';

@@ -197,6 +197,7 @@ def _execute_csv_new(
     alias_enabled: bool = True,
     alias_token: str = "",
     alias_copy_target: str = "",
+    project_root_url: str = "",
     ctx: JobContext | None = None,
 ) -> dict[str, Any]:
     """Create a brand new 3LC table from CSV/Excel columns using TableWriter.
@@ -263,6 +264,7 @@ def _execute_csv_new(
         table_name=table_name,
         dataset_name=dataset_name,
         project_name=project_name,
+        root_url=project_root_url or None,
         description=description or "",
         schema=col_schemas,
     )
@@ -329,6 +331,7 @@ def _execute_csv_new(
                         "alias_token": alias_token,
                         "alias_copy_to_root": bool(alias_copy_target),
                         "alias_copy_target": alias_copy_target,
+                        "project_root_url": project_root_url,
                     },
                     image_folder,
                     ctx,
@@ -847,7 +850,21 @@ def _validate(step_def: dict[str, Any], form_data: dict[str, Any]) -> tuple[bool
     return len(errors) == 0, errors
 
 
-_PATH_FIELDS = ("dataset_yaml", "annotations_file", "image_folder", "folder_path", "csv_path", "alias_folder")
+_PATH_FIELDS = (
+    "dataset_yaml",
+    "annotations_file",
+    "image_folder",
+    "folder_path",
+    "csv_path",
+    "alias_folder",
+    "project_root_url",
+)
+
+
+def _root(form_data: dict[str, Any]) -> str | None:
+    """Where the project goes: ``project_root_url`` from the form ("Create project in"), else tlc's default root."""
+    root = str(form_data.get("project_root_url", "") or "").strip().rstrip("/")
+    return root or None
 
 
 def _normalize_path_fields(form_data: dict[str, Any]) -> dict[str, Any]:
@@ -951,7 +968,13 @@ def _maybe_register_alias(
                 + f". <{token}> points there."
             )
 
-    return register_alias(project_name=project_name, image_folder=folder, alias_token=token, remote_path=remote)
+    return register_alias(
+        project_name=project_name,
+        image_folder=folder,
+        alias_token=token,
+        remote_path=remote,
+        root_url=_root(form_data),
+    )
 
 
 def _enhance_error_message(raw: str) -> str:
@@ -1264,6 +1287,7 @@ def _execute_yolo(form_data: dict[str, Any]) -> dict[str, Any]:
         images_url,
         categories=categories,
         task=task,
+        root_url=_root(form_data),
         project_name=form_data["project_name"].strip(),
         dataset_name=form_data["dataset_name"].strip(),
         table_name=form_data.get("table_name", "").strip() or "initial",
@@ -1366,6 +1390,7 @@ def _execute_coco(form_data: dict[str, Any]) -> dict[str, Any]:
         annotations_file=annotations_file,
         image_folder=image_folder,
         task=task,
+        root_url=_root(form_data),
         project_name=form_data["project_name"].strip(),
         dataset_name=form_data["dataset_name"].strip(),
         table_name=form_data.get("table_name", "").strip() or "initial",
@@ -1396,6 +1421,7 @@ def _execute_folder(form_data: dict[str, Any]) -> dict[str, Any]:
 
     table = tlc.Table.from_image_folder(
         root=folder_path,
+        root_url=_root(form_data),
         project_name=form_data["project_name"].strip(),
         dataset_name=form_data["dataset_name"].strip(),
         table_name=form_data.get("table_name", "").strip() or "initial",
@@ -1504,6 +1530,7 @@ def _execute_unlabeled(form_data: dict[str, Any]) -> dict[str, Any]:
         table_name=table_name,
         dataset_name=dataset_name,
         project_name=project_name,
+        root_url=_root(form_data),
         description=description or "",
         schema=schemas,
     )
@@ -1579,6 +1606,7 @@ def _execute_csv_detection(form_data: dict[str, Any]) -> dict[str, Any]:
         table_name=table_name,
         dataset_name=dataset_name,
         project_name=project_name,
+        root_url=_root(form_data),
         description=description or "",
         schema={
             "image": tlc.schemas.ImageSchema(sample_type="url"),
@@ -1820,6 +1848,8 @@ def _run_csv_import(ctx: JobContext) -> None:
             alias_enabled=alias_enabled in (True, "true", "1"),
             alias_token=params.get("alias_token", ""),
             alias_copy_target=_copy_target(params),
+            project_root_url=_root(_normalize_path_fields({"project_root_url": params.get("project_root_url", "")}))
+            or "",
             ctx=ctx,
         )
 
