@@ -934,6 +934,8 @@
     formData.alias_enabled = alias.alias_enabled ? 'true' : 'false';
     formData.alias_token = alias.alias_token;
     formData.alias_folder = alias.alias_folder;
+    formData.alias_copy_to_root = alias.alias_copy_to_root ? 'true' : 'false';
+    formData.alias_copy_target = alias.alias_copy_target;
 
     // YOLO multi-split: build queue of split imports
     if (fmt.name === 'yolo' && _yoloDetectedSplits.length > 0) {
@@ -1658,6 +1660,8 @@
       var csvAlias = _tlcGetAliasValues('csv');
       payload.alias_enabled = csvAlias.alias_enabled;
       payload.alias_token = csvAlias.alias_token;
+      payload.alias_copy_to_root = csvAlias.alias_copy_to_root;
+      payload.alias_copy_target = csvAlias.alias_copy_target;
     } else {
       payload.table_url = document.getElementById('csv-extend-url').value.trim();
       payload.output_table_name = document.getElementById('csv-extend-name').value.trim() || 'extended';

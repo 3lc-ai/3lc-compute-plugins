@@ -7,10 +7,12 @@ from __future__ import annotations
 import csv
 import io
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from tlc_plugin_sdk import ComputePlugin
+from tlc_plugin_sdk.shared import url_utils as pu
 
 from tlc_plugin_importer import routes as _routes
 
@@ -194,8 +196,14 @@ def _execute_csv_new(
     description: str,
     alias_enabled: bool = True,
     alias_token: str = "",
+    alias_copy_target: str = "",
+    ctx: JobContext | None = None,
 ) -> dict[str, Any]:
-    """Create a brand new 3LC table from CSV/Excel columns using TableWriter."""
+    """Create a brand new 3LC table from CSV/Excel columns using TableWriter.
+
+    ``alias_copy_target`` (a ``scheme://`` prefix) asks for the detected image folder to
+    be copied there before the alias is registered — see :func:`_maybe_register_alias`.
+    """
     import tlc
 
     _headers, csv_rows = _read_spreadsheet(file_bytes, filename)
@@ -315,10 +323,16 @@ def _execute_csv_new(
             ]
             image_folder = _detect_common_folder(img_paths)
             if image_folder:
-                from tlc_plugin_sdk.shared.aliases import default_alias_token, register_alias
-
-                token = alias_token or default_alias_token(project_name)
-                register_alias(project_name=project_name, image_folder=image_folder, alias_token=token)
+                _maybe_register_alias(
+                    {
+                        "project_name": project_name,
+                        "alias_token": alias_token,
+                        "alias_copy_to_root": bool(alias_copy_target),
+                        "alias_copy_target": alias_copy_target,
+                    },
+                    image_folder,
+                    ctx,
+                )
 
     return {
         "success": True,
@@ -837,36 +851,85 @@ _PATH_FIELDS = ("dataset_yaml", "annotations_file", "image_folder", "folder_path
 
 
 def _normalize_path_fields(form_data: dict[str, Any]) -> dict[str, Any]:
-    """Normalize user-typed path fields at ingress: strip, expand ``~``, require absolute.
+    """Normalize user-typed location fields at ingress.
 
-    Returns a shallow copy with the fields in ``_PATH_FIELDS`` normalized; empty
-    or missing fields are left alone.
+    A local path is stripped, ``~``-expanded and must be absolute; a URL (``s3://…``, a
+    bucket picked in the data-source browser) is trimmed and passed through. Returns a
+    shallow copy with the fields in ``_PATH_FIELDS`` normalized; empty or missing fields
+    are left alone.
 
     Raises:
-        ValueError: A non-empty path field is not absolute after expansion.
+        ValueError: A non-empty local path is not absolute after expansion.
 
     """
-    from tlc_plugin_sdk.shared.url_utils import normalize_local_path
-
     normalized = dict(form_data)
     for key in _PATH_FIELDS:
         raw = str(normalized.get(key, "") or "").strip()
         if raw:
-            normalized[key] = normalize_local_path(raw)
+            normalized[key] = pu.normalize_path_or_url(raw)
     return normalized
 
 
-def _maybe_register_alias(form_data: dict[str, Any], image_folder: str) -> dict[str, Any] | None:
-    """Register a URL alias if the user opted in.
+_TRUE = ("true", True, "1", 1)
 
-    Reads ``alias_enabled``, ``alias_token``, and ``alias_folder`` from
-    *form_data*.  Returns the alias result dict (with ``token`` and ``path``
-    keys), or *None* if aliases are disabled.
+
+def _copy_target(form_data: dict[str, Any]) -> str:
+    """The URL the data should be copied to before the alias is registered, or ``''``.
+
+    Set by the shared alias widget when the project root lives on other storage than
+    the data (``alias_copy_to_root`` + ``alias_copy_target``). Only ``scheme://`` targets
+    count — a local path here would mean the widget and the service disagree.
     """
-    if form_data.get("alias_enabled", "true") not in ("true", True, "1"):
+    from tlc_plugin_sdk.shared.aliases import is_remote_url
+
+    if form_data.get("alias_copy_to_root", False) not in _TRUE:
+        return ""
+    target = str(form_data.get("alias_copy_target", "") or "").strip()
+    return target if is_remote_url(target) else ""
+
+
+def _copy_progress(ctx: JobContext, target: str) -> Callable[[int, int, int, int], None]:
+    """A progress callback for :func:`copy_folder_to_url` that drives the job panel."""
+    where = target.split("://", 1)[-1].split("/", 1)[0]  # the bucket / volume name
+
+    def report(files_done: int, files_total: int, bytes_done: int, bytes_total: int) -> None:
+        pct = int(files_done * 100 / files_total) if files_total else -1
+        ctx.progress(
+            percent=pct,
+            label=f"Copying data to {where}… {files_done:,}/{files_total:,} files, {_human_bytes(bytes_done)}",
+            timing={"step_label": "copy"},
+        )
+
+    return report
+
+
+def _human_bytes(n: int) -> str:
+    value = float(n)
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if value < 1024 or unit == "TB":
+            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{value:.1f} TB"
+
+
+def _maybe_register_alias(
+    form_data: dict[str, Any],
+    image_folder: str,
+    ctx: JobContext | None = None,
+) -> dict[str, Any] | None:
+    """Register a URL alias if the user opted in — copying the data first when asked.
+
+    Reads ``alias_enabled``, ``alias_token``, and ``alias_folder`` from *form_data*.
+    When the widget also set ``alias_copy_to_root`` with an ``alias_copy_target``
+    (the table lands on other storage than the data), the folder is copied there
+    first and the persisted alias points at the copy, so nodes and the Dashboard
+    read the same data as the table. Returns the alias result dict (with ``token``
+    and ``path`` keys), or *None* if aliases are disabled.
+    """
+    if form_data.get("alias_enabled", "true") not in _TRUE:
         return None
 
-    from tlc_plugin_sdk.shared.aliases import default_alias_token, register_alias
+    from tlc_plugin_sdk.shared.aliases import copy_folder_to_url, default_alias_token, register_alias
 
     project_name = form_data["project_name"].strip()
     token = form_data.get("alias_token", "").strip() or default_alias_token(project_name)
@@ -874,7 +937,21 @@ def _maybe_register_alias(form_data: dict[str, Any], image_folder: str) -> dict[
     if not folder:
         return None
 
-    return register_alias(project_name=project_name, image_folder=folder, alias_token=token)
+    remote: str | None = None
+    target = _copy_target(form_data)
+    if target:
+        if ctx is not None:
+            ctx.log(f"Copying {folder} to {target}…")
+        stats = copy_folder_to_url(folder, target, progress=_copy_progress(ctx, target) if ctx else None)
+        remote = target
+        if ctx is not None:
+            ctx.log(
+                f"Copied {stats['files']:,} files ({_human_bytes(stats['bytes'])}) to {target}"
+                + (f", {stats['skipped']:,} were already there" if stats["skipped"] else "")
+                + f". <{token}> points there."
+            )
+
+    return register_alias(project_name=project_name, image_folder=folder, alias_token=token, remote_path=remote)
 
 
 def _enhance_error_message(raw: str) -> str:
@@ -889,8 +966,8 @@ def _enhance_error_message(raw: str) -> str:
     return f"Import failed: {raw}"
 
 
-def _infer_coco_images_folder(ann_file: Path) -> str:
-    """Infer the COCO images folder from an annotation file path.
+def _infer_coco_images_folder(ann_file: str) -> str:
+    """Infer the COCO images folder from an annotation file path or URL.
 
     Looks for ``images/<split_suffix>`` or ``<split_suffix>/`` next to the
     annotations directory.  E.g. for ``/data/coco/annotations/instances_train2017.json``
@@ -898,25 +975,25 @@ def _infer_coco_images_folder(ann_file: Path) -> str:
     """
     import re
 
-    stem = ann_file.stem.lower()
-    parent = ann_file.parent.parent  # go up from annotations/ to dataset root
+    stem = pu.stem_of(ann_file).lower()
+    parent = pu.parent_of(pu.parent_of(ann_file))  # go up from annotations/ to dataset root
 
     match = re.search(r"((?:train|val|validation|test)\d*)", stem)
     if match:
         suffix = match.group(1)
         if suffix.startswith("validation"):
             suffix = "val" + suffix[len("validation") :]
-        candidate = parent / "images" / suffix
-        if candidate.is_dir():
-            return str(candidate)
-        candidate2 = parent / suffix
-        if candidate2.is_dir():
-            return str(candidate2)
+        candidate = pu.join_path_or_url(parent, "images", suffix)
+        if pu.is_folder(candidate):
+            return candidate
+        candidate2 = pu.join_path_or_url(parent, suffix)
+        if pu.is_folder(candidate2):
+            return candidate2
 
     # Fallback: look for any images/ directory
-    candidate3 = parent / "images"
-    if candidate3.is_dir():
-        return str(candidate3)
+    candidate3 = pu.join_path_or_url(parent, "images")
+    if pu.is_folder(candidate3):
+        return candidate3
 
     return ""
 
@@ -938,51 +1015,50 @@ def _parse_coco_folder(annotations_dir: str) -> dict[str, Any]:
     """
     import re
 
-    ann_path = Path(annotations_dir.strip())
+    ann_path = pu.normalize_path_or_url(annotations_dir)
 
     # Single JSON file — return it with inferred images folder
-    if ann_path.is_file() and ann_path.suffix.lower() == ".json":
+    if pu.suffix_of(ann_path) == ".json" and pu.is_file(ann_path):
         images_hint = _infer_coco_images_folder(ann_path)
-        stem = ann_path.stem.lower()
+        stem = pu.stem_of(ann_path).lower()
         split_kw = ""
         for kw in ("train", "val", "test", "validation"):
             if kw in stem:
                 split_kw = "val" if kw == "validation" else kw
                 break
-        base_name = ann_path.parent.parent.name or ann_path.parent.name
+        base_name = pu.name_of(pu.parent_of(pu.parent_of(ann_path))) or pu.name_of(pu.parent_of(ann_path))
         for _sfx in ("_train", "_val", "_test", "-train", "-val", "-test"):
             if base_name.endswith(_sfx):
                 base_name = base_name[: -len(_sfx)]
                 break
         return {
             "name": base_name,
-            "root": str(ann_path.parent),
+            "root": pu.parent_of(ann_path),
             "types": [],
             "default_type": "",
-            "splits": [{"split": split_kw, "file": str(ann_path), "images_hint": images_hint}],
+            "splits": [{"split": split_kw, "file": ann_path, "images_hint": images_hint}],
             "images_hint": images_hint,
         }
 
-    if not ann_path.is_dir():
+    if not pu.is_folder(ann_path):
         return {"error": f"Not a directory or JSON file: {ann_path}"}
 
-    json_files = sorted(ann_path.glob("*.json"))
+    json_files = pu.iter_files(ann_path, extensions={".json"}, recursive=False)
 
     # Roboflow-style layout: subfolders (train/, val/, test/) each with _annotations.coco.json + images.
     # If no JSON at top level, scan one level down for this pattern.
     if not json_files:
         subfolder_splits: list[dict[str, str]] = []
         for kw in ("train", "val", "test"):
-            sub = ann_path / kw
-            if sub.is_dir():
-                ann_file = sub / "_annotations.coco.json"
-                if ann_file.is_file():
-                    subfolder_splits.append({"split": kw, "file": str(ann_file), "images_hint": str(sub)})
+            sub = pu.join_path_or_url(ann_path, kw)
+            ann_file = pu.join_path_or_url(sub, "_annotations.coco.json")
+            if pu.is_file(ann_file):
+                subfolder_splits.append({"split": kw, "file": ann_file, "images_hint": sub})
         if subfolder_splits:
-            base_name = ann_path.name
+            base_name = pu.name_of(ann_path)
             return {
                 "name": base_name,
-                "root": str(ann_path),
+                "root": ann_path,
                 "types": [],
                 "default_type": "",
                 "splits": subfolder_splits,
@@ -991,12 +1067,13 @@ def _parse_coco_folder(annotations_dir: str) -> dict[str, Any]:
 
     split_keywords = ("train", "val", "test", "validation")
     split_normalize = {"validation": "val"}
-    parent = ann_path.parent  # e.g. /data/coco/ when annotations is /data/coco/annotations/
+    parent = pu.parent_of(ann_path)  # e.g. /data/coco/ when annotations is /data/coco/annotations/
 
     # Parse each file into (annotation_type, split, file, images_hint)
     entries: list[tuple[str, str, str, str]] = []
     for jf in json_files:
-        stem = jf.stem.lower()
+        jf_stem = pu.stem_of(jf)
+        stem = jf_stem.lower()
         matched_split = ""
         for kw in split_keywords:
             if kw in stem:
@@ -1004,14 +1081,14 @@ def _parse_coco_folder(annotations_dir: str) -> dict[str, Any]:
                 break
 
         # Derive annotation type: strip split+year suffix
-        ann_type = re.sub(r"[_\-]?(?:train|val|validation|test)\d*", "", jf.stem, flags=re.IGNORECASE).strip("_- ")
+        ann_type = re.sub(r"[_\-]?(?:train|val|validation|test)\d*", "", jf_stem, flags=re.IGNORECASE).strip("_- ")
         if not ann_type:
-            ann_type = jf.stem
+            ann_type = jf_stem
 
         # Infer matching images folder
         images_hint = _infer_coco_images_folder(jf)
 
-        entries.append((ann_type, matched_split, str(jf), images_hint))
+        entries.append((ann_type, matched_split, jf, images_hint))
 
     # Group by annotation type
     type_groups: dict[str, list[dict[str, str]]] = {}
@@ -1024,7 +1101,7 @@ def _parse_coco_folder(annotations_dir: str) -> dict[str, Any]:
         types_list.append({"type": t, "splits": type_groups[t]})
 
     # Base name from parent folder (e.g. "coco" from /datasets/coco/annotations/)
-    base_name = parent.name or ann_path.name
+    base_name = pu.name_of(parent) or pu.name_of(ann_path)
     for _sfx in ("_train", "_val", "_test", "-train", "-val", "-test"):
         if base_name.endswith(_sfx):
             base_name = base_name[: -len(_sfx)]
@@ -1036,11 +1113,36 @@ def _parse_coco_folder(annotations_dir: str) -> dict[str, Any]:
 
     return {
         "name": base_name,
-        "root": str(parent),
+        "root": parent,
         "types": types_list,
         "default_type": default_type,
         "splits": default_splits,
     }
+
+
+def _yolo_config(dataset_yaml: str) -> tuple[dict[str, Any], str]:
+    """Load a YOLO dataset YAML (local file or URL) → ``(config, folder the YAML sits in)``."""
+    import yaml
+
+    yaml_path = dataset_yaml.strip()
+    cfg = yaml.safe_load(pu.read_text(yaml_path)) or {}
+    if not isinstance(cfg, dict):
+        msg = f"{yaml_path} is not a YOLO dataset YAML (expected a mapping)."
+        raise ValueError(msg)
+    return cfg, pu.parent_of(yaml_path)
+
+
+def _yolo_resolve(value: str, base: str) -> str:
+    """Resolve a YAML path entry against *base*: absolute paths and URLs stand, the rest is relative."""
+    value = str(value).strip()
+    resolved = value if pu.is_absolute(value) else pu.join_path_or_url(base, value)
+    return resolved if pu.is_url(resolved) else str(Path(resolved).resolve())
+
+
+def _yolo_root(cfg: dict[str, Any], yaml_dir: str) -> str:
+    """The dataset root: the YAML's ``path`` (relative to the YAML's folder), else that folder."""
+    ds_root = str(cfg.get("path", "") or "")
+    return _yolo_resolve(ds_root, yaml_dir) if ds_root else _yolo_resolve(yaml_dir, yaml_dir)
 
 
 def _parse_yolo_splits(dataset_yaml: str) -> dict[str, Any]:
@@ -1051,18 +1153,14 @@ def _parse_yolo_splits(dataset_yaml: str) -> dict[str, Any]:
         available split names), and ``classes`` (number of classes).
 
     """
-    import yaml
-
-    yaml_path = Path(dataset_yaml.strip())
-    with open(yaml_path) as f:
-        cfg = yaml.safe_load(f)
+    cfg, _yaml_dir = _yolo_config(dataset_yaml)
 
     # Dataset base name from YAML filename or the 'path' basename
-    ds_root = cfg.get("path", "")
+    ds_root = str(cfg.get("path", "") or "")
     if ds_root:
-        base_name = Path(ds_root).name
+        base_name = pu.name_of(ds_root)
     else:
-        base_name = yaml_path.stem  # e.g. "coco128" from "coco128.yaml"
+        base_name = pu.stem_of(dataset_yaml.strip())  # e.g. "coco128" from "coco128.yaml"
 
     # Strip split suffixes — this is a *base* name; splits get appended later
     for suffix in ("_train", "_val", "_test", "-train", "-val", "-test"):
@@ -1099,21 +1197,8 @@ def _parse_yolo_dataset_root(dataset_yaml: str) -> str:
     resolved relative to the YAML file location.  This is the correct folder
     for alias registration because it covers train, val, and test splits.
     """
-    import yaml
-
-    yaml_path = Path(dataset_yaml.strip())
-    with open(yaml_path) as f:
-        cfg = yaml.safe_load(f)
-
-    ds_root = cfg.get("path", "")
-    if not ds_root:
-        return str(yaml_path.parent.resolve())
-
-    root = Path(ds_root)
-    if not root.is_absolute():
-        root = yaml_path.parent / root
-
-    return str(root.resolve())
+    cfg, yaml_dir = _yolo_config(dataset_yaml)
+    return _yolo_root(cfg, yaml_dir)
 
 
 def _parse_yolo_image_root(dataset_yaml: str, split: str) -> str:
@@ -1122,22 +1207,12 @@ def _parse_yolo_image_root(dataset_yaml: str, split: str) -> str:
     Reads ``path`` (dataset root) and the split key (e.g. ``train``, ``val``)
     from the YAML, then returns the resolved folder.
     """
-    import yaml
-
-    yaml_path = Path(dataset_yaml.strip())
-    with open(yaml_path) as f:
-        cfg = yaml.safe_load(f)
-
-    ds_root = cfg.get("path", "")
-    split_dir = cfg.get(split, split)
-
-    root = Path(ds_root) / split_dir if ds_root else yaml_path.parent / split_dir
-    if not root.is_absolute():
-        root = yaml_path.parent / root
+    cfg, yaml_dir = _yolo_config(dataset_yaml)
+    split_dir = str(cfg.get(split, split) or split)
+    resolved = _yolo_resolve(split_dir, _yolo_root(cfg, yaml_dir))
 
     # Go up to parent of "images" if the resolved path contains it
-    resolved = root.resolve()
-    return str(resolved.parent if resolved.name == "images" else resolved)
+    return pu.parent_of(resolved) if pu.name_of(resolved) == "images" else resolved
 
 
 _YOLO_TASK_MAP = {
@@ -1154,23 +1229,13 @@ def _parse_yolo_yaml_for_split(dataset_yaml: str, split: str) -> tuple[str, dict
     Returns ``(images_url, categories)``. ``categories`` may be None if the YAML
     declares ``nc`` instead of ``names``.
     """
-    import yaml
-
-    yaml_path = Path(dataset_yaml.strip())
-    with open(yaml_path) as f:
-        cfg = yaml.safe_load(f)
+    cfg, yaml_dir = _yolo_config(dataset_yaml)
 
     split_value = cfg.get(split)
     if split_value is None:
-        msg = f"Split {split!r} not found in {yaml_path} (available keys: {sorted(cfg)})"
+        msg = f"Split {split!r} not found in {dataset_yaml.strip()} (available keys: {sorted(cfg)})"
         raise ValueError(msg)
-    ds_root = cfg.get("path", "")
-    split_path = Path(split_value)
-    if not split_path.is_absolute():
-        root = Path(ds_root) if ds_root else yaml_path.parent
-        if not root.is_absolute():
-            root = yaml_path.parent / root
-        split_path = root / split_path
+    images_url = _yolo_resolve(str(split_value), _yolo_root(cfg, yaml_dir))
 
     # YOLO YAMLs declare class names either as a dict ({0: "cat", 1: "dog"}) or a list
     # (["cat", "dog"], in flow or block style). The list form is index-ordered, so enumerate
@@ -1182,7 +1247,7 @@ def _parse_yolo_yaml_for_split(dataset_yaml: str, split: str) -> tuple[str, dict
         categories = {i: str(v) for i, v in enumerate(names)}
     else:
         categories = None
-    return str(split_path.resolve()), categories
+    return images_url, categories
 
 
 def _execute_yolo(form_data: dict[str, Any]) -> dict[str, Any]:
@@ -1240,9 +1305,8 @@ def _resolve_coco_annotations(annotations_file: str, image_folder: str) -> tuple
             ambiguous (multiple annotation types or splits) and needs the UI's picker.
 
     """
-    ann_path = Path(annotations_file)
-    if not ann_path.is_dir():
-        if not ann_path.is_file():
+    if not pu.is_folder(annotations_file):
+        if not pu.is_file(annotations_file):
             msg = f"Annotations Path '{annotations_file}' does not exist."
             raise ValueError(msg)
         return annotations_file, image_folder
@@ -1290,7 +1354,7 @@ def _execute_coco(form_data: dict[str, Any]) -> dict[str, Any]:
     if not image_folder:
         msg = "Images Folder is required."
         raise ValueError(msg)
-    if not Path(image_folder).is_dir():
+    if not pu.is_folder(image_folder):
         msg = f"Images Folder '{image_folder}' does not exist or is not a directory."
         raise ValueError(msg)
 
@@ -1353,11 +1417,15 @@ def _execute_folder(form_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _get_image_dimensions(path: Path) -> tuple[int, int]:
-    """Read image dimensions without loading full pixel data."""
+def _get_image_dimensions(path: str | Path) -> tuple[int, int]:
+    """Read image dimensions (local file or URL) without decoding the pixels."""
+    import io
+
     from PIL import Image
 
-    with Image.open(path) as img:
+    location = str(path)
+    source: Any = io.BytesIO(pu.read_bytes(location)) if pu.is_url(location) else location
+    with Image.open(source) as img:
         size: tuple[int, int] = img.size  # (width, height)
         return size
 
@@ -1371,8 +1439,8 @@ def _schemas_and_builder(modality: str, tlc: Any) -> tuple[dict[str, Any], Any]:
             "weight": tlc.schemas.SampleWeightSchema(),
         }
 
-        def build_row(img_path: Path) -> dict[str, Any]:
-            return {"image": str(img_path), "label": 0, "weight": 0.0}
+        def build_row(img_path: str) -> dict[str, Any]:
+            return {"image": img_path, "label": 0, "weight": 0.0}
 
     elif modality == "detection":
         bb_schema = tlc.data_types.BoundingBoxes2D.schema(classes=["unlabeled"])
@@ -1382,10 +1450,10 @@ def _schemas_and_builder(modality: str, tlc: Any) -> tuple[dict[str, Any], Any]:
             "weight": tlc.schemas.SampleWeightSchema(),
         }
 
-        def build_row(img_path: Path) -> dict[str, Any]:
+        def build_row(img_path: str) -> dict[str, Any]:
             w, h = _get_image_dimensions(img_path)
             return {
-                "image": str(img_path),
+                "image": img_path,
                 "bounding_boxes": tlc.data_types.BoundingBoxes2D.create_empty(image_width=w, image_height=h),
                 "weight": 0.0,
             }
@@ -1397,10 +1465,10 @@ def _schemas_and_builder(modality: str, tlc: Any) -> tuple[dict[str, Any], Any]:
             "weight": tlc.schemas.SampleWeightSchema(),
         }
 
-        def build_row(img_path: Path) -> dict[str, Any]:
+        def build_row(img_path: str) -> dict[str, Any]:
             w, h = _get_image_dimensions(img_path)
             return {
-                "image": str(img_path),
+                "image": img_path,
                 "segmentations": tlc.data_types.SegmentationPolygons.create_empty(image_width=w, image_height=h),
                 "weight": 0.0,
             }
@@ -1416,8 +1484,8 @@ def _execute_unlabeled(form_data: dict[str, Any]) -> dict[str, Any]:
     """Execute Unlabeled Images import."""
     import tlc
 
-    folder = Path(form_data["folder_path"].strip())
-    if not folder.is_dir():
+    folder = form_data["folder_path"].strip()
+    if not pu.is_folder(folder):
         return {"success": False, "message": f"Folder not found: {folder}", "table_url": None, "details": {}}
 
     modality = form_data["modality"].strip()
@@ -1426,7 +1494,7 @@ def _execute_unlabeled(form_data: dict[str, Any]) -> dict[str, Any]:
     table_name = form_data.get("table_name", "").strip() or "initial"
     description = form_data.get("description", "").strip() or None
 
-    image_paths = sorted(p for p in folder.rglob("*") if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS)
+    image_paths = pu.iter_files(folder, extensions=IMAGE_EXTENSIONS)
     if not image_paths:
         return {"success": False, "message": f"No images found in {folder}", "table_url": None, "details": {}}
 
@@ -1473,16 +1541,16 @@ def _execute_csv_detection(form_data: dict[str, Any]) -> dict[str, Any]:
 
     import tlc
 
-    csv_path = Path(form_data["csv_path"].strip())
-    image_folder = Path(form_data["image_folder"].strip())
+    csv_path = form_data["csv_path"].strip()
+    image_folder = form_data["image_folder"].strip()
     project_name = form_data["project_name"].strip()
     dataset_name = form_data["dataset_name"].strip()
     table_name = form_data.get("table_name", "").strip() or "initial"
     description = form_data.get("description", "").strip() or None
 
-    if not csv_path.is_file():
+    if not pu.is_file(csv_path):
         return {"success": False, "message": f"CSV file not found: {csv_path}", "table_url": None, "details": {}}
-    if not image_folder.is_dir():
+    if not pu.is_folder(image_folder):
         return {
             "success": False,
             "message": f"Image folder not found: {image_folder}",
@@ -1490,10 +1558,9 @@ def _execute_csv_detection(form_data: dict[str, Any]) -> dict[str, Any]:
             "details": {},
         }
 
-    # Read CSV
-    with open(csv_path, newline="", encoding="utf-8-sig") as f:
-        reader = csv_mod.DictReader(f)
-        rows = list(reader)
+    # Read CSV (local file or URL)
+    reader = csv_mod.DictReader(io.StringIO(pu.read_text(csv_path, encoding="utf-8-sig"), newline=""))
+    rows = list(reader)
 
     if not rows:
         return {"success": False, "message": "CSV file is empty.", "table_url": None, "details": {}}
@@ -1520,13 +1587,14 @@ def _execute_csv_detection(form_data: dict[str, Any]) -> dict[str, Any]:
         },
     )
 
+    # One listing of the image folder (a bucket prefix would otherwise cost a request per image).
+    by_name = {pu.name_of(p): p for p in pu.iter_files(image_folder, extensions={".png", ".jpg"}, recursive=False)}
+
     skipped = 0
     for image_id in sorted(grouped):
         # Try .png first, then .jpg
-        img_path = image_folder / f"{image_id}.png"
-        if not img_path.is_file():
-            img_path = image_folder / f"{image_id}.jpg"
-        if not img_path.is_file():
+        img_path = by_name.get(f"{image_id}.png") or by_name.get(f"{image_id}.jpg")
+        if img_path is None:
             skipped += 1
             continue
 
@@ -1550,7 +1618,7 @@ def _execute_csv_detection(form_data: dict[str, Any]) -> dict[str, Any]:
             y_max=float(h),
         )
         writer.add_row({
-            "image": str(img_path),
+            "image": img_path,
             "bounding_boxes": bb,
             "weight": 1.0,
         })
@@ -1592,7 +1660,7 @@ def _get_image_folder(format_name: str, form_data: dict[str, Any]) -> str:
         try:
             return _parse_yolo_dataset_root(form_data["dataset_yaml"])
         except Exception:
-            return str(Path(form_data["dataset_yaml"].strip()).parent)
+            return pu.parent_of(form_data["dataset_yaml"].strip())
     elif format_name == "coco":
         coco_folder: str = form_data["image_folder"].strip()
         return coco_folder
@@ -1677,7 +1745,9 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
 
     # Register the project's URL alias BEFORE the executor runs so the SDK can use
     # the token when encoding image paths; remove the PRIMARY session alias after.
-    alias_result = _maybe_register_alias(form_data, _get_image_folder(format_name, form_data))
+    alias_result = _maybe_register_alias(form_data, _get_image_folder(format_name, form_data), ctx)
+    if alias_result and alias_result.get("remote_path"):
+        ctx.progress(percent=-1, label=label, timing={"step_label": "import"})  # back to the import
     try:
         result = executor(form_data)
     except Exception as exc:
@@ -1749,6 +1819,8 @@ def _run_csv_import(ctx: JobContext) -> None:
             description=params.get("description", "").strip(),
             alias_enabled=alias_enabled in (True, "true", "1"),
             alias_token=params.get("alias_token", ""),
+            alias_copy_target=_copy_target(params),
+            ctx=ctx,
         )
 
     if not result.get("success"):
