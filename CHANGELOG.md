@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-07
+
+### Changed
+- Requires plugin SDK `>=0.3.3`, which raises the `3lc` floor to 3.3.0 so every plugin venv
+  resolves the current 3lc release. The umbrella declares no `3lc` dependency of its own; the
+  data plane arrives through the SDK.
+
 ### Fixed
 - The COCO importer's Table Name field no longer becomes stuck on "initial" once a multi-split
   dataset is detected. It stays editable, and the value you enter is applied to every split's
