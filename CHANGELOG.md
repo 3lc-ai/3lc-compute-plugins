@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- The COCO importer's Table Name field no longer becomes stuck on "initial" once a multi-split
+  dataset is detected. It stays editable, and the value you enter is applied to every split's
+  table (only the dataset name differs per split, e.g. `coco_train`, `coco_val`).
 - The COCO importer no longer duplicates path segments when a dataset's `file_name` values
   already include subdirectories (e.g. `train/images/001.jpg`) that overlap with the supplied
   Images Folder. It now checks the annotations against the filesystem and strips the overlapping
