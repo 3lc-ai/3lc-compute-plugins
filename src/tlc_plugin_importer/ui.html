@@ -528,28 +528,21 @@
     // require dataset_yaml + dataset_name + project_name + table_name
     var isYoloMulti = _currentFormFmt.name === 'yolo' && _yoloDetectedSplits.length > 0;
     // For COCO with auto-detect: skip 'annotations_file' and 'image_folder' (handled per-split)
-    var isCocoMulti = _currentFormFmt.name === 'coco' && _cocoDetectedSplits.length > 0;
+    var isCocoMulti = _currentFormFmt.name === 'coco' && _cocoDetectedSplits.length > 1;
     // A folder that failed detection still leaves annotations_file non-empty — don't let
     // that read as "ready" (it would reach the backend as a raw, unresolved directory).
     if (_currentFormFmt.name === 'coco' && _cocoDetectFailed) ready = false;
 
-    // Multi-split (YOLO or COCO): every split gets its own dataset_name, so a shared
-    // table_name isn't disambiguating anything — grey it out rather than let it look
-    // like it needs a distinct value per split.
+    // Multi-split (YOLO or COCO): every split gets its own dataset_name, but they all
+    // share this same table_name — stays editable, just update the help text to say so.
     var tnInput = document.getElementById('import-table_name');
     if (tnInput) {
       var tnGroup = tnInput.closest('.form-group');
       var tnHelp = tnGroup ? tnGroup.querySelector('.form-help') : null;
-      if (isYoloMulti || isCocoMulti) {
-        if (!tnInput.disabled) tnInput.dataset.userValue = tnInput.value;
-        tnInput.disabled = true;
-        tnInput.value = '';
-        tnInput.placeholder = 'initial';
-        if (tnHelp) tnHelp.textContent = "Applied to every split's dataset — each split already has its own dataset name.";
-      } else if (tnInput.disabled) {
-        tnInput.disabled = false;
-        tnInput.value = tnInput.dataset.userValue || '';
-        if (tnHelp) tnHelp.textContent = "Table revision name. Leave blank for 'initial'.";
+      if (tnHelp) {
+        tnHelp.textContent = (isYoloMulti || isCocoMulti)
+          ? "Applied to every split's table — only the dataset name differs per split. Leave blank for 'initial'."
+          : "Table revision name. Leave blank for 'initial'.";
       }
     }
 

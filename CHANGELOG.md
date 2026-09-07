@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-07
+
+### Changed
+- Requires plugin SDK `>=0.3.3`, which raises the `3lc` floor to 3.3.0 so every plugin venv
+  resolves the current 3lc release. The umbrella declares no `3lc` dependency of its own; the
+  data plane arrives through the SDK.
+
+### Fixed
+- The COCO importer's Table Name field no longer becomes stuck on "initial" once a multi-split
+  dataset is detected. It stays editable, and the value you enter is applied to every split's
+  table (only the dataset name differs per split, e.g. `coco_train`, `coco_val`).
+- The COCO importer no longer duplicates path segments when a dataset's `file_name` values
+  already include subdirectories (e.g. `train/images/001.jpg`) that overlap with the supplied
+  Images Folder. It now checks the annotations against the filesystem and strips the overlapping
+  segment before import.
+
 ## [0.2.3] - 2026-08-31
 
 ### Changed
