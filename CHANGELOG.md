@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The COCO importer no longer duplicates path segments when a dataset's `file_name` values
+  already include subdirectories (e.g. `train/images/001.jpg`) that overlap with the supplied
+  Images Folder. It now checks the annotations against the filesystem and strips the overlapping
+  segment before import.
+
 ## [0.2.3] - 2026-08-31
 
 ### Changed
