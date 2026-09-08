@@ -362,7 +362,6 @@
     html += '<div class="card-subtitle">' + _esc(fmt.description) + '</div>';
     html += '</div></div>';
     html += '<div class="card-body">';
-    html += '<div id="import-result"></div>';
     html += '<form id="import-exec-form" onsubmit="return false;" novalidate>';
     html += '<div class="form-row">';
 
@@ -452,6 +451,9 @@
     html += '</div>';
     html += '<div id="import-queue-panel" style="margin-top:12px"></div>';
     html += '</form>';
+    // Below the form, under the Import button — a result that appeared above the fields read as a
+    // banner about the form rather than the answer to the button you just pressed (Paul, 2026-09-08).
+    html += '<div id="import-result" style="margin-top:12px"></div>';
     html += '</div></div>';
 
     area.innerHTML = html;
@@ -1130,7 +1132,10 @@
     progressEl.style.display = 'none';
 
     var states = splitJobs.map(function(sj) { return { label: sj.label, status: 'queued' }; });
-    var completed = [], failed = [], lastResult = null, remaining = splitJobs.length;
+    // Every split's table, not only the one that finished last: with just lastResult the other tables
+    // had no link at all, and "Imported: train, val" offered a single pair of buttons pointing at
+    // whichever happened to land second (Paul, 2026-09-08).
+    var completed = [], failed = [], landedTables = [], lastResult = null, remaining = splitJobs.length;
     _renderImportQueue(states);
 
     function _settle() {
@@ -1143,6 +1148,7 @@
         success: failed.length === 0,
         message: (completed.length ? 'Imported: ' + completed.join(', ') : '') +
                  (failed.length ? (completed.length ? '. ' : '') + 'Failed: ' + failed.join(', ') : ''),
+        tables: landedTables,
         table_url: lastResult ? lastResult.table_url : null,
         project_name: lastResult ? lastResult.project_name : null,
         dataset_name: lastResult ? lastResult.dataset_name : null,
@@ -1154,7 +1160,16 @@
       PluginJobs.run('importer', sj.formData, {
         onUpdate: function(job) { states[i].status = job.status; _renderImportQueue(states); },
         onDone: function(job) {
-          if (job.status === 'completed') { completed.push(sj.label); lastResult = _resultFromJob(job, sj.formData); }
+          if (job.status === 'completed') {
+            completed.push(sj.label);
+            lastResult = _resultFromJob(job, sj.formData);
+            if (lastResult && lastResult.table_url) {
+              landedTables.push({
+                label: sj.label, project_name: lastResult.project_name,
+                dataset_name: lastResult.dataset_name, table_url: lastResult.table_url,
+              });
+            }
+          }
           else { failed.push(sj.label); }
           states[i].status = job.status; _renderImportQueue(states); _settle();
         },
@@ -1247,14 +1262,26 @@
       html += '</div>';
     }
 
-    if (data.success && data.table_url) {
-      html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
-      // One ending for every format (_tlcTableLandedHtml): View in Project — straight to the Datasets
-      // tab with this table selected — and Open in Dashboard. No Export: the person has just imported
-      // this, and offering to send it back out is noise at that moment (Paul, 2026-09-08).
-      html += _tlcTableLandedHtml(data.project_name, data.dataset_name, data.table_url);
+    // Every table this import wrote, one row each. A multi-split COCO import used to report only the
+    // split that happened to finish last, so the other table had no link at all (Paul, 2026-09-08).
+    var landed = (data.tables && data.tables.length)
+      ? data.tables
+      : (data.table_url ? [{ label: '', project_name: data.project_name,
+                             dataset_name: data.dataset_name, table_url: data.table_url }] : []);
+    if (data.success && landed.length) {
+      // One ending for every format (_tlcTableLandedHtml): Open in Project — straight to the Datasets
+      // tab with that table selected — and Open in Dashboard. No Export: the person has just imported
+      // this, and offering to send it back out is noise at that moment.
+      landed.forEach(function(t) {
+        html += '<div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+        if (landed.length > 1 && t.label) {
+          html += '<span style="min-width:64px;font-weight:600;font-size:12px">' + _esc(t.label) + '</span>';
+        }
+        html += _tlcTableLandedHtml(t.project_name, t.dataset_name, t.table_url);
+        html += '</div>';
+      });
 
-      // "Import Next Split" button for YOLO
+      // "Import Next Split" button for YOLO — its own row, below the tables that just landed.
       if (data.format === 'yolo' && data.split) {
         var _splits = ['train', 'val', 'test'];
         var _curIdx = _splits.indexOf(data.split);
@@ -1262,12 +1289,13 @@
           var _nextSplit = _splits[_curIdx + 1];
           var _curDs = data.dataset_name || '';
           var _nextDs = _curDs.replace(new RegExp('_?' + data.split + '$'), '') + '_' + _nextSplit;
+          html += '<div style="margin-top:8px">';
           html += '<button type="button" class="btn btn-primary btn-sm" id="import-next-split-btn"' +
                   ' data-next-split="' + _nextSplit + '" data-next-ds="' + _esc(_nextDs) + '">' +
                   'Import ' + _nextSplit.charAt(0).toUpperCase() + _nextSplit.slice(1) + ' Split &rarr;</button>';
+          html += '</div>';
         }
       }
-      html += '</div>';
 
       // Multi-split guidance
       if (data.format === 'yolo') {
