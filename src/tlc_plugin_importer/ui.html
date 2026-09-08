@@ -1209,10 +1209,9 @@
         html += badge;
         if (s === 'completed' && j.run_url) {
           var r = _resultFromJob(j);
-          html += r.project_name
-            ? ' <a href="/projects/' + encodeURIComponent(r.project_name) + '?dataset=' + encodeURIComponent(r.dataset_name || '') +
-              '&table=' + encodeURIComponent(r.table_url) + '#datasets" class="btn btn-secondary btn-sm">View in Project</a>'
-            : '';
+          // The shared ending for a landed table (_tlcTableLandedHtml): the Datasets tab with this
+          // table selected, and the Dashboard. Secondary here — it is one row in a list.
+          html += ' ' + _tlcTableLandedHtml(r.project_name, r.dataset_name, r.table_url, { primary: false });
         }
         html += '</div>';
       });
@@ -1250,14 +1249,10 @@
 
     if (data.success && data.table_url) {
       html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
-      if (data.project_name) {
-        html += '<a href="/projects/' + encodeURIComponent(data.project_name) +
-                '?dataset=' + encodeURIComponent(data.dataset_name || '') +
-                '&table=' + encodeURIComponent(data.table_url) +
-                '#datasets" class="btn btn-secondary btn-sm">View in Project</a>';
-      }
-      html += '<a href="/plugin/exporter?url=' + encodeURIComponent(data.table_url) +
-              '" class="btn btn-ghost btn-sm">Export</a>';
+      // One ending for every format (_tlcTableLandedHtml): View in Project — straight to the Datasets
+      // tab with this table selected — and Open in Dashboard. No Export: the person has just imported
+      // this, and offering to send it back out is noise at that moment (Paul, 2026-09-08).
+      html += _tlcTableLandedHtml(data.project_name, data.dataset_name, data.table_url);
 
       // "Import Next Split" button for YOLO
       if (data.format === 'yolo' && data.split) {
@@ -1684,16 +1679,9 @@
       if (result.success) {
         el.className = 'csv-result success';
         var d = result.details || {};
-        var viewUrl = '/projects/' + encodeURIComponent(result.project_name) +
-          '?dataset=' + encodeURIComponent(result.dataset_name || d.dataset || '') +
-          '&table=' + encodeURIComponent(result.table_url || '') + '#datasets';
-        var dashboardUrl = API.getConfig('dashboard_url');
-        var openUrl = dashboardUrl ? dashboardUrl + '?table=' + encodeURIComponent(result.table_url) : '';
         el.innerHTML = '<strong>Success!</strong> ' + _esc(result.message) +
           '<div style="display:flex;gap:8px;margin-top:10px">' +
-          '<a href="' + viewUrl + '" class="btn btn-primary btn-sm">View in Project</a>' +
-          (openUrl ? ' <a href="' + openUrl + '" target="_blank" class="btn btn-secondary btn-sm">Open in Dashboard</a>' : '') +
-          ' <a href="/plugin/exporter?url=' + encodeURIComponent(result.table_url || '') + '" class="btn btn-ghost btn-sm">Export</a>' +
+          _tlcTableLandedHtml(result.project_name, result.dataset_name || d.dataset, result.table_url) +
           '</div>';
         API.showToast(result.message, 'success');
       } else {

@@ -1953,13 +1953,16 @@ class ImportPlugin(ComputePlugin):
         if self._ui_cache is None:
             from tlc_plugin_sdk.shared.alias_ui import alias_ui_script
             from tlc_plugin_sdk.shared.data_source_ui import data_source_ui_script
+            from tlc_plugin_sdk.shared.table_landed import table_landed_script
             from tlc_plugin_sdk.shared.ui_inject import inject_scripts
 
             ui_path = Path(__file__).resolve().parent / "ui.html"
             raw = ui_path.read_text(encoding="utf-8")
             # window.PluginJobs is injected by the SDK's /ui handler; only the shared
             # data-source and alias form helpers are prepended here.
-            self._ui_cache = inject_scripts(raw, data_source_ui_script(), alias_ui_script())
+            self._ui_cache = inject_scripts(
+                raw, data_source_ui_script(), alias_ui_script(), table_landed_script()
+            )
         return self._ui_cache
 
     def compute(self, params: dict[str, Any]) -> dict[str, Any]:
