@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Requires plugin SDK `>=0.4.0,<0.5.0` (was `>=0.3.3,<0.4.0`).
+
 ## [0.2.4] - 2026-09-07
 
 ### Changed
