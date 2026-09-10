@@ -75,16 +75,16 @@ pandas = [
 
 [[package]]
 name = "3lc-compute-plugin-sdk"
-version = "0.3.3"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "3lc", extra = ["pandas"] },
     { name = "litestar" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/eb/d6/de0b3264645ffd500bb7a918357fafb2c064698bd18419012585452eb61a/3lc_compute_plugin_sdk-0.3.3.tar.gz", hash = "sha256:43d077fe7af6c11006bac42896a8a0519f12ced66cb781ea80e4342963959dd6", size = 238078, upload-time = "2026-09-07T09:36:22.66Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6c/ef/a7eef13702eb67073e3c9a6bf2f68a5e478ff78a229e0367cedcdaf283f3/3lc_compute_plugin_sdk-0.4.0.tar.gz", hash = "sha256:c6cf0c0b987af533c07ff75deed1374e5d6a574f31a5812eca432afc43e4e4a8", size = 255452, upload-time = "2026-09-10T13:42:29.26Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/15/bf7b84604c354ff3ce96a715ce07882536cb39a90625cfa645bb9d3a3cb4/3lc_compute_plugin_sdk-0.3.3-py3-none-any.whl", hash = "sha256:01d8357c08d0f4fea6b0ad013739d3e65f0dabe75c16b09117f5cc5c27ab46dc", size = 75239, upload-time = "2026-09-07T09:36:21.521Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/fc/8624fd77c0d8944684655aa259556c7618840dc8d5fc6f897ad32c12133a/3lc_compute_plugin_sdk-0.4.0-py3-none-any.whl", hash = "sha256:56ec68ac304faf5ed598170552e8cb562347f7a8b99f189745d173b895bc01b6", size = 82746, upload-time = "2026-09-10T13:42:28.199Z" },
 ]
 
 [[package]]
@@ -126,7 +126,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "3lc-compute-plugin-sdk", specifier = ">=0.3.3,<0.4.0" },
+    { name = "3lc-compute-plugin-sdk", specifier = ">=0.4.0,<0.5.0" },
     { name = "datasets", marker = "extra == 'importer'" },
     { name = "numpy", marker = "extra == 'image-metrics'" },
     { name = "numpy", marker = "extra == 'importer'" },
