@@ -19,12 +19,12 @@ else:
 
 def check_sources(root: Path) -> str:
     """Return the distribution version after checking every advertised plugin."""
-    project = tomllib.loads((root / "pyproject.toml").read_text())["project"]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     version = str(project["version"])
     packages = project["entry-points"]["tlc_compute.plugins"].values()
     for package in packages:
         path = root / "src" / package / "plugin.toml"
-        manifest = tomllib.loads(path.read_text())
+        manifest = tomllib.loads(path.read_text(encoding="utf-8"))
         if manifest.get("version") != version:
             msg = f"{path}: expected version {version}, got {manifest.get('version')}"
             raise ValueError(msg)
@@ -38,7 +38,7 @@ def stamp(root: Path, version: str) -> None:
         raise ValueError(msg)
     check_sources(root)
     project_path = root / "pyproject.toml"
-    project = tomllib.loads(project_path.read_text())["project"]
+    project = tomllib.loads(project_path.read_text(encoding="utf-8"))["project"]
     paths = [
         project_path,
         *(root / "src" / p / "plugin.toml" for p in project["entry-points"]["tlc_compute.plugins"].values()),
@@ -46,21 +46,25 @@ def stamp(root: Path, version: str) -> None:
     replacements: list[tuple[Path, str]] = []
     for path in paths:
         updated, count = re.subn(
-            r'^version\s*=\s*"[^"]+"', f'version = "{version}"', path.read_text(), count=1, flags=re.MULTILINE
+            r'^version\s*=\s*"[^"]+"',
+            f'version = "{version}"',
+            path.read_text(encoding="utf-8"),
+            count=1,
+            flags=re.MULTILINE,
         )
         if count != 1:
             msg = f"{path}: expected one version assignment"
             raise ValueError(msg)
         replacements.append((path, updated))
     for path, updated in replacements:
-        path.write_text(updated)
+        path.write_text(updated, encoding="utf-8")
     check_sources(root)
 
 
 def check_wheel(root: Path, wheel: Path) -> None:
     """Require the wheel metadata and every advertised manifest to match the sources."""
     version = check_sources(root)
-    project = tomllib.loads((root / "pyproject.toml").read_text())["project"]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     with ZipFile(wheel) as archive:
         (metadata_path,) = [p for p in archive.namelist() if p.endswith(".dist-info/METADATA")]
         metadata = Parser().parsestr(archive.read(metadata_path).decode())
