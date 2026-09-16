@@ -46,13 +46,30 @@ with the service itself, and is **not** used here.)
 ## Develop
 
 ```bash
-uv sync                      # SDK floor only
+export UV_INDEX='poc=https://pypi.3lc.ai/repositories/prereleases/'
+export UV_INDEX_POC_USERNAME="$CLOUDREPO_USERNAME"
+export UV_INDEX_POC_PASSWORD="$CLOUDREPO_PASSWORD"
+export UV_INDEX_STRATEGY=unsafe-first-match
+uv sync --locked             # SDK floor only
 uv sync --extra importer     # one plugin's deps (exactly what the host provisions into its venv)
 uv run ruff check .
 ```
 
-The committed source resolves `3lc-compute-plugin-sdk` from the 3LC package index. For local
-SDK development, override it (uncommitted) with an editable path source — see `CLAUDE.md`.
+The POC lockfile selects a tested SDK 0.5 snapshot from private CloudRepo. Credentials come
+from your environment; no source checkout is required. For local SDK development, use an
+uncommitted editable overlay.
+
+### Publishing POC builds
+
+The manual `Release` workflow runs CI, stamps the distribution and all six plugin manifests
+with one `BASE.UTCSTAMP.RUN.ATTEMPT` version, and checks the resulting wheel. By default it
+retains artifacts without uploading. Set `publish=true` to upload to private CloudRepo
+`prereleases`, using the existing `CLOUDREPO_USERNAME` / `CLOUDREPO_PASSWORD` secrets.
+
+Catalog entries should name that exact version in both `version` and the install requirement.
+Each new POC build then appears as an update in the Hub. The source checkout keeps its normal
+three-part version. Public PyPI publication still uses a matching `vX.Y.Z` tag and verifies
+distribution/manifest agreement; do not push release tags during the POC.
 
 ### Editor autocomplete for `ui.html` (the JS bridge)
 
@@ -80,7 +97,7 @@ to self-document.
 
 ## Status
 
-This dist tracks the SDK's `0.3` contract line (see the `3lc-compute-plugin-sdk` README →
+This dist tracks the SDK's `0.5` contract line (see the `3lc-compute-plugin-sdk` README →
 Status): within 0.x the contract still evolves, mostly additively.
 
 The two proprietary insights plugins (`run-insights`, `table-insights`) live in a separate,

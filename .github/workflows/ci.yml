@@ -11,6 +11,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  UV_INDEX: poc=https://pypi.3lc.ai/repositories/prereleases/
+  UV_INDEX_STRATEGY: unsafe-first-match
+  UV_INDEX_POC_USERNAME: ${{ secrets.CLOUDREPO_USERNAME }}
+  UV_INDEX_POC_PASSWORD: ${{ secrets.CLOUDREPO_PASSWORD }}
+
 jobs:
   ruff:
     name: ruff (lint + format)
@@ -63,7 +69,10 @@ jobs:
           python-version: "3.12"
 
       - name: Install base deps + dev group
-        run: uv sync --group dev
+        run: uv sync --locked --group dev
+
+      - name: Check distribution and manifest versions
+        run: uv run --no-sync python scripts/release_version.py
 
       - name: Run tests
-        run: uv run pytest -v
+        run: uv run --no-sync pytest -v

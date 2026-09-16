@@ -5,11 +5,8 @@ name: Release
 # together — see CHANGELOG 0.1.2), regenerate uv.lock, update CHANGELOG.md, commit, then push
 # a tag `vX.Y.Z` that matches the version.
 #
-# Manual (workflow_dispatch) runs publish build-numbered prereleases to the legacy CloudRepo
-# index (pypi.3lc.ai) — kept as a grace-period fallback; retire that job (and the CLOUDREPO_*
-# secrets/vars on the "release" environment) once nothing consumes the CloudRepo index. The
-# split deliberately keeps build-numbered versions OFF PyPI: `X.Y.Z.N` sorts above `X.Y.Z`,
-# so a prerelease build would win over the real release in `>=X.Y,<X.Y+1`-style pins.
+# Manual runs build POC wheels for private CloudRepo. Publishing is an explicit input.
+# Package and plugin-manifest versions are stamped together; POC builds never reach PyPI.
 #
 # NOTE: `uv build --no-sources` builds the umbrella WHEEL only — it does not resolve or install
 # the per-plugin dependency stacks. The wheel's metadata carries the SDK pin, resolved from
@@ -19,6 +16,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the verified POC build to private CloudRepo prereleases
+        type: boolean
+        default: false
 
 jobs:
   # Gate the release on the full CI suite (ruff · lockfile · pytest).
@@ -45,28 +47,20 @@ jobs:
 
       - name: Verify tag matches pyproject version
         run: |
-          PKG=$(uv version --output-format json | jq -r '.version')
+          PKG=$(uv version --frozen --output-format json | jq -r '.version')
           TAG="${GITHUB_REF_NAME#v}"
           echo "pyproject=$PKG tag=$TAG"
           [ "$PKG" = "$TAG" ] || { echo "::error::tag $GITHUB_REF_NAME ($TAG) != pyproject version $PKG"; exit 1; }
 
-      # The version a plugin card reports comes from its manifest; a tag with drifting
-      # manifests would ship plugins that misreport their own release.
       - name: Verify plugin manifests match pyproject version
-        run: |
-          PKG=$(uv version --output-format json | jq -r '.version')
-          FAIL=0
-          for MANIFEST in src/*/plugin.toml; do
-            V=$(grep -Po '^version\s*=\s*"\K[^"]+' "$MANIFEST")
-            echo "$MANIFEST: $V"
-            [ "$V" = "$PKG" ] || { echo "::error::$MANIFEST version $V != pyproject version $PKG"; FAIL=1; }
-          done
-          exit $FAIL
+        run: python scripts/release_version.py
 
       # --no-sources strips [tool.uv.sources] so the released wheel never bakes in a dev
       # index/path override (the published artifact resolves deps from PyPI).
       - name: Build
-        run: uv build --no-sources
+        run: |
+          uv build --no-sources
+          python scripts/release_version.py --wheel dist/*.whl
 
       - name: Publish to PyPI
         run: uv publish --trusted-publishing always
@@ -96,14 +90,14 @@ jobs:
           draft: false
           generate_release_notes: false
 
-  # Manual (workflow_dispatch) runs → build-numbered prereleases to the legacy CloudRepo index.
+  # Manual runs exercise the same build whether or not publishing is requested.
   publish-cloudrepo-prerelease:
     if: github.event_name == 'workflow_dispatch'
     needs: test
     runs-on: ubuntu-latest
     environment: release
     env:
-      UV_PUBLISH_URL: ${{ vars.CLOUDREPO_PUBLISH_URL }}
+      UV_PUBLISH_URL: https://pypi.3lc.ai/repositories/prereleases
       UV_PUBLISH_USERNAME: ${{ secrets.CLOUDREPO_USERNAME }}
       UV_PUBLISH_PASSWORD: ${{ secrets.CLOUDREPO_PASSWORD }}
     steps:
@@ -115,22 +109,31 @@ jobs:
           version: "0.8.15"
 
       - name: Verify the 'release' environment is configured
+        if: inputs.publish
         run: |
           : "${UV_PUBLISH_URL:?set the CLOUDREPO_PUBLISH_URL variable on the 'release' environment}"
           : "${UV_PUBLISH_USERNAME:?set the CLOUDREPO_USERNAME secret on the 'release' environment}"
           : "${UV_PUBLISH_PASSWORD:?set the CLOUDREPO_PASSWORD secret on the 'release' environment}"
 
-      # A 4th version segment keeps every prerelease publish unique (CloudRepo has overwrites
-      # disabled) while sorting above the base version, so `<X.Y+1`-style pins still resolve it
-      # — unlike `.devN` (sorts below) or `+localN` (rejected on upload).
-      - name: Stamp build-numbered version
+      # UTC ordering matches existing POC snapshots; run/attempt distinguish concurrent builds.
+      - name: Stamp distribution and plugin manifest versions
         run: |
-          BASE=$(uv version --output-format json | jq -r '.version')
-          uv version "${BASE}.${GITHUB_RUN_NUMBER}"
-          echo "prerelease build version: ${BASE}.${GITHUB_RUN_NUMBER}"
+          BASE=$(uv version --frozen --output-format json | jq -r '.version')
+          STAGED_VERSION="${BASE}.$(date -u +%Y%m%d%H%M%S).${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          python scripts/release_version.py --stamp "$STAGED_VERSION"
 
       - name: Build
-        run: uv build --no-sources
+        run: |
+          uv build --no-sources
+          python scripts/release_version.py --wheel dist/*.whl
+
+      - name: Retain build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugins-poc-${{ github.run_number }}-${{ github.run_attempt }}
+          path: dist/*
+          if-no-files-found: error
 
       - name: Publish to CloudRepo
+        if: inputs.publish
         run: uv publish

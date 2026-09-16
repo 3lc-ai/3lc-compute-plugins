@@ -21,7 +21,7 @@ classifiers = ["License :: OSI Approved :: Apache Software License"]
 # below and are installed only into that plugin's venv. The SDK brings the `tlc` data plane
 # (`3lc[pandas]`) and the `tlc_plugin_sdk.shared.*` helpers every plugin uses.
 dependencies = [
-    "3lc-compute-plugin-sdk>=0.3.3,<0.4.0",
+    "3lc-compute-plugin-sdk>=0.5.0,<0.6.0",
 ]
 
 # Per-plugin extras — installed ONLY into that plugin's provisioned venv. Provisioning opts into
@@ -73,8 +73,8 @@ packages = [
     "src/tlc_plugin_image_metrics",
 ]
 
-# Both `3lc` and `3lc-compute-plugin-sdk` resolve from public PyPI (the SDK's home since
-# 0.2.2) — no custom indexes. For local dev against an in-progress SDK/3lc checkout, add an
+# During the POC, SDK 0.5 comes from private CloudRepo via UV_INDEX (see README.md).
+# Other dependencies resolve from public PyPI. For local SDK/3lc development, add an
 # UNCOMMITTED [tool.uv.sources] override with editable path sources (a committed relative
 # `path = ...` source breaks remote consumers: uv reads it as a subdirectory of this repo).
 
