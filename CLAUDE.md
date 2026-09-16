@@ -55,9 +55,9 @@ additive-only — see its README → Status).
 
 ## Dev setup
 
-The committed `[tool.uv.sources]` resolve the SDK from the 3LC prereleases index and `3lc`
-from the releases index. For local SDK development, override (uncommitted) with an editable
-path source pointing at your SDK checkout.
+The POC lockfile resolves SDK 0.5 from private CloudRepo; other dependencies use PyPI.
+Configure the named index and credentials as shown in README.md. For local SDK development,
+use an uncommitted editable overlay. Do not commit path sources or credentials.
 
 ```bash
 uv sync                       # SDK floor only

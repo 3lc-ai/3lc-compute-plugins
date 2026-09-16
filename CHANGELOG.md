@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Require SDK 0.5 and use the verified private CloudRepo snapshot for POC development and CI.
+- Manual release workflows default to build-only. Publishing uses private CloudRepo;
+  distribution and all six plugin manifest versions advance together, including on reruns.
+  Built wheels are checked before publication so the Hub can identify staged plugin updates.
+
 ## [0.2.4] - 2026-09-07
 
 ### Changed
