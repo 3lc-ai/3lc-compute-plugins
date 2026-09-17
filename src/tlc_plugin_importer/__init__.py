@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from tlc_plugin_sdk import ComputePlugin
+from tlc_plugin_sdk import ComputePlugin, JobFailed
 
 from tlc_plugin_importer import routes as _routes
 
@@ -877,8 +877,15 @@ def _maybe_register_alias(form_data: dict[str, Any], image_folder: str) -> dict[
     return register_alias(project_name=project_name, image_folder=folder, alias_token=token)
 
 
-def _enhance_error_message(raw: str) -> str:
-    """Add actionable guidance to common import error messages."""
+def _enhance_error_message(raw: str, *, input_path: str = "") -> str:
+    """Add actionable guidance to common import error messages.
+
+    Args:
+        raw: The executor's raw error text.
+        input_path: The import's source folder/file, when known — the underlying
+            error (an ``os error`` from the rust core) never names the path itself,
+            so a not-found/permission case is otherwise unattributable.
+    """
     lowered = raw.lower()
     if "already exists" in lowered or "fileexistserror" in lowered or "table already" in lowered:
         return (
@@ -886,6 +893,14 @@ def _enhance_error_message(raw: str) -> str:
             "The table may already exist from a previous (possibly failed) import. "
             "Try changing the dataset name or table name, or delete the existing table first."
         )
+    where = f" '{input_path}'" if input_path else " the import path"
+    if "no such file or directory" in lowered or "os error 2" in lowered:
+        return (
+            f"Could not find{where}. Import always runs on the compute-service host machine, "
+            'not the node picked under "Run on" — check that the path exists there.'
+        )
+    if "permission denied" in lowered or "os error 13" in lowered:
+        return f"Permission denied reading{where}. Check that the compute-service host can read this path."
     return f"Import failed: {raw}"
 
 
@@ -1728,8 +1743,8 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
 
     Raises:
         ValueError: Unknown format, or a path field that is not absolute.
-        RuntimeError: The executor failed or reported ``success=False`` — the
-            host marks the job failed and surfaces the (enhanced) message.
+        JobFailed: The executor failed or reported ``success=False`` — a clean,
+            user-facing message with no traceback (the (enhanced) message).
 
     """
     executor = _EXECUTORS.get(format_name)
@@ -1744,18 +1759,19 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
     # indeterminate progress (percent=-1 → the panel shows a pulsing bar).
     ctx.progress(percent=-1, label=label, timing={"step_label": "import"})
 
+    input_path = _get_image_folder(format_name, form_data)
     # Register the project's URL alias BEFORE the executor runs so the SDK can use
     # the token when encoding image paths; remove the PRIMARY session alias after.
-    alias_result = _maybe_register_alias(form_data, _get_image_folder(format_name, form_data))
+    alias_result = _maybe_register_alias(form_data, input_path)
     try:
         result = executor(form_data)
     except Exception as exc:
-        raise RuntimeError(_enhance_error_message(str(exc))) from exc
+        raise JobFailed(_enhance_error_message(str(exc), input_path=input_path)) from exc
     finally:
         _unregister_primary_alias(alias_result)
 
     if not result.get("success"):
-        raise RuntimeError(result.get("message") or "Import failed")
+        raise JobFailed(result.get("message") or "Import failed")
     _report_result(ctx, result)
 
 
@@ -1768,7 +1784,8 @@ def _run_csv_import(ctx: JobContext) -> None:
     is visible here.
 
     Raises:
-        RuntimeError: Missing/expired session, no columns, or the executor failed.
+        JobFailed: Missing/expired session, no columns, or the executor failed —
+            a clean, user-facing message with no traceback.
 
     """
     params = ctx.params
@@ -1776,12 +1793,12 @@ def _run_csv_import(ctx: JobContext) -> None:
     file_data = _parsed_csv_files.get(session_id)
     if not file_data:
         msg = "File session expired. Please re-upload the file."
-        raise RuntimeError(msg)
+        raise JobFailed(msg)
 
     selected_columns = params.get("selected_columns", [])
     if not selected_columns:
         msg = "No columns selected."
-        raise RuntimeError(msg)
+        raise JobFailed(msg)
 
     label = "Importing CSV…"
     ctx.log(label)
@@ -1792,7 +1809,7 @@ def _run_csv_import(ctx: JobContext) -> None:
         table_url = params.get("table_url", "").strip()
         if not table_url:
             msg = "No source table URL provided."
-            raise RuntimeError(msg)
+            raise JobFailed(msg)
         result = _execute_csv_extend(
             table_url=table_url,
             file_bytes=file_data["bytes"],
@@ -1806,7 +1823,7 @@ def _run_csv_import(ctx: JobContext) -> None:
         dataset_name = params.get("dataset_name", "").strip()
         if not project_name or not dataset_name:
             msg = "Project name and dataset name are required."
-            raise RuntimeError(msg)
+            raise JobFailed(msg)
         alias_enabled = params.get("alias_enabled", True)
         result = _execute_csv_new(
             file_bytes=file_data["bytes"],
@@ -1821,7 +1838,7 @@ def _run_csv_import(ctx: JobContext) -> None:
         )
 
     if not result.get("success"):
-        raise RuntimeError(result.get("message") or "CSV import failed")
+        raise JobFailed(result.get("message") or "CSV import failed")
     _parsed_csv_files.pop(session_id, None)
     _report_result(ctx, result)
 
@@ -1881,7 +1898,8 @@ class ImportPlugin(ComputePlugin):
 
         Raises:
             ValueError: Unknown/missing format.
-            RuntimeError: The import failed (message surfaced to the panel).
+            JobFailed: The import failed (clean message surfaced to the panel,
+                no traceback).
 
         """
         format_name = ctx.params.get("format", "")
