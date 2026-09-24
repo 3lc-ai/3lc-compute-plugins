@@ -11,11 +11,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# pyproject.toml routes unreleased 3LC dists to its explicit `staging` index; uv picks the
+# index's credentials up from UV_INDEX_STAGING_*.
 env:
-  UV_INDEX: poc=https://pypi.3lc.ai/repositories/prereleases/
-  UV_INDEX_STRATEGY: unsafe-first-match
-  UV_INDEX_POC_USERNAME: ${{ secrets.CLOUDREPO_USERNAME }}
-  UV_INDEX_POC_PASSWORD: ${{ secrets.CLOUDREPO_PASSWORD }}
+  UV_INDEX_STAGING_USERNAME: ${{ secrets.STAGING_INDEX_READ_USERNAME }}
+  UV_INDEX_STAGING_PASSWORD: ${{ secrets.STAGING_INDEX_READ_PASSWORD }}
 
 jobs:
   ruff:

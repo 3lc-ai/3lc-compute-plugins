@@ -5,7 +5,7 @@ name: Release
 # together — see CHANGELOG 0.1.2), regenerate uv.lock, update CHANGELOG.md, commit, then push
 # a tag `vX.Y.Z` that matches the version.
 #
-# Manual runs build POC wheels for private CloudRepo. Publishing is an explicit input.
+# Manual runs build POC wheels for the private staging index. Publishing is an explicit input.
 # Package and plugin-manifest versions are stamped together; POC builds never reach PyPI.
 #
 # NOTE: `uv build --no-sources` builds the umbrella WHEEL only — it does not resolve or install
@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish the verified POC build to private CloudRepo prereleases
+        description: Publish the verified POC build to the private staging index
         type: boolean
         default: false
 
@@ -98,8 +98,8 @@ jobs:
     environment: release
     env:
       UV_PUBLISH_URL: https://pypi.3lc.ai/repositories/prereleases
-      UV_PUBLISH_USERNAME: ${{ secrets.CLOUDREPO_USERNAME }}
-      UV_PUBLISH_PASSWORD: ${{ secrets.CLOUDREPO_PASSWORD }}
+      UV_PUBLISH_USERNAME: ${{ secrets.STAGING_INDEX_PUBLISH_USERNAME }}
+      UV_PUBLISH_PASSWORD: ${{ secrets.STAGING_INDEX_PUBLISH_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -111,9 +111,8 @@ jobs:
       - name: Verify the 'release' environment is configured
         if: inputs.publish
         run: |
-          : "${UV_PUBLISH_URL:?set the CLOUDREPO_PUBLISH_URL variable on the 'release' environment}"
-          : "${UV_PUBLISH_USERNAME:?set the CLOUDREPO_USERNAME secret on the 'release' environment}"
-          : "${UV_PUBLISH_PASSWORD:?set the CLOUDREPO_PASSWORD secret on the 'release' environment}"
+          : "${UV_PUBLISH_USERNAME:?set the STAGING_INDEX_PUBLISH_USERNAME secret on the 'release' environment}"
+          : "${UV_PUBLISH_PASSWORD:?set the STAGING_INDEX_PUBLISH_PASSWORD secret on the 'release' environment}"
 
       # UTC ordering matches existing POC snapshots; run/attempt distinguish concurrent builds.
       - name: Stamp distribution and plugin manifest versions
@@ -134,6 +133,6 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
-      - name: Publish to CloudRepo
+      - name: Publish to the staging index
         if: inputs.publish
         run: uv publish
