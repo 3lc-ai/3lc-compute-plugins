@@ -65,8 +65,7 @@ uncommitted editable overlay.
 The manual `Release` workflow runs CI, stamps the distribution and all six plugin manifests
 with one `BASE.UTCSTAMP.RUN.ATTEMPT` version, and checks the resulting wheel. By default it
 retains artifacts without uploading. Set `publish=true` to upload to the private staging index
-(`prereleases`), using the `STAGING_INDEX_PUBLISH_USERNAME` / `STAGING_INDEX_PUBLISH_PASSWORD`
-secrets and the `STAGING_INDEX_URL` variable.
+(`prereleases`), using the `STAGING_INDEX_PUBLISH_USERNAME` / `STAGING_INDEX_PUBLISH_PASSWORD` secrets.
 
 Catalog entries should name that exact version in both `version` and the install requirement.
 Each new POC build then appears as an update in the Hub. The source checkout keeps its normal
