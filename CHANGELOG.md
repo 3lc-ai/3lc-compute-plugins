@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires the plugin SDK's `copy_folder_to_url` (SDK 0.5, unreleased at the time of writing); the
   pin follows at the fleet re-pin.
 
+### Fixed
+- Import failures (a bad path, an existing table, a failed executor) now surface a clean,
+  one-line message with no worker traceback attached. A missing or unreadable input path names
+  the path and says the import always runs on the compute-service host machine, not the node
+  picked under "Run on".
+
 ## [0.2.4] - 2026-09-07
 
 ### Changed
