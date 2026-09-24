@@ -126,7 +126,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "3lc-compute-plugin-sdk", specifier = ">=0.5.0,<0.6.0" },
+    { name = "3lc-compute-plugin-sdk", specifier = ">=0.5.0,<0.6.0", index = "https://pypi.3lc.ai/repositories/prereleases/" },
     { name = "datasets", marker = "extra == 'importer'" },
     { name = "numpy", marker = "extra == 'image-metrics'" },
     { name = "numpy", marker = "extra == 'importer'" },

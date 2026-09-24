@@ -73,10 +73,20 @@ packages = [
     "src/tlc_plugin_image_metrics",
 ]
 
-# During the POC, SDK 0.5 comes from private CloudRepo via UV_INDEX (see README.md).
-# Other dependencies resolve from public PyPI. For local SDK/3lc development, add an
-# UNCOMMITTED [tool.uv.sources] override with editable path sources (a committed relative
-# `path = ...` source breaks remote consumers: uv reads it as a subdirectory of this repo).
+# Unreleased 3LC builds (SDK 0.5) resolve from the staging index; everything else from public
+# PyPI. The index is `explicit`, so only the dists routed to it in [tool.uv.sources] come from
+# there. Credentials: UV_INDEX_STAGING_USERNAME / UV_INDEX_STAGING_PASSWORD (see README.md).
+# Drop a dist's source line once the version it needs is released on PyPI. For local SDK/3lc
+# development, swap in an UNCOMMITTED editable path source (a committed relative `path = ...`
+# source breaks remote consumers: uv reads it as a subdirectory of this repo).
+[[tool.uv.index]]
+name = "staging"
+url = "https://pypi.3lc.ai/repositories/prereleases/"
+explicit = true
+
+[tool.uv.sources]
+# SDK 0.5 is not on PyPI yet.
+3lc-compute-plugin-sdk = { index = "staging" }
 
 [dependency-groups]
 dev = [
