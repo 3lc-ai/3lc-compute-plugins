@@ -1977,9 +1977,7 @@ class ImportPlugin(ComputePlugin):
             raw = ui_path.read_text(encoding="utf-8")
             # window.PluginJobs is injected by the SDK's /ui handler; only the shared
             # data-source and alias form helpers are prepended here.
-            self._ui_cache = inject_scripts(
-                raw, data_source_ui_script(), alias_ui_script(), table_landed_script()
-            )
+            self._ui_cache = inject_scripts(raw, data_source_ui_script(), alias_ui_script(), table_landed_script())
         return self._ui_cache
 
     def compute(self, params: dict[str, Any]) -> dict[str, Any]:
