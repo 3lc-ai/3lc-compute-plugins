@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _execute_merge(data: dict[str, Any]) -> dict[str, Any]:
+def _execute_merge(data: dict[str, Any], root_url: str | None = None) -> dict[str, Any]:
     """Execute a vertical table merge (row concatenation).
 
     Stacks the rows of the input tables into a single new table, in the order
@@ -32,6 +32,8 @@ def _execute_merge(data: dict[str, Any]) -> dict[str, Any]:
     Args:
         data: The job params — ``table_urls``, ``project_name``, ``dataset_name``,
             ``table_name``.
+        root_url: The project root the merged table is written under; ``None`` uses tlc's
+            configured root.
 
     Returns:
         A result dict with ``success`` and a human-readable ``message``; on
@@ -61,6 +63,7 @@ def _execute_merge(data: dict[str, Any]) -> dict[str, Any]:
             project_name=project_name,
             dataset_name=dataset_name,
             table_name=table_name,
+            root_url=root_url,
             if_exists="rename",
         )
 
@@ -150,8 +153,10 @@ class MergePlugin(ComputePlugin):
             msg = "Project, dataset, and table name are required."
             raise JobFailed(msg)
 
+        # The root the host stamped for this job; getattr keeps an SDK that predates it working.
+        root = ctx.project_root_url or None
         ctx.progress(percent=10, label="Merging tables")
-        result = _execute_merge(data)
+        result = _execute_merge(data, root_url=root)
         if not result.get("success"):
             raise JobFailed(result.get("message") or "Merge failed")
 

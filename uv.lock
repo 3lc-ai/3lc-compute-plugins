@@ -75,16 +75,16 @@ pandas = [
 
 [[package]]
 name = "3lc-compute-plugin-sdk"
-version = "0.5.0.20260916073124.19.1"
+version = "0.5.0.20260925124939.21.1"
 source = { registry = "https://pypi.3lc.ai/repositories/prereleases/" }
 dependencies = [
     { name = "3lc", extra = ["pandas"] },
     { name = "litestar" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://pypi.3lc.ai/repositories/prereleases/3lc-compute-plugin-sdk/3lc_compute_plugin_sdk-0.5.0.20260916073124.19.1.tar.gz" }
+sdist = { url = "https://pypi.3lc.ai/repositories/prereleases/3lc-compute-plugin-sdk/3lc_compute_plugin_sdk-0.5.0.20260925124939.21.1.tar.gz" }
 wheels = [
-    { url = "https://pypi.3lc.ai/repositories/prereleases/3lc-compute-plugin-sdk/3lc_compute_plugin_sdk-0.5.0.20260916073124.19.1-py3-none-any.whl" },
+    { url = "https://pypi.3lc.ai/repositories/prereleases/3lc-compute-plugin-sdk/3lc_compute_plugin_sdk-0.5.0.20260925124939.21.1-py3-none-any.whl" },
 ]
 
 [[package]]
@@ -126,7 +126,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "3lc-compute-plugin-sdk", specifier = ">=0.5.0,<0.6.0" },
+    { name = "3lc-compute-plugin-sdk", specifier = ">=0.5.0,<0.6.0", index = "https://pypi.3lc.ai/repositories/prereleases/" },
     { name = "datasets", marker = "extra == 'importer'" },
     { name = "numpy", marker = "extra == 'image-metrics'" },
     { name = "numpy", marker = "extra == 'importer'" },

@@ -37,7 +37,12 @@ def test_merger_reports_table_via_result(monkeypatch: pytest.MonkeyPatch, tmp_pa
     monkeypatch.setattr(
         merger,
         "_execute_merge",
-        lambda data: {"success": True, "message": "Merged", "table_url": table_url, "details": {"input_count": 2}},
+        lambda data, root_url=None: {
+            "success": True,
+            "message": "Merged",
+            "table_url": table_url,
+            "details": {"input_count": 2},
+        },
     )
     events: list[dict[str, Any]] = []
     params = {"table_urls": ["a", "b"], "project_name": "p", "dataset_name": "d", "table_name": "merged"}
