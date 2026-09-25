@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Merger: writes under the job's project root.** The merged table goes under the root the host
+  stamps into the job (`ctx.project_root_url`) instead of the worker's configured root, so a merge
+  on a remote node lands where the deployment writes projects.
 - Require SDK 0.5 and use the verified private CloudRepo snapshot for POC development and CI.
 - Manual release workflows default to build-only. Publishing uses private CloudRepo;
   distribution and all six plugin manifest versions advance together, including on reruns.
