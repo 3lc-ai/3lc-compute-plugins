@@ -13,9 +13,11 @@ concurrency:
 
 # pyproject.toml routes unreleased 3LC dists to its explicit `staging` index; uv picks the
 # index's credentials up from UV_INDEX_STAGING_*.
+# Reads use the read-only CloudRepo secrets when the org has them; until then the
+# read/write publish pair is the fallback (a missing secret evaluates to empty).
 env:
-  UV_INDEX_STAGING_USERNAME: ${{ secrets.STAGING_INDEX_READ_USERNAME }}
-  UV_INDEX_STAGING_PASSWORD: ${{ secrets.STAGING_INDEX_READ_PASSWORD }}
+  UV_INDEX_STAGING_USERNAME: ${{ secrets.CLOUDREPO_READ_USERNAME || secrets.CLOUDREPO_USERNAME }}
+  UV_INDEX_STAGING_PASSWORD: ${{ secrets.CLOUDREPO_READ_PASSWORD || secrets.CLOUDREPO_PASSWORD }}
 
 jobs:
   ruff:
