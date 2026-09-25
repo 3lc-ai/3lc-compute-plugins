@@ -154,7 +154,7 @@ class MergePlugin(ComputePlugin):
             raise JobFailed(msg)
 
         # The root the host stamped for this job; getattr keeps an SDK that predates it working.
-        root = getattr(ctx, "project_root_url", "") or None
+        root = ctx.project_root_url or None
         ctx.progress(percent=10, label="Merging tables")
         result = _execute_merge(data, root_url=root)
         if not result.get("success"):
