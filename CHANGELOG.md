@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Image Metrics can run on a node.** Its manifest declares `remote_capable`, so a host accepts a
+  node target for it: image analysis gains from a larger machine and from running beside its data.
 - **Merger: writes under the job's project root.** The merged table goes under the root the host
   stamps into the job (`ctx.project_root_url`) instead of the worker's configured root, so a merge
   on a remote node lands where the deployment writes projects.
