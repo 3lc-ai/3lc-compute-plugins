@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Lock the staged 3lc 3.5.0.dev149866 and SDK 0.5.0.20261007121635.34.1; require the staged core
+  directly (`3lc>=3.5.0.dev149866,<4.0.0`) and resolve it from the `staging` index alongside the SDK.
+- CI also runs on pull requests into, and pushes to, `config-service-poc`.
 - **Merger: writes under the job's project root.** The merged table goes under the root the host
   stamps into the job (`ctx.project_root_url`) instead of the worker's configured root, so a merge
   on a remote node lands where the deployment writes projects.
