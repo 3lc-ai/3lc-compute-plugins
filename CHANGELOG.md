@@ -31,24 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.
+- **Image Metrics imports on a worker without a home directory.** Its legacy config folder is resolved
+  when a config store is built, not at import, as the SDK resolves its own config root; without a home
+  the store raises the SDK's `ConfigRootUnavailable` instead of the plugin failing to load.
 - Import failures (a bad path, an existing table, a failed executor) now surface a clean,
   one-line message with no worker traceback attached. A missing or unreadable input path names
   the path.
+
 ### Added
 - **Importer: locations may be bucket URLs.** A project can be created "in this computer" or at the
   bucket root the deployment names. Local data imported next to a bucket root is copied there and
   aliased, so the table works on a remote node and not only on the machine that wrote it. Every
   table an import wrote is reported below the form that wrote it, with the shared ending in all
   three places the importer reports a table.
-
-### Changed
-- Requires the plugin SDK's `copy_folder_to_url` (SDK 0.5, unreleased at the time of writing); the
-  pin follows at the fleet re-pin.
-
-### Fixed
-- Import failures (a bad path, an existing table, a failed executor) now surface a clean,
-  one-line message with no worker traceback attached. A missing or unreadable input path names
-  the path.
 
 ## [0.2.4] - 2026-09-07
 
