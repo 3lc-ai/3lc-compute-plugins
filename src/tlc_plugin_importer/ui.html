@@ -468,7 +468,9 @@
       }
     }
     _tlcBindProjectLocation('import', 'importer');
-    _tlcBindAliasAutoUpdate('import', 'import-project_name', folderFieldId, 'importer', 'import-project-root');
+    // copyOffer: the importer is the plugin that performs the copy (alias_copy_to_root), so it opts in.
+    _tlcBindAliasAutoUpdate('import', 'import-project_name', folderFieldId, 'importer', 'import-project-root',
+      { copyOffer: true });
 
     var form = document.getElementById('import-exec-form');
     form.addEventListener('submit', function(e) {
@@ -1650,7 +1652,7 @@
         var proj = document.getElementById('csv-project').value.trim();
         aliasArea.innerHTML = _tlcAliasSettingsHtml('csv', proj, '');
         _tlcBindAliasToggle('csv');
-        _tlcBindAliasAutoUpdate('csv', 'csv-project', null, 'importer', 'csv-project-root');
+        _tlcBindAliasAutoUpdate('csv', 'csv-project', null, 'importer', 'csv-project-root', { copyOffer: true });
       } else {
         aliasArea.innerHTML = '';
       }

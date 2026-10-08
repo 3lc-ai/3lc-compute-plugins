@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Importer: opts into the alias card's copy offer.** It passes `{copyOffer: true}` when it binds
+  the SDK alias card (the import form and the CSV wizard), since it is the plugin that performs the
+  copy. Newer SDKs make the offer opt-in, so plugins that never copy no longer show it.
 - **Importer: no Hugging Face dependencies.** Its extra no longer installs `datasets` and `transformers`,
   which nothing in the importer used. Its descriptions name the formats it imports (CSV, Excel, COCO, YOLO,
   image folders) instead of Parquet and Hugging Face, which it never read; Hugging Face imports are the

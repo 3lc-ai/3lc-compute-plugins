@@ -110,3 +110,7 @@ def test_the_fragment_echoes_every_declared_source() -> None:
     assert "var _SOURCE_FIELDS = ['dataset_yaml', 'annotations_file', 'image_folder', 'folder_path', 'csv_path'];" in UI
     assert set(imp._SOURCE_FIELDS) == {"dataset_yaml", "annotations_file", "image_folder", "folder_path", "csv_path"}
     assert UI.count("PluginJobs.run('importer', _withSourceEcho(") == 2  # single and multi-split imports
+
+
+def test_the_fragment_opts_into_the_copy_offer() -> None:
+    assert UI.count("{ copyOffer: true }") == 2  # the import form and the CSV wizard both perform the copy

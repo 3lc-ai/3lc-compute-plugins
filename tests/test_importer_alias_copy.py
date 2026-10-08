@@ -105,6 +105,9 @@ def test_the_project_root_choice_reaches_the_writers_and_the_forms() -> None:
     assert "root_url=project_root_url or None," in src  # CSV create-new
     ui = (Path(imp.__file__).parent / "ui.html").read_text(encoding="utf-8")
     assert ui.count("_tlcProjectLocationHtml(") == 2 and ui.count("_tlcBindProjectLocation(") == 2
-    assert "'import-project-root');" in ui and "'csv-project-root');" in ui
+    assert (
+        "'import-project-root',\n      { copyOffer: true });" in ui
+        and "'csv-project-root', { copyOffer: true });" in ui
+    )
     assert "formData.project_root_url = _tlcGetProjectRoot('import');" in ui
     assert "payload.project_root_url = _tlcGetProjectRoot('csv');" in ui
