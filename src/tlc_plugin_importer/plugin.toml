@@ -1,7 +1,7 @@
 # 3LC Compute plugin manifest — the single source of truth for this plugin's metadata.
 id = "importer"
 name = "Import"
-description = "Import datasets from CSV, Parquet, COCO, and other formats into 3LC projects."
+description = "Import datasets from CSV, Excel, COCO, YOLO, and image folders into 3LC projects."
 version = "0.2.4"
 min_service_version = "0.1.0"
 icon = "↑"
@@ -16,7 +16,7 @@ output_types = ["table"]
 priority = 90
 quick_action = true
 quick_action_label = "Import Dataset"
-quick_action_description = "Import data from CSV, Parquet, COCO, or other formats"
+quick_action_description = "Import data from CSV, Excel, COCO, YOLO, or image folders"
 
 [runtime]
 isolation = "venv"

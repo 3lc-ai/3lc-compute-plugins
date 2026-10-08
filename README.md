@@ -7,7 +7,7 @@ distribution `3lc-compute-plugins` built against the public
 ```
 pyproject.toml         # the one distribution (SDK floor + per-plugin extras + entry-points)
 src/
-  tlc_plugin_importer/          # import CSV/Parquet/COCO/…      ([importer] extra)
+  tlc_plugin_importer/          # import CSV/Excel/COCO/YOLO/…   ([importer] extra)
   tlc_plugin_exporter/          # export CSV/XLSX/YOLO/COCO/…    ([exporter] extra)
   tlc_plugin_merger/            # merge two tables               ([merger] extra, empty)
   tlc_plugin_splitter/          # train/val/test splits          ([splitter] extra)
