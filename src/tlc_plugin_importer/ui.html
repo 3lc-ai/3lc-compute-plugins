@@ -1037,6 +1037,18 @@
     };
   }
 
+  // The source fields the manifest declares as data inputs. The host may rewrite them for one run
+  // (a copy on a GPU node, or a path named there); the echo tells the import where the data was
+  // picked, so the persisted alias keeps pointing there while the run reads the copy.
+  var _SOURCE_FIELDS = ['dataset_yaml', 'annotations_file', 'image_folder', 'folder_path', 'csv_path'];
+  function _withSourceEcho(fd) {
+    var out = {}, echo = {};
+    for (var k in fd) out[k] = fd[k];
+    _SOURCE_FIELDS.forEach(function(key) { if (key in fd) echo[key] = fd[key]; });
+    out.submitted_sources = echo;
+    return out;
+  }
+
   function _runSingleImport(formData, fmt) {
     var submitBtn = document.getElementById('import-submit-btn');
     var spinner = document.getElementById('import-spinner');
@@ -1068,7 +1080,7 @@
       status.style.display = 'none';
     }
 
-    PluginJobs.run('importer', formData, {
+    PluginJobs.run('importer', _withSourceEcho(formData), {
       onUpdate: function(job) {
         if (job.status === 'running') progressLabel.textContent = job.subtitle || ('Importing ' + fmt.display_name + '...');
         var t = job.progress && job.progress.timing;
@@ -1157,7 +1169,7 @@
     }
 
     splitJobs.forEach(function(sj, i) {
-      PluginJobs.run('importer', sj.formData, {
+      PluginJobs.run('importer', _withSourceEcho(sj.formData), {
         onUpdate: function(job) { states[i].status = job.status; _renderImportQueue(states); },
         onDone: function(job) {
           if (job.status === 'completed') {

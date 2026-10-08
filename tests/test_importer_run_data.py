@@ -72,3 +72,41 @@ def test_existing_source_reaches_the_alias_and_the_executor(
     imp._run_format_import(_ctx(_folder_form(str(tmp_path)), tmp_path), "folder")
     assert fakes["register"]["image_folder"] == str(tmp_path)
     assert fakes["register"]["remote_path"] is None
+
+
+def test_a_rewritten_source_keeps_the_alias_on_the_picked_folder(fakes: dict[str, Any]) -> None:
+    """The host pointed this run at a copy on the node: rows are tokenised from the copy, the alias stays put."""
+    form = _folder_form("/node/stage/fire-1a2b", alias_folder="s3://b/data/fire")
+    out = imp._maybe_register_alias(form, "/node/stage/fire-1a2b", source_folder="s3://b/data/fire")
+    assert fakes["register"]["image_folder"] == "/node/stage/fire-1a2b"  # the session alias: the files read
+    assert fakes["register"]["remote_path"] == "s3://b/data/fire"  # the persisted alias: where they came from
+    assert out and out["token"] == "FIRE"
+
+
+def test_an_alias_above_the_source_moves_by_the_same_subfolders(fakes: dict[str, Any]) -> None:
+    form = _folder_form("/node/coco/images/train", alias_folder="s3://b/coco")
+    imp._maybe_register_alias(form, "/node/coco/images/train", source_folder="s3://b/coco/images/train")
+    assert fakes["register"]["image_folder"] == "/node/coco"
+    assert fakes["register"]["remote_path"] == "s3://b/coco"
+
+
+def test_an_alias_above_a_flat_copy_is_refused(fakes: dict[str, Any]) -> None:
+    form = _folder_form("/node/stage/train-1a2b", alias_folder="s3://b/coco")
+    with pytest.raises(JobFailed, match="points at s3://b/coco, a folder above it"):
+        imp._maybe_register_alias(form, "/node/stage/train-1a2b", source_folder="s3://b/coco/images/train")
+    assert not fakes
+
+
+def test_the_echo_names_the_picked_folder_only_when_the_host_rewrote_it(tmp_path: Path) -> None:
+    picked = str(tmp_path / "picked")
+    same = {"folder_path": picked, "submitted_sources": {"folder_path": picked}}
+    assert imp._submitted_image_folder("folder", same) is None
+    assert imp._submitted_image_folder("folder", {"folder_path": picked}) is None  # an older fragment
+    rewritten = {"folder_path": "/node/stage/x", "submitted_sources": {"folder_path": picked}}
+    assert imp._submitted_image_folder("folder", rewritten) == picked
+
+
+def test_the_fragment_echoes_every_declared_source() -> None:
+    assert "var _SOURCE_FIELDS = ['dataset_yaml', 'annotations_file', 'image_folder', 'folder_path', 'csv_path'];" in UI
+    assert set(imp._SOURCE_FIELDS) == {"dataset_yaml", "annotations_file", "image_folder", "folder_path", "csv_path"}
+    assert UI.count("PluginJobs.run('importer', _withSourceEcho(") == 2  # single and multi-split imports

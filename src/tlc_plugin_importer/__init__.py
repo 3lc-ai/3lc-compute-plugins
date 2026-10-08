@@ -860,6 +860,10 @@ _PATH_FIELDS = (
     "project_root_url",
 )
 
+#: The source fields the manifest declares as ``data_inputs`` (with ``table_url``): the ones the
+#: host may rewrite for one run, and that the fragment echoes in ``submitted_sources``.
+_SOURCE_FIELDS = ("dataset_yaml", "annotations_file", "image_folder", "folder_path", "csv_path")
+
 
 def _check_inputs(format_name: str, form_data: dict[str, Any]) -> None:
     """Refuse an import whose required fields are empty or whose sources this machine cannot find.
@@ -971,6 +975,7 @@ def _maybe_register_alias(
     form_data: dict[str, Any],
     image_folder: str,
     ctx: JobContext | None = None,
+    source_folder: str | None = None,
 ) -> dict[str, Any] | None:
     """Register a URL alias if the user opted in — copying the data first when asked.
 
@@ -978,8 +983,16 @@ def _maybe_register_alias(
     When the widget also set ``alias_copy_to_root`` with an ``alias_copy_target``
     (the table lands on other storage than the data), the folder is copied there
     first and the persisted alias points at the copy, so nodes and the Dashboard
-    read the same data as the table. Returns the alias result dict (with ``token``
-    and ``path`` keys), or *None* if aliases are disabled.
+    read the same data as the table. When the host pointed this run at another copy
+    of the data (*source_folder* is where it came from, *image_folder* where it is
+    read), the persisted alias stays on ``alias_folder`` and only this session's
+    alias follows the copy. Returns the alias result dict (with ``token`` and
+    ``path`` keys), or *None* if aliases are disabled.
+
+    Raises:
+        JobFailed: The alias covers a parent of the source folder, and the folder this
+            run reads is not laid out the same way below it (see _session_alias_folder).
+
     """
     if form_data.get("alias_enabled", "true") not in _TRUE:
         return None
@@ -992,7 +1005,18 @@ def _maybe_register_alias(
     if not folder:
         return None
 
+    # The source fields say where THIS run reads the data; the host may have pointed them at a copy
+    # on a node, or at a path the person named there (*source_folder* is then where the data came
+    # from). ``alias_folder`` is never rewritten: the persisted alias keeps pointing there, and the
+    # session alias moves to the matching place in the folder actually read, so the rows are
+    # tokenised from the files this run reads.
     remote: str | None = None
+    if source_folder and image_folder and source_folder != image_folder and _is_under(source_folder, folder):
+        session = _session_alias_folder(image_folder, source_folder, folder, token)
+        folder, remote = session, folder
+        if ctx is not None:
+            ctx.log(f"Reading the data from {image_folder}; <{token}> keeps pointing at {remote}.")
+
     target = _copy_target(form_data)
     if target:
         if ctx is not None:
@@ -1013,6 +1037,62 @@ def _maybe_register_alias(
         remote_path=remote,
         root_url=_root(form_data),
     )
+
+
+def _is_under(path: str, folder: str) -> bool:
+    """True when *path* is *folder* or inside it (local paths and URLs alike)."""
+    path, folder = path.strip().rstrip("/"), folder.strip().rstrip("/")
+    return path == folder or path.startswith(folder + "/")
+
+
+def _session_alias_folder(read_folder: str, source_folder: str, alias_folder: str, token: str) -> str:
+    """Where the session alias must point so rows read from *read_folder* resolve under *alias_folder*.
+
+    A row read from ``<read_folder>/b.jpg`` is written as ``<TOKEN>/<rel>/b.jpg`` — *rel* being
+    where the source sits below the alias folder — and the persisted alias resolves that to
+    ``<alias_folder>/<rel>/b.jpg``, the source file. That needs a session folder S with
+    ``S/<rel> == read_folder``: the read folder itself when the alias is the source folder, or
+    the read folder minus *rel* when the copy kept the layout below the alias folder.
+
+    Raises:
+        JobFailed: The alias covers a parent of the source folder and the read folder does not
+            end in the same subfolders, so no session alias would tokenise its rows correctly.
+
+    """
+    rel = source_folder.strip().rstrip("/")[len(alias_folder.strip().rstrip("/")) :].strip("/")
+    read = read_folder.strip().rstrip("/")
+    if not rel:
+        return read
+    if read.endswith("/" + rel):
+        return read[: -len(rel) - 1]
+    msg = (
+        f"This import reads the data from {read}, a copy of {source_folder}, but the alias <{token}> "
+        f"points at {alias_folder}, a folder above it; the table's paths would not resolve to the source. "
+        "Point the alias folder at the data folder itself, or read the data where it is for this import "
+        "instead of from a copy."
+    )
+    raise JobFailed(msg)
+
+
+def _submitted_image_folder(format_name: str, form_data: dict[str, Any]) -> str | None:
+    """The source folder as the person picked it, when the host rewrote it for this run; else ``None``.
+
+    The fragment echoes its source fields in ``submitted_sources``: the host rewrites only the
+    declared data fields (to a copy on a node, or a path named there), so a difference between a
+    field and its echo is that rewrite. No echo (an older fragment, a direct API call) or no
+    difference means the run reads the data where it was picked.
+    """
+    echo = form_data.get("submitted_sources")
+    if not isinstance(echo, dict):
+        return None
+    original = {key: str(echo.get(key, "") or "").strip() for key in _SOURCE_FIELDS if key in echo}
+    if all(str(form_data.get(key, "") or "").strip() == value for key, value in original.items()):
+        return None
+    try:
+        picked = _normalize_path_fields({**form_data, **original})
+        return _get_image_folder(format_name, picked) or None
+    except Exception:
+        return None
 
 
 def _enhance_error_message(raw: str, *, input_path: str = "") -> str:
@@ -1899,7 +1979,9 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
     input_path = _get_image_folder(format_name, form_data)
     # Register the project's URL alias BEFORE the executor runs so the SDK can use
     # the token when encoding image paths; remove the PRIMARY session alias after.
-    alias_result = _maybe_register_alias(form_data, input_path, ctx)
+    alias_result = _maybe_register_alias(
+        form_data, input_path, ctx, source_folder=_submitted_image_folder(format_name, form_data)
+    )
     if alias_result and alias_result.get("remote_path"):
         ctx.progress(percent=-1, label=label, timing={"step_label": "import"})  # back to the import
     try:

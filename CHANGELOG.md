@@ -33,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CI set only `UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`.
 
 ### Fixed
+- **Importer: the alias stays on the folder you picked when a run reads a copy.** When the Hub points
+  an import at a copy of its data on a GPU node, or at a path named there, the persisted alias keeps
+  pointing at the picked folder and only the run's session alias follows the copy, so the table's
+  paths resolve to the source everywhere. The fragment echoes its source fields
+  (`submitted_sources`) so the import can tell. An alias set above the source folder (a dataset
+  root) moves by the same subfolders; when the copy does not keep that layout, the import refuses
+  rather than writing paths that resolve to the wrong place.
 - **Importer: a missing source fails the import before anything acts on it.** Required fields and
   every data-source path are checked on the machine the import runs on before the alias is
   registered in the project and before any data is copied, so a mistyped path, or one that exists
