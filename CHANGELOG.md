@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CI set only `UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`.
 
 ### Fixed
+- **Table Statistics stops polling when SDK initialization fails.** An activation or import
+  failure now completes the statistics request with an error instead of leaving its spinner running.
 - Import failures (a bad path, an existing table, a failed executor) now surface a clean,
   one-line message with no worker traceback attached. A missing or unreadable input path names
   the path and says the import always runs on the compute-service host machine, not the node
