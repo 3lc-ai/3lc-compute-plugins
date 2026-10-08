@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refuses a node run whose project root would land on that node's own disk. An import's missing-path
   and permission messages now name the machine the import ran on instead of saying imports always
   run on the host.
+- Lock the staged 3lc 3.5.0.dev149866 and SDK 0.5.0.20261007121635.34.1; require the staged core
+  directly (`3lc>=3.5.0.dev149866,<4.0.0`) and resolve it from the `staging` index alongside the SDK.
+- CI also runs on pull requests into, and pushes to, `config-service-poc`.
 - **Merger: writes under the job's project root.** The merged table goes under the root the host
   stamps into the job (`ctx.project_root_url`) instead of the worker's configured root, so a merge
   on a remote node lands where the deployment writes projects.
@@ -26,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CI set only `UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`.
 
 ### Fixed
+- **Table Statistics stops polling when SDK initialization fails.** An activation or import
+  failure now completes the statistics request with an error instead of leaving its spinner running.
 - Import failures (a bad path, an existing table, a failed executor) now surface a clean,
   one-line message with no worker traceback attached. A missing or unreadable input path names
   the path.

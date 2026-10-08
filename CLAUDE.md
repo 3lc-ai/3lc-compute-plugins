@@ -55,7 +55,7 @@ additive-only — see its README → Status).
 
 ## Dev setup
 
-The POC lockfile resolves SDK 0.5 from the private staging index (the explicit `staging` index
+The POC lockfile resolves the staged 3lc core and SDK 0.5 from the private staging index (the explicit `staging` index
 in pyproject.toml); other dependencies use PyPI. Set `UV_INDEX_STAGING_USERNAME` /
 `UV_INDEX_STAGING_PASSWORD` as shown in README.md. For local SDK development,
 use an uncommitted editable overlay. Do not commit path sources or credentials.
