@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CI set only `UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`.
 
 ### Fixed
+- **Importer: a missing source fails the import before anything acts on it.** Required fields and
+  every data-source path are checked on the machine the import runs on before the alias is
+  registered in the project and before any data is copied, so a mistyped path, or one that exists
+  only on another machine, no longer leaves a persisted alias or a half-made copy behind. The
+  message names the field, the path and the machine.
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.
 - **Image Metrics imports on a worker without a home directory.** Its legacy config folder is resolved

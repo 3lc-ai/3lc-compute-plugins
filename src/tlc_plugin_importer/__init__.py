@@ -861,6 +861,44 @@ _PATH_FIELDS = (
 )
 
 
+def _check_inputs(format_name: str, form_data: dict[str, Any]) -> None:
+    """Refuse an import whose required fields are empty or whose sources this machine cannot find.
+
+    Runs before the alias is registered and before any data is copied, so a mistyped path (or a
+    path that exists only on another machine) costs neither a copy nor an alias persisted in the
+    project.
+
+    Raises:
+        JobFailed: A required field is empty, or a data-source field names a file or folder that
+            does not exist (or cannot be read) on the machine the import runs on.
+
+    """
+    step = IMPORT_STEPS.get(format_name)
+    if step is None:
+        return
+    ok, errors = _validate(step, form_data)
+    if not ok:
+        raise JobFailed(" ".join(errors))
+    for field in step["form_fields"]:
+        if field.get("type") != "data_source":
+            continue
+        value = str(form_data.get(field["id"], "") or "").strip()
+        if value and not (pu.is_file(value) or pu.is_folder(value)):
+            msg = (
+                f"{field['label']} '{value}' was not found, or cannot be read, on {_machine_name()}. "
+                "The path must exist on the machine the import runs on: this compute-service host, or the "
+                'node picked under "Run on". Data in a bucket can be read from either.'
+            )
+            raise JobFailed(msg)
+
+
+def _machine_name() -> str:
+    """The name of the machine this import runs on, for messages."""
+    import socket
+
+    return socket.gethostname() or "this machine"
+
+
 def _root(form_data: dict[str, Any]) -> str | None:
     """Where the project goes: ``project_root_url`` from the form ("Create project in"), else tlc's default root."""
     root = str(form_data.get("project_root_url", "") or "").strip().rstrip("/")
@@ -1839,8 +1877,9 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
 
     Raises:
         ValueError: Unknown format, or a path field that is not absolute.
-        JobFailed: The executor failed or reported ``success=False`` — a clean,
-            user-facing message with no traceback (the (enhanced) message).
+        JobFailed: A required field is empty or a source is not on this machine (checked
+            before the alias is registered or any data copied), or the executor failed or
+            reported ``success=False`` — a clean, user-facing message with no traceback.
 
     """
     executor = _EXECUTORS.get(format_name)
@@ -1855,6 +1894,8 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
     # indeterminate progress (percent=-1 → the panel shows a pulsing bar).
     ctx.progress(percent=-1, label=label, timing={"step_label": "import"})
 
+    # Check the sources first: the alias and the copy below both act on them.
+    _check_inputs(format_name, form_data)
     input_path = _get_image_folder(format_name, form_data)
     # Register the project's URL alias BEFORE the executor runs so the SDK can use
     # the token when encoding image paths; remove the PRIMARY session alias after.
