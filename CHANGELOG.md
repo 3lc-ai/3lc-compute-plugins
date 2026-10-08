@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CI set only `UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`.
 
 ### Fixed
+- **Importer: a CSV import aimed at a GPU node says why it cannot run there.** The uploaded file is
+  held by the importer's worker on the computer it was uploaded to, so a node run failed with "File
+  session expired". The fragment now refuses up front when "Run on" is a node, and the job's
+  message explains where the upload lives and what to do.
 - **Importer: the alias stays on the folder you picked when a run reads a copy.** When the Hub points
   an import at a copy of its data on a GPU node, or at a path named there, the persisted alias keeps
   pointing at the picked folder and only the run's session alias follows the copy, so the table's

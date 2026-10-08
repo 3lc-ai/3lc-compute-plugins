@@ -114,3 +114,10 @@ def test_the_fragment_echoes_every_declared_source() -> None:
 
 def test_the_fragment_opts_into_the_copy_offer() -> None:
     assert UI.count("{ copyOffer: true }") == 2  # the import form and the CSV wizard both perform the copy
+
+
+def test_csv_upload_not_held_here_says_why(tmp_path: Path) -> None:
+    params = {"format": "csv", "session_id": "gone", "selected_columns": [{"index": 0}]}
+    with pytest.raises(JobFailed, match="cannot run on a GPU node"):
+        imp._run_csv_import(_ctx(params, tmp_path))
+    assert "PLUGIN_API.getRunTarget()" in UI and "and cannot run on a" in UI

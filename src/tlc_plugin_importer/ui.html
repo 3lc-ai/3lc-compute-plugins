@@ -1663,6 +1663,18 @@
   document.getElementById('csv-execute-btn').addEventListener('click', function() {
     var btn = document.getElementById('csv-execute-btn');
     var spinner = document.getElementById('csv-spinner');
+    // The uploaded file is held by the worker on this computer, where /csv/parse ran; a GPU node
+    // never sees it. Say so before submitting rather than letting the node fail the job.
+    var runTarget = (window.PLUGIN_API && typeof PLUGIN_API.getRunTarget === 'function')
+      ? PLUGIN_API.getRunTarget() : null;
+    if (runTarget && runTarget.target === 'node') {
+      var csvEl = document.getElementById('csv-result');
+      csvEl.className = 'csv-result error';
+      csvEl.innerHTML = '<strong>Error:</strong> ' + _esc(
+        'A CSV or Excel import runs where the file was uploaded, on this computer, and cannot run on a '
+        + 'GPU node. Set "Run on" to this computer and import again.');
+      return;
+    }
     btn.disabled = true;
     btn.textContent = 'Importing...';
     spinner.style.display = 'inline-block';

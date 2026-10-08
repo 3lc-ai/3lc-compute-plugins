@@ -2005,15 +2005,22 @@ def _run_csv_import(ctx: JobContext) -> None:
     is visible here.
 
     Raises:
-        JobFailed: Missing/expired session, no columns, or the executor failed —
-            a clean, user-facing message with no traceback.
+        JobFailed: The upload is not held here (a node run, or a restarted worker), no
+            columns, or the executor failed — a clean, user-facing message with no traceback.
 
     """
     params = ctx.params
     session_id = params.get("session_id", "")
     file_data = _parsed_csv_files.get(session_id)
     if not file_data:
-        msg = "File session expired. Please re-upload the file."
+        # The parsed upload lives in the memory of the worker that answered /csv/parse — the one on
+        # the compute-service host. A node's worker never has it, and a restarted worker lost it.
+        msg = (
+            f"The uploaded file is not held by the importer on {_machine_name()}. An uploaded CSV or Excel "
+            "file stays with the worker on the computer it was uploaded to, until that worker restarts, so a "
+            'CSV import cannot run on a GPU node. Set "Run on" to this computer, upload the file again and '
+            "import."
+        )
         raise JobFailed(msg)
 
     selected_columns = params.get("selected_columns", [])
