@@ -9,8 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **Image Metrics can run on a node.** Its manifest declares `remote_capable`, so a host accepts a
-  node target for it: image analysis gains from a larger machine and from running beside its data.
+- **Every plugin in this distribution can run on a node.** Importer, Exporter, Merger, Splitter,
+  Table Statistics and Image Metrics declare `remote_capable`, so a host accepts a node target for
+  them as well as itself: the work runs beside its data and on a larger machine. The host still
+  refuses a node run whose project root would land on that node's own disk. An import's missing-path
+  and permission messages now name the machine the import ran on instead of saying imports always
+  run on the host.
 - **Merger: writes under the job's project root.** The merged table goes under the root the host
   stamps into the job (`ctx.project_root_url`) instead of the worker's configured root, so a merge
   on a remote node lands where the deployment writes projects.
@@ -24,8 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Import failures (a bad path, an existing table, a failed executor) now surface a clean,
   one-line message with no worker traceback attached. A missing or unreadable input path names
-  the path and says the import always runs on the compute-service host machine, not the node
-  picked under "Run on".
+  the path.
 ### Added
 - **Importer: locations may be bucket URLs.** A project can be created "in this computer" or at the
   bucket root the deployment names. Local data imported next to a bucket root is copied there and
@@ -40,8 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Import failures (a bad path, an existing table, a failed executor) now surface a clean,
   one-line message with no worker traceback attached. A missing or unreadable input path names
-  the path and says the import always runs on the compute-service host machine, not the node
-  picked under "Run on".
+  the path.
 
 ## [0.2.4] - 2026-09-07
 

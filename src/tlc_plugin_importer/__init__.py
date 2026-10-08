@@ -996,11 +996,11 @@ def _enhance_error_message(raw: str, *, input_path: str = "") -> str:
     where = f" '{input_path}'" if input_path else " the import path"
     if "no such file or directory" in lowered or "os error 2" in lowered:
         return (
-            f"Could not find{where}. Import always runs on the compute-service host machine, "
-            'not the node picked under "Run on" — check that the path exists there.'
+            f"Could not find{where}. The path must exist on the machine the import runs on: "
+            'this compute-service host, or the node picked under "Run on".'
         )
     if "permission denied" in lowered or "os error 13" in lowered:
-        return f"Permission denied reading{where}. Check that the compute-service host can read this path."
+        return f"Permission denied reading{where}. Check that the machine the import runs on can read this path."
     return f"Import failed: {raw}"
 
 

@@ -24,3 +24,6 @@ entrypoint = "tlc_plugin_importer:ImportPlugin"
 # Deps live behind this extra of the umbrella distribution; the host installs it ONLY
 # into this plugin's provisioned venv, never the host venv.
 provision_extra = "importer"
+# An import can run beside its data on a node as well as on this host; a source path must
+# exist on the machine the import runs on.
+remote_capable = true
