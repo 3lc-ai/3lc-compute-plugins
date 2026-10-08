@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CI set only `UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`.
 
 ### Fixed
+- **Exporter: a bucket URL from its own picker is a valid destination.** The output picker offered
+  buckets, but the export refused any URL ("Path must be absolute"). A bucket export is now written
+  to a local scratch folder and uploaded under the URL — a file URL (`…/export.csv`) names the
+  file, anything else is the prefix — with upload progress on the job, existing objects
+  overwritten as local files are. The never-sent `alias_overrides` body key is no longer read; the
+  SDK worker applies the host's `_alias_overrides` around the job.
 - **Importer: a CSV import aimed at a GPU node says why it cannot run there.** The uploaded file is
   held by the importer's worker on the computer it was uploaded to, so a node run failed with "File
   session expired". The fragment now refuses up front when "Run on" is a node, and the job's
