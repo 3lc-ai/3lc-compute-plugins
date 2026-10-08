@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Every plugin in this distribution can run on a node.** Importer, Exporter, Merger, Splitter,
+  Table Statistics and Image Metrics declare `remote_capable`, so a host accepts a node target for
+  them as well as itself: the work runs beside its data and on a larger machine. The host still
+  refuses a node run whose project root would land on that node's own disk. An import's missing-path
+  and permission messages now name the machine the import ran on instead of saying imports always
+  run on the host.
 - Lock the staged 3lc 3.5.0.dev149866 and SDK 0.5.0.20261007121635.34.1; require the staged core
   directly (`3lc>=3.5.0.dev149866,<4.0.0`) and resolve it from the `staging` index alongside the SDK.
 - CI also runs on pull requests into, and pushes to, `config-service-poc`.
@@ -27,8 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failure now completes the statistics request with an error instead of leaving its spinner running.
 - Import failures (a bad path, an existing table, a failed executor) now surface a clean,
   one-line message with no worker traceback attached. A missing or unreadable input path names
-  the path and says the import always runs on the compute-service host machine, not the node
-  picked under "Run on".
+  the path.
 ### Added
 - **Importer: locations may be bucket URLs.** A project can be created "in this computer" or at the
   bucket root the deployment names. Local data imported next to a bucket root is copied there and
@@ -43,8 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Import failures (a bad path, an existing table, a failed executor) now surface a clean,
   one-line message with no worker traceback attached. A missing or unreadable input path names
-  the path and says the import always runs on the compute-service host machine, not the node
-  picked under "Run on".
+  the path.
 
 ## [0.2.4] - 2026-09-07
 
