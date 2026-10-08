@@ -43,6 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the path.
 
 ### Added
+- **The manifests declare the data each run reads and writes.** `[runtime] data_inputs` /
+  `data_outputs` name the run-body keys that hold data: the importer's source fields
+  (`dataset_yaml`, `annotations_file`, `image_folder`, `folder_path`, `csv_path`, and `table_url`
+  for a CSV extend), the exporter's `table_url` and `output_path`, the merger's `table_urls`, and
+  the splitter's and Image Metrics' `table_url`. A Hub that plans data movement asks where that
+  data is for the chosen machine before the run starts; older hosts ignore the keys. Table
+  Statistics has no run body and declares none.
 - **Importer: locations may be bucket URLs.** A project can be created "in this computer" or at the
   bucket root the deployment names. Local data imported next to a bucket root is copied there and
   aliased, so the table works on a remote node and not only on the machine that wrote it. Every

@@ -27,3 +27,8 @@ provision_extra = "importer"
 # An import can run beside its data on a node as well as on this host; a source path must
 # exist on the machine the import runs on.
 remote_capable = true
+# Dotted keys into the run body naming the data an import reads, so the Hub can ask where that
+# data is for the chosen machine before the import starts. Which ones a body carries depends on
+# the format; an empty or missing key is skipped. ``alias_folder`` is deliberately not here: it is
+# the durable place the persisted alias points at, never rewritten for one run.
+data_inputs = ["dataset_yaml", "annotations_file", "image_folder", "folder_path", "csv_path", "table_url"]

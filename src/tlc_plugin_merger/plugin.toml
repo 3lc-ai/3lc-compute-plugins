@@ -29,3 +29,5 @@ entrypoint = "tlc_plugin_merger:MergePlugin"
 provision_extra = "merger"
 # A merge can run beside its tables on a node as well as on this host.
 remote_capable = true
+# Dotted keys into the run body: the tables a merge reads (a list).
+data_inputs = ["table_urls"]
