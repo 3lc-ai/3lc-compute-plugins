@@ -53,11 +53,11 @@ uv sync --extra importer     # one plugin's deps (exactly what the host provisio
 uv run ruff check .
 ```
 
-The POC lockfile selects a tested SDK 0.5 snapshot from the private staging index
+The POC lockfile selects tested staged 3lc core and SDK 0.5 snapshots from the private staging index
 (`pypi.3lc.ai/repositories/prereleases`), declared as the explicit `staging` index in
 `pyproject.toml`; everything else comes from PyPI. uv reads the index credentials from
 `UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`; nothing else needs setting and no
-source checkout is required. For local SDK development, use an
+source checkout is required. For local SDK or 3lc development, use an
 uncommitted editable overlay.
 
 ### Publishing POC builds

@@ -17,10 +17,13 @@ requires-python = ">=3.10"
 # Apache-2.0, matching 3lc-compute-plugin-sdk. Full text in ./LICENSE.
 license = { text = "Apache-2.0" }
 classifiers = ["License :: OSI Approved :: Apache Software License"]
-# Base = the SDK floor ONLY — no plugin deps live here; each plugin's deps ride its own extra
-# below and are installed only into that plugin's venv. The SDK brings the `tlc` data plane
-# (`3lc[pandas]`) and the `tlc_plugin_sdk.shared.*` helpers every plugin uses.
+# Base = the SDK floor plus a direct core floor — no plugin deps live here; each plugin's deps ride
+# its own extra below and are installed only into that plugin's venv. The SDK brings the `tlc` data
+# plane (`3lc[pandas]`) and the `tlc_plugin_sdk.shared.*` helpers every plugin uses. The direct
+# `3lc` line floors the core on the staged build: uv admits a pre-release only for a direct
+# requirement that names one.
 dependencies = [
+    "3lc>=3.5.0.dev149866,<4.0.0",
     "3lc-compute-plugin-sdk>=0.5.0,<0.6.0",
 ]
 
@@ -73,8 +76,8 @@ packages = [
     "src/tlc_plugin_image_metrics",
 ]
 
-# Unreleased 3LC builds (SDK 0.5) resolve from the staging index; everything else from public
-# PyPI. The index is `explicit`, so only the dists routed to it in [tool.uv.sources] come from
+# Unreleased 3LC builds (the staged 3lc core and SDK 0.5) resolve from the staging index;
+# everything else from public PyPI. The index is `explicit`, so only the dists routed to it in [tool.uv.sources] come from
 # there. Credentials: UV_INDEX_STAGING_USERNAME / UV_INDEX_STAGING_PASSWORD (see README.md).
 # Drop a dist's source line once the version it needs is released on PyPI. For local SDK/3lc
 # development, swap in an UNCOMMITTED editable path source (a committed relative `path = ...`
@@ -85,7 +88,8 @@ url = "https://pypi.3lc.ai/repositories/prereleases/"
 explicit = true
 
 [tool.uv.sources]
-# SDK 0.5 is not on PyPI yet.
+# The staged 3lc core and SDK 0.5 are not on PyPI yet.
+"3lc" = { index = "staging" }
 3lc-compute-plugin-sdk = { index = "staging" }
 
 [dependency-groups]
