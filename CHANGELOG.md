@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Importer: no Hugging Face dependencies.** Its extra no longer installs `datasets` and `transformers`,
+  which nothing in the importer used. Its descriptions name the formats it imports (CSV, Excel, COCO, YOLO,
+  image folders) instead of Parquet and Hugging Face, which it never read; Hugging Face imports are the
+  huggingface plugin's.
 - **Every plugin in this distribution can run on a node.** Importer, Exporter, Merger, Splitter,
   Table Statistics and Image Metrics declare `remote_capable`, so a host accepts a node target for
   them as well as itself: the work runs beside its data and on a larger machine. The host still
