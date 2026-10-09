@@ -24,7 +24,7 @@ classifiers = ["License :: OSI Approved :: Apache Software License"]
 # requirement that names one.
 dependencies = [
     "3lc>=3.5.0.dev149866,<4.0.0",
-    "3lc-compute-plugin-sdk>=0.5.0,<0.6.0",
+    "3lc-compute-plugin-sdk>=0.5.0.20261009132039.36.1,<0.6.0",
 ]
 
 # Per-plugin extras — installed ONLY into that plugin's provisioned venv. Provisioning opts into
