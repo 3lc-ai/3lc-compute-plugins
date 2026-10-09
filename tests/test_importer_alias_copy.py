@@ -1,6 +1,6 @@
 # Copyright 2026 3LC Inc.
 # SPDX-License-Identifier: Apache-2.0
-"""Importer: when the table lands on a bucket and the data is local, copy the data first and alias the copy."""
+"""Importer references existing media; obsolete requests to relocate it fail explicitly."""
 
 from __future__ import annotations
 
@@ -45,37 +45,21 @@ def fakes(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     return calls
 
 
-def test_copy_then_alias_the_copy(fakes: dict[str, Any]) -> None:
-    ctx = _Ctx()
-    form = {
-        "project_name": "Fire",
-        "alias_token": "FIRE",
-        "alias_folder": "/data/fire",
-        "alias_copy_to_root": "true",
-        "alias_copy_target": "s3://b/projects/Fire/data/fire",
-        "project_root_url": "s3://b/projects/",
-    }
-    out = imp._maybe_register_alias(form, "/data/fire", ctx)
-    assert fakes["copy"] == ("/data/fire", "s3://b/projects/Fire/data/fire")
-    assert fakes["register"]["remote_path"] == "s3://b/projects/Fire/data/fire"
-    assert fakes["register"]["root_url"] == "s3://b/projects"  # the alias lives in the project ON THE BUCKET
-    assert fakes["register"]["image_folder"] == "/data/fire"  # this session still encodes from the local files
-    assert out and out["token"] == "FIRE"
-    # The job panel shows the copy as a real percentage, then the log says where the data went.
-    assert [c["percent"] for c in ctx.progress_calls] == [50, 100]
-    assert "Copying data to b…" in ctx.progress_calls[0]["label"]
-    assert any("Copied 2 files" in m and "1 were already there" in m and "<FIRE> points there" in m for m in ctx.logs)
+@pytest.mark.parametrize("enabled", [True, "true", "1"])
+def test_legacy_copy_request_fails_before_alias_or_copy(fakes, enabled):
+    with pytest.raises(imp.JobFailed, match="Import no longer copies source data"):
+        imp._maybe_register_alias(
+            {"project_name": "Fire", "alias_copy_to_root": enabled, "alias_copy_target": "s3://b/images"},
+            "/data/fire",
+            _Ctx(),
+        )
+    assert not fakes
 
 
-def test_no_copy_without_the_checkbox_or_with_a_local_target(fakes: dict[str, Any]) -> None:
+def test_no_copy_without_the_checkbox(fakes: dict[str, Any]) -> None:
     base = {"project_name": "Fire", "alias_folder": "/data/fire", "alias_copy_target": "s3://b/p/Fire/data/fire"}
     imp._maybe_register_alias({**base, "alias_copy_to_root": "false"}, "/data/fire", _Ctx())
     assert "copy" not in fakes and fakes["register"]["remote_path"] is None
-    fakes.clear()
-    imp._maybe_register_alias(
-        {**base, "alias_copy_to_root": "true", "alias_copy_target": "/other/disk"}, "/data/fire", _Ctx()
-    )
-    assert "copy" not in fakes and fakes["register"]["remote_path"] is None  # not a bucket: ignored
 
 
 def test_alias_disabled_means_nothing_happens(fakes: dict[str, Any]) -> None:
@@ -83,15 +67,10 @@ def test_alias_disabled_means_nothing_happens(fakes: dict[str, Any]) -> None:
     assert not fakes
 
 
-def test_the_form_and_csv_bodies_carry_the_copy_fields() -> None:
-    from pathlib import Path
-
-    ui = (Path(imp.__file__).parent / "ui.html").read_text(encoding="utf-8")
-    for name in ("alias_copy_to_root", "alias_copy_target"):  # the import form body and the CSV payload
-        assert ui.count("formData." + name) == 1 and ui.count("payload." + name) == 1, name
-    # The widget asks THIS plugin where its tables land (found live: the infra plugin's bucket root was
-    # shown while the table went to the local projects folder).
-    assert ui.count(", 'importer');") == 2
+def test_regular_and_csv_forms_do_not_request_copies() -> None:
+    ui = (Path(imp.__file__).parent / "ui.html").read_text()
+    assert "alias_copy" not in ui and "copyOffer" not in ui
+    assert "payload.alias_folder = csvAlias.alias_folder;" in ui
 
 
 def test_the_project_root_choice_reaches_the_writers_and_the_forms() -> None:
@@ -105,6 +84,57 @@ def test_the_project_root_choice_reaches_the_writers_and_the_forms() -> None:
     assert "root_url=project_root_url or None," in src  # CSV create-new
     ui = (Path(imp.__file__).parent / "ui.html").read_text(encoding="utf-8")
     assert ui.count("_tlcProjectLocationHtml(") == 2 and ui.count("_tlcBindProjectLocation(") == 2
-    assert "'import-project-root');" in ui and "'csv-project-root');" in ui
     assert "formData.project_root_url = _tlcGetProjectRoot('import');" in ui
     assert "payload.project_root_url = _tlcGetProjectRoot('csv');" in ui
+
+
+def test_custom_alias_points_to_source_without_copy(fakes):
+    imp._maybe_register_alias(
+        {
+            "project_name": "Fire",
+            "alias_token": "MY_IMAGES",
+            "alias_folder": "s3://b/images",
+            "project_root_url": "s3://b/projects/",
+        },
+        "s3://b/images",
+        _Ctx(),
+    )
+    assert "copy" not in fakes
+    assert fakes["register"]["alias_token"] == "MY_IMAGES"
+    assert fakes["register"]["image_folder"] == "s3://b/images"
+    assert fakes["register"]["root_url"] == "s3://b/projects"
+    assert fakes["register"]["remote_path"] is None
+
+
+def test_csv_alias_is_checked_before_table_writer(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    calls = []
+    monkeypatch.setitem(
+        sys.modules,
+        "tlc",
+        SimpleNamespace(
+            schemas=SimpleNamespace(ImageSchema=lambda **kw: object()),
+            TableWriter=lambda **kw: calls.append("writer"),
+        ),
+    )
+    monkeypatch.setattr(imp, "_read_spreadsheet", lambda *a: (["image"], [["/data/images/a.jpg"]]))
+
+    def refuse(*args, **kwargs):
+        msg = "alias would point to a local disk"
+        raise imp.JobFailed(msg)
+
+    monkeypatch.setattr(imp, "_maybe_register_alias", refuse)
+    with pytest.raises(imp.JobFailed, match="local disk"):
+        imp._execute_csv_new(
+            b"",
+            "images.csv",
+            [{"name": "image", "index": 0, "type": "image_url"}],
+            "Project",
+            "Dataset",
+            "initial",
+            "",
+            project_root_url="s3://b/projects",
+        )
+    assert not calls

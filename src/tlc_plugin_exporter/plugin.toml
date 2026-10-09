@@ -28,3 +28,6 @@ entrypoint = "tlc_plugin_exporter:ExportPlugin"
 provision_extra = "exporter"
 # An export can run beside its table on a node as well as on this host.
 remote_capable = true
+# Dotted keys into the run body: the table an export reads, and the place it writes the file.
+data_inputs = ["table_url"]
+data_outputs = ["output_path"]

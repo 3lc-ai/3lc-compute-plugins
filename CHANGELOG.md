@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+
+#### Data movement
+
+- **Importer references existing data without relocating it.** Regular and CSV imports no longer offer or perform permanent copies. Copy data in Storage first when needed, then import from that source. Old saved requests that explicitly ask for copying fail with an explanation before writing a table or alias.
+- **Exporter: a bucket URL from its own picker is a valid destination.** The output picker offered
+  buckets, but the export refused any URL ("Path must be absolute"). A bucket export is now written
+  to a local scratch folder and uploaded under the URL — a file URL (`…/export.csv`) names the
+  file, anything else is the prefix — with upload progress on the job, existing objects
+  overwritten as local files are. The never-sent `alias_overrides` body key is no longer read; the
+  SDK worker applies the host's `_alias_overrides` around the job.
+- **Importer: a CSV import aimed at a GPU node says why it cannot run there.** The uploaded file is
+  held by the importer's worker on the computer it was uploaded to, so a node run failed with "File
+  session expired". The fragment now refuses up front when "Run on" is a node, and the job's
+  message explains where the upload lives and what to do.
+- **Importer: the alias stays on the folder you picked when a run reads a copy.** When the Hub points
+  an import at a copy of its data on a GPU node, or at a path named there, the persisted alias keeps
+  pointing at the picked folder and only the run's session alias follows the copy, so the table's
+  paths resolve to the source everywhere. The fragment echoes its source fields
+  (`submitted_sources`) so the import can tell. An alias set above the source folder (a dataset
+  root) moves by the same subfolders; when the copy does not keep that layout, the import refuses
+  rather than writing paths that resolve to the wrong place.
+- **Importer: a missing source fails the import before anything acts on it.** Required fields and
+  every data-source path are checked on the machine the import runs on before the alias is
+  registered in the project, so a mistyped path, or one that exists
+  only on another machine, no longer leaves a persisted alias behind. The
+  message names the field, the path and the machine.
+- **The manifests declare the data each run reads and writes.** `[runtime] data_inputs` /
+  `data_outputs` name the run-body keys that hold data: the importer's source fields
+  (`dataset_yaml`, `annotations_file`, `image_folder`, `folder_path`, `csv_path`, and `table_url`
+  for a CSV extend), the exporter's `table_url` and `output_path`, the merger's `table_urls`, and
+  the splitter's and Image Metrics' `table_url`. A Hub that plans data movement asks where that
+  data is for the chosen machine before the run starts; older hosts ignore the keys. Table
+  Statistics has no run body and declares none.
+
+
+#### Other changes
+
 - **Importer: no Hugging Face dependencies.** Its extra no longer installs `datasets` and `transformers`,
   which nothing in the importer used. Its descriptions name the formats it imports (CSV, Excel, COCO, YOLO,
   image folders) instead of Parquet and Hugging Face, which it never read; Hugging Face imports are the
@@ -33,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CI set only `UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`.
 
 ### Fixed
+
+- Import success messages show `initial` when the table name is left blank.
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.
 - **Image Metrics imports on a worker without a home directory.** Its legacy config folder is resolved
@@ -43,9 +82,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the path.
 
 ### Added
+
 - **Importer: locations may be bucket URLs.** A project can be created "in this computer" or at the
-  bucket root the deployment names. Local data imported next to a bucket root is copied there and
-  aliased, so the table works on a remote node and not only on the machine that wrote it. Every
+  bucket root the deployment names. A cloud project requires a durable cloud alias; a local default
+  alias is refused with a reason. Import never relocates the source. Every
   table an import wrote is reported below the form that wrote it, with the shared ending in all
   three places the importer reports a table.
 

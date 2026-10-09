@@ -7,7 +7,6 @@ from __future__ import annotations
 import csv
 import io
 import logging
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -196,14 +195,13 @@ def _execute_csv_new(
     description: str,
     alias_enabled: bool = True,
     alias_token: str = "",
-    alias_copy_target: str = "",
+    alias_folder: str = "",
     project_root_url: str = "",
     ctx: JobContext | None = None,
 ) -> dict[str, Any]:
     """Create a brand new 3LC table from CSV/Excel columns using TableWriter.
 
-    ``alias_copy_target`` (a ``scheme://`` prefix) asks for the detected image folder to
-    be copied there before the alias is registered — see :func:`_maybe_register_alias`.
+    Image aliases refer to their source; importing never relocates existing media.
     """
     import tlc
 
@@ -260,58 +258,7 @@ def _execute_csv_new(
             })
             _str_maps[col_cfg["name"]] = {s: i for i, s in enumerate(unique_strings)}
 
-    writer = tlc.TableWriter(
-        table_name=table_name,
-        dataset_name=dataset_name,
-        project_name=project_name,
-        root_url=project_root_url or None,
-        description=description or "",
-        schema=col_schemas,
-    )
-
-    # Add rows
-    for csv_row in csv_rows:
-        row_data: dict[str, Any] = {}
-        for col_cfg in selected_columns:
-            idx = col_cfg["index"]
-            col_name = col_cfg["name"]
-            col_type = col_cfg.get("type", "string")
-            is_categorical = col_cfg.get("categorical", False)
-            raw_val = csv_row[idx] if idx < len(csv_row) else None
-
-            if col_type == "image_url":
-                row_data[col_name] = str(raw_val).strip() if raw_val is not None else ""
-            elif is_categorical and col_type == "string":
-                s = str(raw_val).strip() if raw_val is not None else ""
-                row_data[col_name] = _str_maps[col_name].get(s, 0)
-            elif is_categorical and col_type == "int":
-                try:
-                    row_data[col_name] = (
-                        int(float(str(raw_val).strip())) if raw_val is not None and str(raw_val).strip() else 0
-                    )
-                except (ValueError, TypeError):
-                    row_data[col_name] = 0
-            elif col_type == "float":
-                try:
-                    row_data[col_name] = (
-                        float(str(raw_val).strip()) if raw_val is not None and str(raw_val).strip() else 0.0
-                    )
-                except (ValueError, TypeError):
-                    row_data[col_name] = 0.0
-            elif col_type == "int":
-                try:
-                    row_data[col_name] = (
-                        int(float(str(raw_val).strip())) if raw_val is not None and str(raw_val).strip() else 0
-                    )
-                except (ValueError, TypeError):
-                    row_data[col_name] = 0
-            else:
-                row_data[col_name] = str(raw_val).strip() if raw_val is not None else ""
-
-        writer.add_row(row_data)
-
-    table = writer.finalize()
-
+    alias_result = None
     # Register alias if image columns exist and alias is enabled
     if alias_enabled:
         image_cols = [c for c in selected_columns if c.get("type") == "image_url"]
@@ -325,17 +272,72 @@ def _execute_csv_new(
             ]
             image_folder = _detect_common_folder(img_paths)
             if image_folder:
-                _maybe_register_alias(
+                alias_result = _maybe_register_alias(
                     {
                         "project_name": project_name,
                         "alias_token": alias_token,
-                        "alias_copy_to_root": bool(alias_copy_target),
-                        "alias_copy_target": alias_copy_target,
+                        "alias_folder": alias_folder,
                         "project_root_url": project_root_url,
                     },
                     image_folder,
                     ctx,
                 )
+
+    try:
+        writer = tlc.TableWriter(
+            table_name=table_name,
+            dataset_name=dataset_name,
+            project_name=project_name,
+            root_url=project_root_url or None,
+            description=description or "",
+            schema=col_schemas,
+        )
+
+        # Add rows
+        for csv_row in csv_rows:
+            row_data: dict[str, Any] = {}
+            for col_cfg in selected_columns:
+                idx = col_cfg["index"]
+                col_name = col_cfg["name"]
+                col_type = col_cfg.get("type", "string")
+                is_categorical = col_cfg.get("categorical", False)
+                raw_val = csv_row[idx] if idx < len(csv_row) else None
+
+                if col_type == "image_url":
+                    row_data[col_name] = str(raw_val).strip() if raw_val is not None else ""
+                elif is_categorical and col_type == "string":
+                    s = str(raw_val).strip() if raw_val is not None else ""
+                    row_data[col_name] = _str_maps[col_name].get(s, 0)
+                elif is_categorical and col_type == "int":
+                    try:
+                        row_data[col_name] = (
+                            int(float(str(raw_val).strip())) if raw_val is not None and str(raw_val).strip() else 0
+                        )
+                    except (ValueError, TypeError):
+                        row_data[col_name] = 0
+                elif col_type == "float":
+                    try:
+                        row_data[col_name] = (
+                            float(str(raw_val).strip()) if raw_val is not None and str(raw_val).strip() else 0.0
+                        )
+                    except (ValueError, TypeError):
+                        row_data[col_name] = 0.0
+                elif col_type == "int":
+                    try:
+                        row_data[col_name] = (
+                            int(float(str(raw_val).strip())) if raw_val is not None and str(raw_val).strip() else 0
+                        )
+                    except (ValueError, TypeError):
+                        row_data[col_name] = 0
+                else:
+                    row_data[col_name] = str(raw_val).strip() if raw_val is not None else ""
+
+            writer.add_row(row_data)
+
+        table = writer.finalize()
+
+    finally:
+        _unregister_primary_alias(alias_result)
 
     return {
         "success": True,
@@ -860,6 +862,48 @@ _PATH_FIELDS = (
     "project_root_url",
 )
 
+#: The source fields the manifest declares as ``data_inputs`` (with ``table_url``): the ones the
+#: host may rewrite for one run, and that the fragment echoes in ``submitted_sources``.
+_SOURCE_FIELDS = ("dataset_yaml", "annotations_file", "image_folder", "folder_path", "csv_path")
+
+
+def _check_inputs(format_name: str, form_data: dict[str, Any]) -> None:
+    """Refuse an import whose required fields are empty or whose sources this machine cannot find.
+
+    Runs before the alias is registered and before any data is copied, so a mistyped path (or a
+    path that exists only on another machine) costs neither a copy nor an alias persisted in the
+    project.
+
+    Raises:
+        JobFailed: A required field is empty, or a data-source field names a file or folder that
+            does not exist (or cannot be read) on the machine the import runs on.
+
+    """
+    step = IMPORT_STEPS.get(format_name)
+    if step is None:
+        return
+    ok, errors = _validate(step, form_data)
+    if not ok:
+        raise JobFailed(" ".join(errors))
+    for field in step["form_fields"]:
+        if field.get("type") != "data_source":
+            continue
+        value = str(form_data.get(field["id"], "") or "").strip()
+        if value and not (pu.is_file(value) or pu.is_folder(value)):
+            msg = (
+                f"{field['label']} '{value}' was not found, or cannot be read, on {_machine_name()}. "
+                "The path must exist on the machine the import runs on: this compute-service host, or the "
+                'node picked under "Run on". Data in a bucket can be read from either.'
+            )
+            raise JobFailed(msg)
+
+
+def _machine_name() -> str:
+    """The name of the machine this import runs on, for messages."""
+    import socket
+
+    return socket.gethostname() or "this machine"
+
 
 def _root(form_data: dict[str, Any]) -> str | None:
     """Where the project goes: ``project_root_url`` from the form ("Create project in"), else tlc's default root."""
@@ -890,63 +934,38 @@ def _normalize_path_fields(form_data: dict[str, Any]) -> dict[str, Any]:
 _TRUE = ("true", True, "1", 1)
 
 
-def _copy_target(form_data: dict[str, Any]) -> str:
-    """The URL the data should be copied to before the alias is registered, or ``''``.
-
-    Set by the shared alias widget when the project root lives on other storage than
-    the data (``alias_copy_to_root`` + ``alias_copy_target``). Only ``scheme://`` targets
-    count — a local path here would mean the widget and the service disagree.
-    """
-    from tlc_plugin_sdk.shared.aliases import is_remote_url
-
-    if form_data.get("alias_copy_to_root", False) not in _TRUE:
-        return ""
-    target = str(form_data.get("alias_copy_target", "") or "").strip()
-    return target if is_remote_url(target) else ""
-
-
-def _copy_progress(ctx: JobContext, target: str) -> Callable[[int, int, int, int], None]:
-    """A progress callback for :func:`copy_folder_to_url` that drives the job panel."""
-    where = target.split("://", 1)[-1].split("/", 1)[0]  # the bucket / volume name
-
-    def report(files_done: int, files_total: int, bytes_done: int, bytes_total: int) -> None:
-        pct = int(files_done * 100 / files_total) if files_total else -1
-        ctx.progress(
-            percent=pct,
-            label=f"Copying data to {where}… {files_done:,}/{files_total:,} files, {_human_bytes(bytes_done)}",
-            timing={"step_label": "copy"},
+def _reject_legacy_copy(form_data: dict[str, Any]) -> None:
+    """Refuse obsolete copy requests instead of silently changing a saved import's meaning."""
+    if form_data.get("alias_copy_to_root", False) in _TRUE:
+        msg = (
+            "Import no longer copies source data. Copy it to the desired location in Storage first, "
+            "then select that source and submit the import again."
         )
-
-    return report
-
-
-def _human_bytes(n: int) -> str:
-    value = float(n)
-    for unit in ("B", "KB", "MB", "GB", "TB"):
-        if value < 1024 or unit == "TB":
-            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
-        value /= 1024
-    return f"{value:.1f} TB"
+        raise JobFailed(msg)
 
 
 def _maybe_register_alias(
     form_data: dict[str, Any],
     image_folder: str,
     ctx: JobContext | None = None,
+    source_folder: str | None = None,
 ) -> dict[str, Any] | None:
-    """Register a URL alias if the user opted in — copying the data first when asked.
+    """Register an alias to the durable source, with a run-only read path when staged.
 
     Reads ``alias_enabled``, ``alias_token``, and ``alias_folder`` from *form_data*.
-    When the widget also set ``alias_copy_to_root`` with an ``alias_copy_target``
-    (the table lands on other storage than the data), the folder is copied there
-    first and the persisted alias points at the copy, so nodes and the Dashboard
-    read the same data as the table. Returns the alias result dict (with ``token``
-    and ``path`` keys), or *None* if aliases are disabled.
+    Import creates a table and never relocates the source data. When the host rewrites
+    an input for execution, the saved alias keeps its source location.
+
+    Raises:
+        JobFailed: The alias covers a parent of the source folder, and the folder this
+            run reads is not laid out the same way below it (see _session_alias_folder).
+
     """
+    _reject_legacy_copy(form_data)
     if form_data.get("alias_enabled", "true") not in _TRUE:
         return None
 
-    from tlc_plugin_sdk.shared.aliases import copy_folder_to_url, default_alias_token, register_alias
+    from tlc_plugin_sdk.shared.aliases import default_alias_token, register_alias
 
     project_name = form_data["project_name"].strip()
     token = form_data.get("alias_token", "").strip() or default_alias_token(project_name)
@@ -954,19 +973,17 @@ def _maybe_register_alias(
     if not folder:
         return None
 
+    # The source fields say where THIS run reads the data; the host may have pointed them at a copy
+    # on a node, or at a path the person named there (*source_folder* is then where the data came
+    # from). ``alias_folder`` is never rewritten: the persisted alias keeps pointing there, and the
+    # session alias moves to the matching place in the folder actually read, so the rows are
+    # tokenised from the files this run reads.
     remote: str | None = None
-    target = _copy_target(form_data)
-    if target:
+    if source_folder and image_folder and source_folder != image_folder and _is_under(source_folder, folder):
+        session = _session_alias_folder(image_folder, source_folder, folder, token)
+        folder, remote = session, folder
         if ctx is not None:
-            ctx.log(f"Copying {folder} to {target}…")
-        stats = copy_folder_to_url(folder, target, progress=_copy_progress(ctx, target) if ctx else None)
-        remote = target
-        if ctx is not None:
-            ctx.log(
-                f"Copied {stats['files']:,} files ({_human_bytes(stats['bytes'])}) to {target}"
-                + (f", {stats['skipped']:,} were already there" if stats["skipped"] else "")
-                + f". <{token}> points there."
-            )
+            ctx.log(f"Reading the data from {image_folder}; <{token}> keeps pointing at {remote}.")
 
     return register_alias(
         project_name=project_name,
@@ -975,6 +992,62 @@ def _maybe_register_alias(
         remote_path=remote,
         root_url=_root(form_data),
     )
+
+
+def _is_under(path: str, folder: str) -> bool:
+    """True when *path* is *folder* or inside it (local paths and URLs alike)."""
+    path, folder = path.strip().rstrip("/"), folder.strip().rstrip("/")
+    return path == folder or path.startswith(folder + "/")
+
+
+def _session_alias_folder(read_folder: str, source_folder: str, alias_folder: str, token: str) -> str:
+    """Where the session alias must point so rows read from *read_folder* resolve under *alias_folder*.
+
+    A row read from ``<read_folder>/b.jpg`` is written as ``<TOKEN>/<rel>/b.jpg`` — *rel* being
+    where the source sits below the alias folder — and the persisted alias resolves that to
+    ``<alias_folder>/<rel>/b.jpg``, the source file. That needs a session folder S with
+    ``S/<rel> == read_folder``: the read folder itself when the alias is the source folder, or
+    the read folder minus *rel* when the copy kept the layout below the alias folder.
+
+    Raises:
+        JobFailed: The alias covers a parent of the source folder and the read folder does not
+            end in the same subfolders, so no session alias would tokenise its rows correctly.
+
+    """
+    rel = source_folder.strip().rstrip("/")[len(alias_folder.strip().rstrip("/")) :].strip("/")
+    read = read_folder.strip().rstrip("/")
+    if not rel:
+        return read
+    if read.endswith("/" + rel):
+        return read[: -len(rel) - 1]
+    msg = (
+        f"This import reads the data from {read}, a copy of {source_folder}, but the alias <{token}> "
+        f"points at {alias_folder}, a folder above it; the table's paths would not resolve to the source. "
+        "Point the alias folder at the data folder itself, or read the data where it is for this import "
+        "instead of from a copy."
+    )
+    raise JobFailed(msg)
+
+
+def _submitted_image_folder(format_name: str, form_data: dict[str, Any]) -> str | None:
+    """The source folder as the person picked it, when the host rewrote it for this run; else ``None``.
+
+    The fragment echoes its source fields in ``submitted_sources``: the host rewrites only the
+    declared data fields (to a copy on a node, or a path named there), so a difference between a
+    field and its echo is that rewrite. No echo (an older fragment, a direct API call) or no
+    difference means the run reads the data where it was picked.
+    """
+    echo = form_data.get("submitted_sources")
+    if not isinstance(echo, dict):
+        return None
+    original = {key: str(echo.get(key, "") or "").strip() for key in _SOURCE_FIELDS if key in echo}
+    if all(str(form_data.get(key, "") or "").strip() == value for key, value in original.items()):
+        return None
+    try:
+        picked = _normalize_path_fields({**form_data, **original})
+        return _get_image_folder(format_name, picked) or None
+    except Exception:
+        return None
 
 
 def _enhance_error_message(raw: str, *, input_path: str = "") -> str:
@@ -1311,7 +1384,9 @@ def _execute_yolo(form_data: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "success": True,
-        "message": f"Successfully created table '{form_data['table_name']}' from YOLO dataset.",
+        "message": (
+            f"Successfully created table '{form_data.get('table_name', '').strip() or 'initial'}' from YOLO dataset."
+        ),
         "table_url": str(table.url),
         "project_name": form_data["project_name"],
         "dataset_name": form_data["dataset_name"],
@@ -1483,7 +1558,9 @@ def _execute_coco(form_data: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "success": True,
-        "message": f"Successfully created table '{form_data['table_name']}' from COCO dataset.",
+        "message": (
+            f"Successfully created table '{form_data.get('table_name', '').strip() or 'initial'}' from COCO dataset."
+        ),
         "table_url": str(table.url),
         "project_name": form_data["project_name"],
         "dataset_name": form_data["dataset_name"],
@@ -1514,7 +1591,9 @@ def _execute_folder(form_data: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "success": True,
-        "message": f"Successfully created table '{form_data['table_name']}' from image folder.",
+        "message": (
+            f"Successfully created table '{form_data.get('table_name', '').strip() or 'initial'}' from image folder."
+        ),
         "table_url": str(table.url),
         "project_name": form_data["project_name"],
         "dataset_name": form_data["dataset_name"],
@@ -1839,8 +1918,9 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
 
     Raises:
         ValueError: Unknown format, or a path field that is not absolute.
-        JobFailed: The executor failed or reported ``success=False`` — a clean,
-            user-facing message with no traceback (the (enhanced) message).
+        JobFailed: A required field is empty or a source is not on this machine (checked
+            before the alias is registered), or the executor failed or
+            reported ``success=False`` — a clean, user-facing message with no traceback.
 
     """
     executor = _EXECUTORS.get(format_name)
@@ -1848,6 +1928,7 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
         msg = f"No executor for import format: {format_name!r}"
         raise ValueError(msg)
 
+    _reject_legacy_copy(ctx.params)
     form_data = _normalize_path_fields(ctx.params)
     label = f"Importing {format_name}…"
     ctx.log(label)
@@ -1855,12 +1936,14 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
     # indeterminate progress (percent=-1 → the panel shows a pulsing bar).
     ctx.progress(percent=-1, label=label, timing={"step_label": "import"})
 
+    # Check the sources before registering an alias or creating a table.
+    _check_inputs(format_name, form_data)
     input_path = _get_image_folder(format_name, form_data)
     # Register the project's URL alias BEFORE the executor runs so the SDK can use
     # the token when encoding image paths; remove the PRIMARY session alias after.
-    alias_result = _maybe_register_alias(form_data, input_path, ctx)
-    if alias_result and alias_result.get("remote_path"):
-        ctx.progress(percent=-1, label=label, timing={"step_label": "import"})  # back to the import
+    alias_result = _maybe_register_alias(
+        form_data, input_path, ctx, source_folder=_submitted_image_folder(format_name, form_data)
+    )
     try:
         result = executor(form_data)
     except Exception as exc:
@@ -1882,15 +1965,23 @@ def _run_csv_import(ctx: JobContext) -> None:
     is visible here.
 
     Raises:
-        JobFailed: Missing/expired session, no columns, or the executor failed —
-            a clean, user-facing message with no traceback.
+        JobFailed: The upload is not held here (a node run, or a restarted worker), no
+            columns, or the executor failed — a clean, user-facing message with no traceback.
 
     """
     params = ctx.params
+    _reject_legacy_copy(params)
     session_id = params.get("session_id", "")
     file_data = _parsed_csv_files.get(session_id)
     if not file_data:
-        msg = "File session expired. Please re-upload the file."
+        # The parsed upload lives in the memory of the worker that answered /csv/parse — the one on
+        # the compute-service host. A node's worker never has it, and a restarted worker lost it.
+        msg = (
+            f"The uploaded file is not held by the importer on {_machine_name()}. An uploaded CSV or Excel "
+            "file stays with the worker on the computer it was uploaded to, until that worker restarts, so a "
+            'CSV import cannot run on a GPU node. Set "Run on" to this computer, upload the file again and '
+            "import."
+        )
         raise JobFailed(msg)
 
     selected_columns = params.get("selected_columns", [])
@@ -1933,7 +2024,7 @@ def _run_csv_import(ctx: JobContext) -> None:
             description=params.get("description", "").strip(),
             alias_enabled=alias_enabled in (True, "true", "1"),
             alias_token=params.get("alias_token", ""),
-            alias_copy_target=_copy_target(params),
+            alias_folder=params.get("alias_folder", ""),
             project_root_url=_root(_normalize_path_fields({"project_root_url": params.get("project_root_url", "")}))
             or "",
             ctx=ctx,
