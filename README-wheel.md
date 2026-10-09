@@ -3,7 +3,7 @@
 The first-party plugins for the [3LC Hub](https://docs.3lc.ai) compute service — the everyday
 table tools, bundled as one distribution:
 
-- **Importer** — import CSV, Parquet, COCO, and Hugging Face datasets as tables
+- **Importer** — import CSV, Excel, COCO, YOLO, and image-folder datasets as tables
 - **Exporter** — export tables to CSV, XLSX, YOLO, or COCO
 - **Merger** — merge tables
 - **Splitter** — create train / validation / test splits

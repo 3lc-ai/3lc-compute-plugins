@@ -1,7 +1,7 @@
 # 3LC Compute plugin manifest — the single source of truth for this plugin's metadata.
 id = "importer"
 name = "Import"
-description = "Import datasets from CSV, Parquet, COCO, and other formats into 3LC projects."
+description = "Import datasets from CSV, Excel, COCO, YOLO, and image folders into 3LC projects."
 version = "0.2.4"
 min_service_version = "0.1.0"
 icon = "↑"
@@ -16,7 +16,7 @@ output_types = ["table"]
 priority = 90
 quick_action = true
 quick_action_label = "Import Dataset"
-quick_action_description = "Import data from CSV, Parquet, COCO, or other formats"
+quick_action_description = "Import data from CSV, Excel, COCO, YOLO, or image folders"
 
 [runtime]
 isolation = "venv"
@@ -24,3 +24,11 @@ entrypoint = "tlc_plugin_importer:ImportPlugin"
 # Deps live behind this extra of the umbrella distribution; the host installs it ONLY
 # into this plugin's provisioned venv, never the host venv.
 provision_extra = "importer"
+# An import can run beside its data on a node as well as on this host; a source path must
+# exist on the machine the import runs on.
+remote_capable = true
+# Dotted keys into the run body naming the data an import reads, so the Hub can ask where that
+# data is for the chosen machine before the import starts. Which ones a body carries depends on
+# the format; an empty or missing key is skipped. ``alias_folder`` is deliberately not here: it is
+# the durable place the persisted alias points at, never rewritten for one run.
+data_inputs = ["dataset_yaml", "annotations_file", "image_folder", "folder_path", "csv_path", "table_url"]

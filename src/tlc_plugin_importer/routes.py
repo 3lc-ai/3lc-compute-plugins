@@ -37,7 +37,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
     """Build the importer's custom route handlers (fresh per call, for per-app registration)."""
     # Imported lazily from the package __init__ (where the parsers / executors live)
     # to avoid a circular import: ImportPlugin lives there and imports this module.
-    from tlc_plugin_sdk.shared.url_utils import normalize_local_path
+    from tlc_plugin_sdk.shared.url_utils import normalize_path_or_url
 
     from tlc_plugin_importer import (
         _EXECUTORS,
@@ -65,7 +65,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         if not yaml_path.strip():
             return {"error": "yaml_path is required"}
         try:
-            return _parse_yolo_splits(normalize_local_path(yaml_path))
+            return _parse_yolo_splits(normalize_path_or_url(yaml_path))
         except Exception as exc:
             return {"error": str(exc)}
 
@@ -76,7 +76,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
         if not annotations_dir.strip():
             return {"error": "annotations_dir is required"}
         try:
-            return _parse_coco_folder(normalize_local_path(annotations_dir))
+            return _parse_coco_folder(normalize_path_or_url(annotations_dir))
         except Exception as exc:
             return {"error": str(exc)}
 

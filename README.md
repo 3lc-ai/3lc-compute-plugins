@@ -7,7 +7,7 @@ distribution `3lc-compute-plugins` built against the public
 ```
 pyproject.toml         # the one distribution (SDK floor + per-plugin extras + entry-points)
 src/
-  tlc_plugin_importer/          # import CSV/Parquet/COCO/…      ([importer] extra)
+  tlc_plugin_importer/          # import CSV/Excel/COCO/YOLO/…   ([importer] extra)
   tlc_plugin_exporter/          # export CSV/XLSX/YOLO/COCO/…    ([exporter] extra)
   tlc_plugin_merger/            # merge two tables               ([merger] extra, empty)
   tlc_plugin_splitter/          # train/val/test splits          ([splitter] extra)
@@ -46,25 +46,26 @@ with the service itself, and is **not** used here.)
 ## Develop
 
 ```bash
-export UV_INDEX='poc=https://pypi.3lc.ai/repositories/prereleases/'
-export UV_INDEX_POC_USERNAME="$CLOUDREPO_USERNAME"
-export UV_INDEX_POC_PASSWORD="$CLOUDREPO_PASSWORD"
-export UV_INDEX_STRATEGY=unsafe-first-match
+export UV_INDEX_STAGING_USERNAME="<staging index username>"
+export UV_INDEX_STAGING_PASSWORD="<staging index token>"
 uv sync --locked             # SDK floor only
 uv sync --extra importer     # one plugin's deps (exactly what the host provisions into its venv)
 uv run ruff check .
 ```
 
-The POC lockfile selects a tested SDK 0.5 snapshot from private CloudRepo. Credentials come
-from your environment; no source checkout is required. For local SDK development, use an
+The POC lockfile selects tested staged 3lc core and SDK 0.5 snapshots from the private staging index
+(`pypi.3lc.ai/repositories/prereleases`), declared as the explicit `staging` index in
+`pyproject.toml`; everything else comes from PyPI. uv reads the index credentials from
+`UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`; nothing else needs setting and no
+source checkout is required. For local SDK or 3lc development, use an
 uncommitted editable overlay.
 
 ### Publishing POC builds
 
 The manual `Release` workflow runs CI, stamps the distribution and all six plugin manifests
 with one `BASE.UTCSTAMP.RUN.ATTEMPT` version, and checks the resulting wheel. By default it
-retains artifacts without uploading. Set `publish=true` to upload to private CloudRepo
-`prereleases`, using the existing `CLOUDREPO_USERNAME` / `CLOUDREPO_PASSWORD` secrets.
+retains artifacts without uploading. Set `publish=true` to upload to the private staging index
+(`prereleases`), using the `CLOUDREPO_USERNAME` / `CLOUDREPO_PASSWORD` secrets.
 
 Catalog entries should name that exact version in both `version` and the install requirement.
 Each new POC build then appears as an update in the Hub. The source checkout keeps its normal

@@ -28,3 +28,7 @@ entrypoint = "tlc_plugin_splitter:SplitterPlugin"
 # Deps live behind this extra of the umbrella distribution; the host installs it ONLY
 # into this plugin's provisioned venv, never the host venv.
 provision_extra = "splitter"
+# A split can run beside its table on a node as well as on this host.
+remote_capable = true
+# Dotted keys into the run body: the table a split reads.
+data_inputs = ["table_url"]
