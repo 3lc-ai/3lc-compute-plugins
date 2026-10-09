@@ -52,7 +52,7 @@ def _folder_form(folder: str, **extra: Any) -> dict[str, Any]:
 
 def test_missing_source_fails_before_the_alias_or_the_copy(fakes: dict[str, Any], tmp_path: Path) -> None:
     missing = str(tmp_path / "nowhere")
-    form = _folder_form(missing, alias_copy_to_root="true", alias_copy_target="s3://b/p/Fire/data/fire")
+    form = _folder_form(missing)
     with pytest.raises(JobFailed, match=r"Folder Path '.*nowhere' was not found, or cannot be read, on "):
         imp._run_format_import(_ctx(form, tmp_path), "folder")
     assert not fakes  # nothing copied, no alias persisted
@@ -112,8 +112,14 @@ def test_the_fragment_echoes_every_declared_source() -> None:
     assert UI.count("PluginJobs.run('importer', _withSourceEcho(") == 2  # single and multi-split imports
 
 
-def test_the_fragment_opts_into_the_copy_offer() -> None:
-    assert UI.count("{ copyOffer: true }") == 2  # the import form and the CSV wizard both perform the copy
+@pytest.mark.parametrize("runner", ["folder", "csv"])
+def test_obsolete_copy_is_refused_at_both_run_entry_points(tmp_path: Path, runner: str) -> None:
+    ctx = _ctx({"alias_copy_to_root": "true"}, tmp_path)
+    with pytest.raises(JobFailed, match="Import no longer copies source data"):
+        if runner == "csv":
+            imp._run_csv_import(ctx)
+        else:
+            imp._run_format_import(ctx, runner)
 
 
 def test_csv_upload_not_held_here_says_why(tmp_path: Path) -> None:
