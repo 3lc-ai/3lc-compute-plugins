@@ -1385,8 +1385,7 @@ def _execute_yolo(form_data: dict[str, Any]) -> dict[str, Any]:
     return {
         "success": True,
         "message": (
-            f"Successfully created table '{form_data.get('table_name', '').strip() or 'initial'}' "
-            "from YOLO dataset."
+            f"Successfully created table '{form_data.get('table_name', '').strip() or 'initial'}' from YOLO dataset."
         ),
         "table_url": str(table.url),
         "project_name": form_data["project_name"],
@@ -1560,8 +1559,7 @@ def _execute_coco(form_data: dict[str, Any]) -> dict[str, Any]:
     return {
         "success": True,
         "message": (
-            f"Successfully created table '{form_data.get('table_name', '').strip() or 'initial'}' "
-            "from COCO dataset."
+            f"Successfully created table '{form_data.get('table_name', '').strip() or 'initial'}' from COCO dataset."
         ),
         "table_url": str(table.url),
         "project_name": form_data["project_name"],
@@ -1594,8 +1592,7 @@ def _execute_folder(form_data: dict[str, Any]) -> dict[str, Any]:
     return {
         "success": True,
         "message": (
-            f"Successfully created table '{form_data.get('table_name', '').strip() or 'initial'}' "
-            "from image folder."
+            f"Successfully created table '{form_data.get('table_name', '').strip() or 'initial'}' from image folder."
         ),
         "table_url": str(table.url),
         "project_name": form_data["project_name"],
