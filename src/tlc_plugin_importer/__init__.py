@@ -938,8 +938,9 @@ def _reject_legacy_copy(form_data: dict[str, Any]) -> None:
     """Refuse obsolete copy requests instead of silently changing a saved import's meaning."""
     if form_data.get("alias_copy_to_root", False) in _TRUE:
         msg = (
-            "Import no longer copies source data. Copy it to the desired location in Storage first, "
-            "then select that source and submit the import again."
+            "Import no longer copies source data. Put it where the project can read it first: Storage "
+            "copies between buckets; upload a local folder with a tool such as aws s3 sync. Then select "
+            "that source and submit the import again."
         )
         raise JobFailed(msg)
 
