@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Data movement
 
+- **Importer: aliases follow the SDK's one rule for picked folders (`register_source_alias`).** The
+  behaviour for a source root above the picked folder is unchanged; an alias folder that is not
+  above the picked folder (a durable copy elsewhere) now folds the rows from the folder read and
+  saves the alias on the copy, like every other plugin using the alias card. Requires an SDK with
+  `register_source_alias`.
+
 - **Importer references existing data without relocating it.** Regular and CSV imports no longer offer or perform permanent copies. Put data where the project can read it first (Storage copies between buckets; a local folder is uploaded with a tool such as `aws s3 sync`), then import from that source. Old saved requests that explicitly ask for copying fail with an explanation that says so, before writing a table or alias.
 - **Exporter: a bucket URL from its own picker is a valid destination.** The output picker offered
   buckets, but the export refused any URL ("Path must be absolute"). A bucket export is now written
