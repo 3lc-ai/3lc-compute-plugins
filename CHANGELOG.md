@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Other changes
 
+- **Run results can be closed, and look the same in every plugin.** Import, Export, Merge, Split and
+  Image Metrics draw their result with the Hub's shared result box (`PLUGIN_API.showResult`), which
+  has a close button (✕). Image Metrics' own banner is gone, and so is the second copy of it that a
+  run could leave behind. On a frontend that predates the shared box, the result shows its message
+  and links without the details or the close button.
 - **Importer: no Hugging Face dependencies.** Its extra no longer installs `datasets` and `transformers`,
   which nothing in the importer used. Its descriptions name the formats it imports (CSV, Excel, COCO, YOLO,
   image folders) instead of Parquet and Hugging Face, which it never read; Hugging Face imports are the

@@ -1257,12 +1257,7 @@
     var el = document.getElementById('import-result');
     if (!el) return;
 
-    var cls = data.success ? 'alert-success' : 'alert-error';
-    var icon = data.success ? '✓' : '✗';
-
-    var html = '<div class="alert ' + cls + '">';
-    html += '<span class="alert-icon">' + icon + '</span>';
-    html += '<div><strong>' + _esc(data.message) + '</strong>';
+    var html = '';
 
     // Error guidance for "already exists" issues
     if (!data.success && data.message && data.message.toLowerCase().indexOf('already exists') !== -1) {
@@ -1317,19 +1312,13 @@
       }
     }
 
-    if (data.details) {
-      html += '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">';
-      var keys = Object.keys(data.details);
-      for (var i = 0; i < keys.length; i++) {
-        html += '<span style="margin-right:12px"><strong>' + _esc(keys[i]) + ':</strong> ' +
-                _esc(String(data.details[keys[i]])) + '</span>';
-      }
-      html += '</div>';
+    if (API.showResult) {
+      API.showResult(el, data, { extra: html });
+    } else {
+      // Frontends without the shared result box: the message, its guidance and links.
+      el.innerHTML = '<div class="alert ' + (data.success ? 'alert-success' : 'alert-error') + '"><div><strong>' +
+        _esc(data.message) + '</strong>' + html + '</div></div>';
     }
-
-    html += '</div></div>';
-    el.innerHTML = html;
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     // Bind "Import Next Split" click
     var nextBtn = document.getElementById('import-next-split-btn');
