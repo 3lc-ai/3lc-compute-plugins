@@ -27,11 +27,25 @@ class ImageMetricsConfig:
     last_run: str | None = None
 
 
-# Back-compat: configs saved under the older location are moved into
-# ~/.3lc-plugin-configs/image-metrics/ on first store construction.
-_LEGACY_DIR = Path.home() / ".3lc-training" / "image-metrics-configs"
+def _legacy_dir() -> Path | None:
+    """Where older versions saved configs (``~/.3lc-training/image-metrics-configs``), or ``None`` without a home.
+
+    Resolved when a store is built, not at import, as the SDK resolves its own config root: a worker
+    whose environment carries no home directory still imports the plugin.
+    """
+    try:
+        return Path.home() / ".3lc-training" / "image-metrics-configs"
+    except RuntimeError:
+        return None
 
 
 def config_store() -> PluginConfigStore[ImageMetricsConfig]:
-    """Return a store for Image Metrics saved configs (cheap; not cached)."""
-    return PluginConfigStore(ImageMetricsConfig, "image-metrics", legacy_dir=_LEGACY_DIR)
+    """Return a store for Image Metrics saved configs (cheap; not cached).
+
+    Configs saved under the older location are moved into the SDK's config root
+    (``~/.3lc-plugin-configs/image-metrics/``) on first store construction.
+
+    Raises:
+        ConfigRootUnavailable: When the SDK cannot place its config root (no home directory, no override).
+    """
+    return PluginConfigStore(ImageMetricsConfig, "image-metrics", legacy_dir=_legacy_dir())

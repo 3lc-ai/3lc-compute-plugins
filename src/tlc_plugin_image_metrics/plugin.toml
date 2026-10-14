@@ -27,3 +27,9 @@ entrypoint = "tlc_plugin_image_metrics:ImageMetricsPlugin"
 # into this plugin's provisioned venv, never the host venv.
 provision_extra = "image_metrics"
 requires_gpu = false
+# Image analysis gains from a larger machine and from running beside its data: a node target is
+# accepted as well as this host.
+remote_capable = true
+# Dotted keys into the run body: the table whose images are measured (the derived table is written
+# next to it, under the project root).
+data_inputs = ["table_url"]

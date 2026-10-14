@@ -432,8 +432,9 @@ class ExportPlugin(ComputePlugin):
         Args:
             ctx: Host-provided job context. ``ctx.params`` carries the same body
                 the ``/execute`` route accepts: ``format``, ``table_url``,
-                ``output_path``, format-specific options, and optional
-                ``alias_overrides``.
+                ``output_path`` (a local path or a bucket URL) and format-specific
+                options. Alias overrides the host stamps (``_alias_overrides``) are
+                applied by the SDK worker around this call.
 
         Raises:
             ValueError: When the export fails, so the host marks the job failed
@@ -446,7 +447,11 @@ class ExportPlugin(ComputePlugin):
         label = f"Exporting to {format_name.upper()}…" if format_name else "Exporting…"
         ctx.progress(percent=-1, label=label)
 
-        result = run_export(ctx.params)
+        def uploaded(done: int, total: int) -> None:
+            pct = int(done * 100 / total) if total else -1
+            ctx.progress(percent=pct, label=f"Uploading the export… {done:,}/{total:,} files")
+
+        result = run_export(ctx.params, progress=uploaded)
 
         payload = dict(result)
         payload["job_id"] = ctx.job_id

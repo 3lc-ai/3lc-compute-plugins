@@ -79,7 +79,12 @@ def test_run_job_reports_result_on_success(monkeypatch: pytest.MonkeyPatch, tmp_
     monkeypatch.setattr(
         merger,
         "_execute_merge",
-        lambda data: {"success": True, "message": "Merged", "table_url": table_url, "details": {"input_count": 2}},
+        lambda data, root_url=None: {
+            "success": True,
+            "message": "Merged",
+            "table_url": table_url,
+            "details": {"input_count": 2},
+        },
     )
     events: list[dict[str, Any]] = []
     params = {"table_urls": ["a", "b"], "project_name": "p", "dataset_name": "d", "table_name": "merged"}
@@ -118,3 +123,46 @@ def test_execute_merge_reports_incompatible_schemas_friendlily(monkeypatch: pyte
     assert result["success"] is False
     assert "columns don't match" in result["message"]
     assert "stacks rows" in result["message"]
+
+
+def _capture_join(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """Replace ``tlc`` with a fake whose ``join_tables`` records its kwargs."""
+    captured: dict[str, Any] = {}
+
+    class _FakeTable:
+        @staticmethod
+        def from_url(_u: str) -> object:
+            return object()
+
+        @staticmethod
+        def join_tables(*_a: Any, **k: Any) -> object:
+            captured.update(k)
+            return type("_M", (), {"url": "s3://root/p/datasets/d/tables/m"})()
+
+    fake_tlc = type("_T", (), {"Table": _FakeTable})()
+
+    import sys
+
+    monkeypatch.setitem(sys.modules, "tlc", fake_tlc)
+    return captured
+
+
+def test_run_job_writes_under_the_stamped_project_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """The root the host stamps into the body reaches ``join_tables`` as ``root_url``."""
+    captured = _capture_join(monkeypatch)
+    params = {
+        "table_urls": ["a", "b"],
+        "project_name": "p",
+        "dataset_name": "d",
+        "table_name": "m",
+        "project_root_url": "s3://root/",
+    }
+    merger.MergePlugin().run_job(_ctx([], params, tmp_path))
+    assert captured["root_url"] == "s3://root"
+
+
+def test_execute_merge_without_root_uses_the_configured_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No root passed means ``root_url=None`` — tlc's configured root, as before."""
+    captured = _capture_join(monkeypatch)
+    merger._execute_merge({"table_urls": ["a", "b"], "project_name": "p", "dataset_name": "d", "table_name": "m"})
+    assert captured["root_url"] is None
