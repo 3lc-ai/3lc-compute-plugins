@@ -47,13 +47,15 @@ def fakes(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
 @pytest.mark.parametrize("enabled", [True, "true", "1"])
 def test_legacy_copy_request_fails_before_alias_or_copy(fakes, enabled):
-    with pytest.raises(imp.JobFailed, match="Import no longer copies source data"):
+    with pytest.raises(imp.JobFailed, match="Import no longer copies source data") as refused:
         imp._maybe_register_alias(
             {"project_name": "Fire", "alias_copy_to_root": enabled, "alias_copy_target": "s3://b/images"},
             "/data/fire",
             _Ctx(),
         )
     assert not fakes
+    # Storage cannot upload a host folder; the refusal must not send anyone there for it.
+    assert "aws s3 sync" in str(refused.value) and "in Storage first" not in str(refused.value)
 
 
 def test_no_copy_without_the_checkbox(fakes: dict[str, Any]) -> None:

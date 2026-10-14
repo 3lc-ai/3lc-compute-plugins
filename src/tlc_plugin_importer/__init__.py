@@ -938,8 +938,9 @@ def _reject_legacy_copy(form_data: dict[str, Any]) -> None:
     """Refuse obsolete copy requests instead of silently changing a saved import's meaning."""
     if form_data.get("alias_copy_to_root", False) in _TRUE:
         msg = (
-            "Import no longer copies source data. Copy it to the desired location in Storage first, "
-            "then select that source and submit the import again."
+            "Import no longer copies source data. Put it where the project can read it first: Storage "
+            "copies between buckets; upload a local folder with a tool such as aws s3 sync. Then select "
+            "that source and submit the import again."
         )
         raise JobFailed(msg)
 
@@ -958,14 +959,14 @@ def _maybe_register_alias(
 
     Raises:
         JobFailed: The alias covers a parent of the source folder, and the folder this
-            run reads is not laid out the same way below it (see _session_alias_folder).
+            run reads is not laid out the same way below it (the SDK's ``register_source_alias``).
 
     """
     _reject_legacy_copy(form_data)
     if form_data.get("alias_enabled", "true") not in _TRUE:
         return None
 
-    from tlc_plugin_sdk.shared.aliases import default_alias_token, register_alias
+    from tlc_plugin_sdk.shared.aliases import default_alias_token, register_source_alias
 
     project_name = form_data["project_name"].strip()
     token = form_data.get("alias_token", "").strip() or default_alias_token(project_name)
@@ -975,58 +976,19 @@ def _maybe_register_alias(
 
     # The source fields say where THIS run reads the data; the host may have pointed them at a copy
     # on a node, or at a path the person named there (*source_folder* is then where the data came
-    # from). ``alias_folder`` is never rewritten: the persisted alias keeps pointing there, and the
-    # session alias moves to the matching place in the folder actually read, so the rows are
-    # tokenised from the files this run reads.
-    remote: str | None = None
-    if source_folder and image_folder and source_folder != image_folder and _is_under(source_folder, folder):
-        session = _session_alias_folder(image_folder, source_folder, folder, token)
-        folder, remote = session, folder
-        if ctx is not None:
-            ctx.log(f"Reading the data from {image_folder}; <{token}> keeps pointing at {remote}.")
+    # from). ``alias_folder`` is never rewritten. The SDK's alias rule keeps the persisted alias on
+    # it and folds the rows from the folder actually read, refusing a copy that lost the layout.
+    if source_folder and image_folder and source_folder != image_folder and ctx is not None:
+        ctx.log(f"Reading the data from {image_folder}; <{token}> keeps pointing at {folder}.")
 
-    return register_alias(
-        project_name=project_name,
-        image_folder=folder,
+    return register_source_alias(
+        project_name,
+        image_folder or folder,
+        source_folder=source_folder or image_folder or folder,
+        alias_folder=folder,
         alias_token=token,
-        remote_path=remote,
         root_url=_root(form_data),
     )
-
-
-def _is_under(path: str, folder: str) -> bool:
-    """True when *path* is *folder* or inside it (local paths and URLs alike)."""
-    path, folder = path.strip().rstrip("/"), folder.strip().rstrip("/")
-    return path == folder or path.startswith(folder + "/")
-
-
-def _session_alias_folder(read_folder: str, source_folder: str, alias_folder: str, token: str) -> str:
-    """Where the session alias must point so rows read from *read_folder* resolve under *alias_folder*.
-
-    A row read from ``<read_folder>/b.jpg`` is written as ``<TOKEN>/<rel>/b.jpg`` — *rel* being
-    where the source sits below the alias folder — and the persisted alias resolves that to
-    ``<alias_folder>/<rel>/b.jpg``, the source file. That needs a session folder S with
-    ``S/<rel> == read_folder``: the read folder itself when the alias is the source folder, or
-    the read folder minus *rel* when the copy kept the layout below the alias folder.
-
-    Raises:
-        JobFailed: The alias covers a parent of the source folder and the read folder does not
-            end in the same subfolders, so no session alias would tokenise its rows correctly.
-
-    """
-    rel = source_folder.strip().rstrip("/")[len(alias_folder.strip().rstrip("/")) :].strip("/")
-    read = read_folder.strip().rstrip("/")
-    if not rel:
-        return read
-    if read.endswith("/" + rel):
-        return read[: -len(rel) - 1]
-    msg = (
-        f"This import reads the data from {read}, a copy of {source_folder}, but the alias <{token}> "
-        f"points at {alias_folder}, a folder above it; the table's paths would not resolve to the source. "
-        "Point the alias folder at the data folder itself, or read the data where it is for this import "
-        "instead of from a copy."
-    )
-    raise JobFailed(msg)
 
 
 def _submitted_image_folder(format_name: str, form_data: dict[str, Any]) -> str | None:
