@@ -368,23 +368,10 @@
 
   function showResult(data) {
     var el = document.getElementById('export-result');
-    var cls = data.success ? 'alert-success' : 'alert-error';
-    var icon = data.success ? '✓' : '✗';
-    var html = '<div class="alert ' + cls + '">';
-    html += '<span class="alert-icon">' + icon + '</span>';
-    html += '<div><strong>' + _esc(data.message) + '</strong>';
-    if (data.details) {
-      html += '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">';
-      var keys = Object.keys(data.details);
-      for (var i = 0; i < keys.length; i++) {
-        html += '<span style="margin-right:12px"><strong>' + _esc(keys[i]) + ':</strong> ' +
-                _esc(String(data.details[keys[i]])) + '</span>';
-      }
-      html += '</div>';
-    }
-    html += '</div></div>';
-    el.innerHTML = html;
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (API.showResult) { API.showResult(el, data); return; }
+    // Frontends without the shared result box: the message alone.
+    el.innerHTML = '<div class="alert ' + (data.success ? 'alert-success' : 'alert-error') + '"><div><strong>' +
+      _esc(data.message) + '</strong></div></div>';
   }
 
   document.getElementById('export-browse-btn').addEventListener('click', function() {
