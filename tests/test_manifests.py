@@ -64,3 +64,46 @@ def test_ids_match_entry_points() -> None:
         assert manifest["id"] == expected_id or manifest["id"] == ep_key, (
             f"Entry-point {ep_key!r} maps to package {ep_package!r} but manifest id is {manifest['id']!r}"
         )
+
+
+# The run-body keys each plugin declares as the data it reads and writes. A table URL among the
+# values is planned as a table (its aliases); anything else is a folder, file or URL reference.
+DATA_KEYS: dict[str, tuple[list[str], list[str]]] = {
+    "tlc_plugin_importer": (
+        ["dataset_yaml", "annotations_file", "image_folder", "folder_path", "csv_path", "table_url"],
+        [],
+    ),
+    "tlc_plugin_exporter": (["table_url"], ["output_path"]),
+    "tlc_plugin_merger": (["table_urls"], []),
+    "tlc_plugin_splitter": (["table_url"], []),
+    "tlc_plugin_image_metrics": (["table_url"], []),
+    # Statistics are served through /compute, not a run body: nothing to plan.
+    "tlc_plugin_table_statistics": ([], []),
+}
+
+
+def test_data_keys_are_lists_of_dotted_keys(manifest: dict[str, Any]) -> None:
+    for name in ("data_inputs", "data_outputs"):
+        keys = manifest["runtime"].get(name, [])
+        assert isinstance(keys, list), f"runtime.{name} must be a list"
+        for key in keys:
+            assert isinstance(key, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*", key), (
+                f"runtime.{name} entry {key!r} is not a dotted run-body key"
+            )
+
+
+def test_declared_data_keys(plugin_package: str, manifest: dict[str, Any]) -> None:
+    inputs, outputs = DATA_KEYS[plugin_package]
+    assert manifest["runtime"].get("data_inputs", []) == inputs
+    assert manifest["runtime"].get("data_outputs", []) == outputs
+
+
+def test_importer_form_fields_that_name_data_are_declared() -> None:
+    """Every importer form field the person points at data is a declared input — a new one must be added."""
+    import tlc_plugin_importer as imp
+
+    declared = set(DATA_KEYS["tlc_plugin_importer"][0])
+    for step in imp.IMPORT_STEPS.values():
+        for field in step["form_fields"]:
+            if field.get("type") == "data_source":
+                assert field["id"] in declared, f"{step['name']}: {field['id']} reads data but is not declared"

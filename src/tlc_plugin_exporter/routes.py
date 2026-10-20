@@ -11,7 +11,12 @@ threadpool) because they touch the ``tlc`` SDK and the filesystem, which block.
 
 from __future__ import annotations
 
+import contextvars
 import logging
+import tempfile
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from litestar import get, post
@@ -28,15 +33,19 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def run_export(data: dict[str, Any]) -> dict[str, Any]:
+def run_export(data: dict[str, Any], *, progress: UploadProgress | None = None) -> dict[str, Any]:
     """Validate and execute one export request.
 
     Shared by ``ExportPlugin.run_job`` (the job channel the UI drives) and the
-    legacy synchronous ``/execute`` route.
+    legacy synchronous ``/execute`` route. The output may be a local path or a
+    bucket URL (the picker offers both): a bucket export is written to a local
+    scratch folder first and then uploaded, so every format's writer keeps
+    writing files.
 
     Args:
-        data: ``format``, ``table_url``, ``output_path``, format-specific
-            options, and optional ``alias_overrides``.
+        data: ``format``, ``table_url``, ``output_path`` and format-specific options.
+        progress: Optional ``(files_done, files_total)`` callback for the upload of a
+            bucket export.
 
     Returns:
         ``{"success": True, "message": str, "details": dict}`` on success, or
@@ -54,10 +63,10 @@ def run_export(data: dict[str, Any]) -> dict[str, Any]:
     if not output_path:
         return {"success": False, "message": "Output path is required."}
 
-    from tlc_plugin_sdk.shared.url_utils import normalize_local_path
+    from tlc_plugin_sdk.shared.url_utils import is_url, normalize_path_or_url
 
     try:
-        output_path = normalize_local_path(output_path)
+        output_path = normalize_path_or_url(output_path)
     except ValueError as exc:
         return {"success": False, "message": str(exc)}
 
@@ -65,25 +74,99 @@ def run_export(data: dict[str, Any]) -> dict[str, Any]:
     if not executor:
         return {"success": False, "message": f"No executor for format: {format_name}"}
 
-    # Apply alias overrides if requested
-    originals: list[dict[str, str]] = []
-    alias_overrides = data.get("alias_overrides") or {}
-    if alias_overrides.get("enabled") and alias_overrides.get("overrides"):
-        from tlc_plugin_sdk.shared.aliases import apply_alias_overrides
-
-        originals = apply_alias_overrides(alias_overrides["overrides"])
-
     try:
+        if is_url(output_path):
+            return _export_to_url(executor, table_url, output_path, data, progress)
         result: dict[str, Any] = executor(table_url, output_path, data)
         return result
     except Exception as exc:
         logger.exception("Export failed for format %s", format_name)
         return {"success": False, "message": f"Export failed: {exc}", "details": {}}
-    finally:
-        if originals:
-            from tlc_plugin_sdk.shared.aliases import restore_aliases
 
-            restore_aliases(originals)
+
+UploadProgress = Callable[[int, int], None]
+"""``(files_done, files_total)`` — called after every uploaded file of a bucket export."""
+
+
+def _export_to_url(
+    executor: Callable[[str, str, dict[str, Any]], dict[str, Any]],
+    table_url: str,
+    output_url: str,
+    data: dict[str, Any],
+    progress: UploadProgress | None,
+) -> dict[str, Any]:
+    """Run *executor* into a scratch folder, then upload what it wrote under *output_url*.
+
+    An output with a file suffix (``…/export.csv``, ``…/dataset.yaml``) names the file in its
+    parent prefix; anything else is the prefix itself. Whatever the writer puts beside the file
+    (YOLO's labels and images) lands beside it at the destination too. Existing objects are
+    overwritten, as a local export overwrites files.
+    """
+    from tlc_plugin_sdk.shared.url_utils import name_of, parent_of, suffix_of
+
+    with tempfile.TemporaryDirectory(prefix="tlc-export-") as tmp:
+        scratch = Path(tmp) / "out"
+        scratch.mkdir()
+        # A bucket root (``s3://my.bucket``) is a prefix even when its name has a dot in it.
+        if output_url.rstrip("/").count("/") > 2 and suffix_of(output_url):
+            local_target, prefix = scratch / name_of(output_url), parent_of(output_url)
+        else:
+            local_target, prefix = scratch, output_url
+        result = executor(table_url, str(local_target), data)
+        if result.get("success"):
+            count = _upload_folder(scratch, prefix, progress)
+            result = _rebase_paths(result, str(scratch), prefix.rstrip("/"))
+            result.setdefault("details", {})["uploaded_files"] = count
+        return result
+
+
+def _upload_folder(root: Path, prefix: str, progress: UploadProgress | None, workers: int = 8) -> int:
+    """Write every file under *root* to ``<prefix>/<relative path>``, overwriting; return the count.
+
+    Raises:
+        RuntimeError: A file could not be written (the first failure, after the uploads in flight).
+
+    """
+    import tlc
+
+    base = prefix.rstrip("/")
+    files = sorted(p for p in root.rglob("*") if p.is_file())
+
+    def put(path: Path) -> None:
+        tlc.Url(base + "/" + path.relative_to(root).as_posix()).write_bytes(path.read_bytes())
+
+    done = 0
+    first_error: Exception | None = None
+    # Each upload runs in a copy of the caller's context, so the job's Connection (the SDK binds
+    # its credential in a context variable) holds in the pool threads as it does here.
+    context = contextvars.copy_context()
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        for path, fut in [(p, pool.submit(context.copy().run, put, p)) for p in files]:
+            try:
+                fut.result()
+            except Exception as exc:
+                if first_error is None:
+                    first_error = exc
+                    logger.warning("Upload failed for %s → %s: %s", path, base, exc)
+                continue
+            done += 1
+            if progress is not None:
+                progress(done, len(files))
+    if first_error is not None:
+        msg = f"Could not upload the export to {base}: {first_error}"
+        raise RuntimeError(msg) from first_error
+    return done
+
+
+def _rebase_paths(value: Any, local: str, remote: str) -> Any:
+    """Replace the scratch folder with the destination prefix in every string of an executor result."""
+    if isinstance(value, str):
+        return value.replace(local, remote)
+    if isinstance(value, dict):
+        return {k: _rebase_paths(v, local, remote) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_rebase_paths(v, local, remote) for v in value]
+    return value
 
 
 def get_route_handlers() -> list[BaseRouteHandler]:

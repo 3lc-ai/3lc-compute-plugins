@@ -209,10 +209,11 @@ def invalidate_stats(url: str) -> None:
 
 def _compute_progressive(url: str) -> None:
     """Background thread: compute stats in BATCH_SIZE-row increments."""
-    import tlc
-
     session = _sessions[url]
     try:
+        # Importing the SDK can fail during activation, before any table is opened.
+        import tlc
+
         table = tlc.Table.from_url(url)
         total = len(table)
         session.total_rows = total
