@@ -1,6 +1,6 @@
 # Copyright 2026 3LC Inc.
 # SPDX-License-Identifier: Apache-2.0
-"""Progressive statistics always finish, including failed SDK initialization."""
+"""Progressive statistics always finish, and a failed session is retried on the next request."""
 
 from __future__ import annotations
 
@@ -33,8 +33,26 @@ def _wait_for_stats() -> dict[str, Any]:
     return table_stats.get_or_start_stats(URL)
 
 
+def _fake_tlc(monkeypatch: pytest.MonkeyPatch, from_url: Any) -> None:
+    monkeypatch.setitem(sys.modules, "tlc", SimpleNamespace(Table=SimpleNamespace(from_url=from_url)))
+
+
+def _numeric_table() -> MagicMock:
+    table = MagicMock()
+    table.__len__.return_value = 3
+    table.rows_schema = SimpleNamespace(values={"score": object()})
+    table.get_column_as_pyarrow_array.return_value = pa.array([1.0, 2.0, 3.0])
+    return table
+
+
+@pytest.fixture
+def plain_columns(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(modality, "detect_modality_from_table", lambda table: modality.ModalityInfo())
+    monkeypatch.setattr(table_stats, "_get_value_map", lambda table, name: None)
+
+
 @pytest.mark.parametrize("error_type", [RuntimeError, ModuleNotFoundError])
-def test_failed_sdk_import_finishes_cached_session(
+def test_failed_sdk_import_finishes_session_and_next_request_retries(
     monkeypatch: pytest.MonkeyPatch, error_type: type[Exception]
 ) -> None:
     original_import = builtins.__import__
@@ -55,20 +73,70 @@ def test_failed_sdk_import_finishes_cached_session(
     assert result["error"] == "SDK activation failed"
     assert result["rows_processed"] == 0
     assert result["columns"] == []
-    # Subsequent polls keep the terminal error instead of launching another worker.
+    # The poll that saw the error dropped the session, so the next request starts a new attempt.
+    assert URL not in table_stats._sessions
+    assert _wait_for_stats()["error"] == "SDK activation failed"
+    assert imports == ["tlc", "tlc"]
+
+
+def test_failed_read_is_not_served_from_cache_after_it_is_fixed(
+    monkeypatch: pytest.MonkeyPatch, plain_columns: None
+) -> None:
+    attempts = []
+
+    def from_url(url: str) -> MagicMock:
+        attempts.append(url)
+        if len(attempts) == 1:
+            msg = "s3 read_string failed: connection reset"
+            raise RuntimeError(msg)
+        return _numeric_table()
+
+    _fake_tlc(monkeypatch, from_url)
+
+    assert _wait_for_stats()["error"] == "s3 read_string failed: connection reset"
+    retried = _wait_for_stats()
+
+    assert retried["error"] is None
+    assert retried["complete"] is True
+    assert retried["rows_processed"] == 3
+    assert len(attempts) == 2
+
+
+def test_successful_stats_stay_cached(monkeypatch: pytest.MonkeyPatch, plain_columns: None) -> None:
+    attempts = []
+
+    def from_url(url: str) -> MagicMock:
+        attempts.append(url)
+        return _numeric_table()
+
+    _fake_tlc(monkeypatch, from_url)
+
+    result = _wait_for_stats()
+
+    assert result["error"] is None
     assert table_stats.get_or_start_stats(URL) == result
-    assert imports == ["tlc"]
+    assert len(attempts) == 1
 
 
-def test_successful_stats_still_process_batches(monkeypatch: pytest.MonkeyPatch) -> None:
-    table = MagicMock()
-    table.__len__.return_value = 3
-    table.rows_schema = SimpleNamespace(values={"score": object()})
-    table.get_column_as_pyarrow_array.return_value = pa.array([1.0, 2.0, 3.0])
-    fake_tlc = SimpleNamespace(Table=SimpleNamespace(from_url=lambda url: table))
-    monkeypatch.setitem(sys.modules, "tlc", fake_tlc)
-    monkeypatch.setattr(modality, "detect_modality_from_table", lambda table: modality.ModalityInfo())
-    monkeypatch.setattr(table_stats, "_get_value_map", lambda table, name: None)
+def test_missing_aws_credentials_say_what_to_do(monkeypatch: pytest.MonkeyPatch) -> None:
+    raw = "s3 read_string failed: object_store error: Generic S3 error: the credential provider was not enabled"
+
+    def from_url(url: str) -> MagicMock:
+        raise RuntimeError(raw)
+
+    _fake_tlc(monkeypatch, from_url)
+
+    error = _wait_for_stats()["error"]
+
+    assert error.startswith("This compute service found no AWS credentials for bucket test-project.")
+    assert "AWS_PROFILE" in error
+    assert "restart it" in error
+    assert error.endswith(raw)
+
+
+def test_successful_stats_still_process_batches(monkeypatch: pytest.MonkeyPatch, plain_columns: None) -> None:
+    table = _numeric_table()
+    _fake_tlc(monkeypatch, lambda url: table)
     monkeypatch.setattr(table_stats, "BATCH_SIZE", 2)
 
     result = _wait_for_stats()

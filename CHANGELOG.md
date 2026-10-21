@@ -85,6 +85,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Import success messages show `initial` when the table name is left blank.
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.
+- **Table Statistics retries a failed table on the next request.** A statistics session that ended
+  in an error is returned to the poll that finishes it and then dropped, so the next request reads
+  the table again instead of serving the cached error until `reset=1` or a worker restart. When the
+  S3 read failed because the compute service has no AWS credentials (the AWS SDK's "the credential
+  provider was not enabled"), the error starts with a sentence saying so and naming the fix: set
+  `AWS_PROFILE` or access keys in the compute service's environment and restart it.
 - **Image Metrics imports on a worker without a home directory.** Its legacy config folder is resolved
   when a config store is built, not at import, as the SDK resolves its own config root; without a home
   the store raises the SDK's `ConfigRootUnavailable` instead of the plugin failing to load.
