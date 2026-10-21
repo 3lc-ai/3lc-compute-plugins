@@ -174,19 +174,26 @@ class StatsSession:
 
 
 def get_or_start_stats(url: str) -> dict[str, Any]:
-    """Get current stats for a URL, starting background computation if needed."""
+    """Get current stats for a URL, starting background computation if needed.
+
+    A session that ended in an error is returned once and then dropped, so the poll that sees
+    it stops on the error and the next request tries again (e.g. after credentials were fixed).
+    """
     from tlc_plugin_sdk.shared.url_utils import normalize_url
 
     norm = normalize_url(url)
 
     with _lock:
         if norm in _sessions:
-            return _sessions[norm].snapshot()
+            cached = _sessions[norm]
+            if cached.complete and cached.error is not None:
+                del _sessions[norm]
+            return cached.snapshot()
 
         session = StatsSession(url=norm)
         _sessions[norm] = session
 
-    t = threading.Thread(target=_compute_progressive, args=(norm,), daemon=True)
+    t = threading.Thread(target=_compute_progressive, args=(session,), daemon=True)
     session._thread = t
     t.start()
 
@@ -207,9 +214,9 @@ def invalidate_stats(url: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _compute_progressive(url: str) -> None:
+def _compute_progressive(session: StatsSession) -> None:
     """Background thread: compute stats in BATCH_SIZE-row increments."""
-    session = _sessions[url]
+    url = session.url
     try:
         # Importing the SDK can fail during activation, before any table is opened.
         import tlc
@@ -314,8 +321,26 @@ def _compute_progressive(url: str) -> None:
 
     except Exception as exc:
         logger.exception("Progressive stats failed for %s", url)
-        session.error = str(exc)
+        session.error = _describe_error(url, exc)
         session.complete = True
+
+
+# The AWS SDK's CredentialsNotLoaded text, surfaced by the 3LC core's S3 reader when neither
+# static keys nor the default credential chain yield anything.
+_AWS_NO_CREDENTIALS = "the credential provider was not enabled"
+
+
+def _describe_error(url: str, exc: Exception) -> str:
+    """Return the error text for a failed session, explaining missing AWS credentials in plain words."""
+    raw = str(exc)
+    if _AWS_NO_CREDENTIALS not in raw:
+        return raw
+    bucket = url.split("/", 3)[2] if url.startswith("s3://") else ""
+    where = f"bucket {bucket}" if bucket else "the bucket"
+    return (
+        f"This compute service found no AWS credentials for {where}. Set AWS_PROFILE or AWS access keys "
+        f"in the compute service's environment and restart it. Details: {raw}"
+    )
 
 
 # ---------------------------------------------------------------------------
