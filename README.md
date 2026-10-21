@@ -40,8 +40,28 @@ That's why the base `dependencies` is the **SDK floor only** (`3lc-compute-plugi
 distribution is never installed into the host venv. Each plugin's real deps ride its own extra and
 land only in that plugin's provisioned venv.
 
-(`host`-mode — light deps, in-process in the host venv — is reserved for plugins that ship
-with the service itself, and is **not** used here.)
+The compute service runs every plugin this way: it ships no plugins of its own and has no
+in-process mode.
+
+## Where a run happens
+
+Every plugin here is `remote_capable = true`: besides the compute service's own machine, a run can
+target a remote node the Hub manages, where the plugin's worker runs beside the data. None of them
+needs a GPU (`requires_gpu` is false).
+
+The manifests also say which run-body keys carry data, as `[runtime] data_inputs` (what a run
+reads) and `data_outputs` (where it writes), dotted keys into the JSON body. A Hub that plans data
+movement asks where that data is for the chosen machine before the run starts; older hosts ignore
+the keys.
+
+| Plugin | `data_inputs` | `data_outputs` |
+| --- | --- | --- |
+| importer | `dataset_yaml`, `annotations_file`, `image_folder`, `folder_path`, `csv_path`, `table_url` | — |
+| exporter | `table_url` | `output_path` |
+| merger | `table_urls` | — |
+| splitter | `table_url` | — |
+| image_metrics | `table_url` | — |
+| table_statistics | — (it has no run body) | — |
 
 ## Develop
 
@@ -53,14 +73,14 @@ uv sync --extra importer     # one plugin's deps (exactly what the host provisio
 uv run ruff check .
 ```
 
-The POC lockfile selects tested staged 3lc core and SDK 0.5 snapshots from the private staging index
+The lockfile selects tested staged 3lc core and SDK 0.5 snapshots from the private staging index
 (`pypi.3lc.ai/repositories/prereleases`), declared as the explicit `staging` index in
 `pyproject.toml`; everything else comes from PyPI. uv reads the index credentials from
 `UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`; nothing else needs setting and no
 source checkout is required. For local SDK or 3lc development, use an
 uncommitted editable overlay.
 
-### Publishing POC builds
+### Publishing snapshot builds
 
 The manual `Release` workflow runs CI, stamps the distribution and all six plugin manifests
 with one `BASE.UTCSTAMP.RUN.ATTEMPT` version, and checks the resulting wheel. By default it
@@ -68,9 +88,9 @@ retains artifacts without uploading. Set `publish=true` to upload to the private
 (`prereleases`), using the `CLOUDREPO_USERNAME` / `CLOUDREPO_PASSWORD` secrets.
 
 Catalog entries should name that exact version in both `version` and the install requirement.
-Each new POC build then appears as an update in the Hub. The source checkout keeps its normal
-three-part version. Public PyPI publication still uses a matching `vX.Y.Z` tag and verifies
-distribution/manifest agreement; do not push release tags during the POC.
+Each new snapshot then appears as an update in the Hub. The source checkout keeps its normal
+three-part version. Public PyPI publication uses a matching `vX.Y.Z` tag and verifies
+distribution/manifest agreement; the SDK 0.5 line these plugins require is not on PyPI yet.
 
 ### Editor autocomplete for `ui.html` (the JS bridge)
 
