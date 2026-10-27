@@ -69,6 +69,7 @@ def get_route_handlers() -> list[BaseRouteHandler]:
                 name=data.get("name", "Untitled"),
                 metric_ids=data.get("metric_ids", []),
                 output_name_suffix=data.get("output_name_suffix", "metrics"),
+                table_urls=[str(u) for u in (data.get("table_urls") or [])],
                 created=data.get("created", ""),
                 last_run=data.get("last_run"),
             )

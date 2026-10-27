@@ -111,7 +111,7 @@
 /* Result banner */
 </style>
 
-<div class="plugin-page">
+<div class="plugin-page" id="im-page">
 <!-- ── Hero ───────────────────────────────────────────────── -->
 <div class="plugin-hero" style="padding:20px 24px">
       <h2 style="margin-bottom:6px">Image Metrics</h2>
@@ -152,22 +152,8 @@
 <!-- ── Running-job notice (seeded from the host's job list on mount) ── -->
 <div id="im-running-notice" class="alert alert-info" style="display:none;margin-bottom:16px"></div>
 
-<!-- ── Config Bar ─────────────────────────────────────────── -->
-<div class="plugin-config-bar">
-  <span class="bar-label">Config</span>
-  <select id="im-config-select" class="form-control" onchange="imCfg.onSelect(this.value)">
-    <option value="">New config</option>
-  </select>
-  <button class="btn btn-ghost btn-sm" onclick="imCfg.newConfig()">+ New</button>
-  <button class="btn btn-secondary btn-sm" id="im-save-new-btn" onclick="imCfg.saveAsNew()" style="display:none">Save New</button>
-  <button class="btn btn-danger btn-sm" id="im-delete-btn" onclick="imCfg.deleteConfig()" style="display:none">Delete</button>
-</div>
-
-<!-- ── Config name (shown when editing) ────────────────────── -->
-<div style="margin-bottom:14px">
-  <label class="form-label" style="font-size:10px">Config Name</label>
-  <input type="text" id="im-config-name" class="form-control" placeholder="e.g. Quality Check, Full Analysis" style="font-size:11px;max-width:320px" oninput="imCfg.scheduleAutoSave()">
-</div>
+<!-- ── Presets: the SDK's preset bar renders here (_tlcPluginPresets) ── -->
+<div id="im-presets"></div>
 
 <!-- ── Table Selection ──────────────────────────────────────── -->
 <div class="card" style="margin-bottom:16px">
@@ -221,7 +207,7 @@
     <div class="plugin-form-grid">
       <div>
         <label class="form-label">Output Table Name Suffix</label>
-        <input type="text" id="im-output-name" class="form-control" placeholder="metrics (appended to each table name)" style="font-size:11px" value="metrics" oninput="imCfg.scheduleAutoSave()">
+        <input type="text" id="im-output-name" class="form-control" placeholder="metrics (appended to each table name)" style="font-size:11px" value="metrics">
         <div class="form-help">The suffix is appended to each input table name to create the output table (e.g. "train" becomes "train-metrics").</div>
       </div>
     </div>
@@ -274,36 +260,75 @@
   /* ── Recommended metrics for "quick start" ── */
   var RECOMMENDED = ['brightness', 'sharpness', 'contrast', 'noise_estimate', 'entropy', 'saturation'];
 
-  /* ── Shared config manager ── */
-  var imCfg = _tlcPluginConfig({
-    prefix: 'im',
+  /* ── Presets: the SDK's preset bar (SDK guide → Presets). A run never saves one. ── */
+  function imDefaultFormData() {
+    return { metric_ids: RECOMMENDED.slice(), output_name_suffix: 'metrics', table_urls: [] };
+  }
+
+  function imCollectFormData() {
+    return {
+      metric_ids: Object.keys(selectedMetrics),
+      output_name_suffix: (document.getElementById('im-output-name').value || 'metrics').trim(),
+      table_urls: tableEntries.map(function(e) { return e.url; }),
+    };
+  }
+
+  function imApplyFormData(values) {
+    values = values || {};
+    document.getElementById('im-output-name').value = values.output_name_suffix || 'metrics';
+    selectedMetrics = {};
+    (values.metric_ids || []).forEach(function(id) { selectedMetrics[id] = true; });
+    _refreshCards();
+    tableEntries = [];
+    (values.table_urls || []).forEach(function(url) { _addTableUrl(url); });
+    _renderTableList();
+    _updateState();
+  }
+
+  // The tables the plugin was opened with: the action button's, or ?table= / ?url=. They replace
+  // the preset's tables for the page's life.
+  function imContextInputs() {
+    var ctx = (typeof PLUGIN_API !== 'undefined' && PLUGIN_API.context) ? PLUGIN_API.context : {};
+    var urls = (ctx.resourceUrls || []).slice();
+    if (!urls.length) {
+      var params = new URLSearchParams(window.location.search);
+      urls = params.getAll('table').filter(Boolean);
+      if (!urls.length) {
+        var single = params.get('url') || '';
+        if (single) urls = [single];
+      }
+    }
+    return urls.length ? { table_urls: urls } : null;
+  }
+
+  // The name a new preset gets unless the person types one: "6 metrics · 2026-10-27".
+  function imAutoName(values) {
+    var d = new Date();
+    var dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    return imPresetSummary(values) + ' \u00b7 ' + dateStr;
+  }
+
+  // What the list shows after a preset's name: "6 metrics".
+  function imPresetSummary(values) {
+    var n = (values.metric_ids || []).length;
+    return n + ' metric' + (n !== 1 ? 's' : '');
+  }
+
+  var imPresets = _tlcPluginPresets({
+    pluginId: 'image-metrics',
     apiPath: '/api/plugins/image-metrics/configs',
-    storageKey: 'im_selected_config',
-    collectFn: function() {
-      return {
-        name: (document.getElementById('im-config-name').value || '').trim(),
-        metric_ids: Object.keys(selectedMetrics),
-        output_name_suffix: (document.getElementById('im-output-name').value || 'metrics').trim(),
-      };
-    },
-    populateFn: function(c) {
-      document.getElementById('im-config-name').value = c.name || '';
-      document.getElementById('im-output-name').value = c.output_name_suffix || 'metrics';
-      selectedMetrics = {};
-      (c.metric_ids || []).forEach(function(id) { selectedMetrics[id] = true; });
-      _refreshCards();
-    },
-    labelFn: function(c) {
-      var n = c.metric_ids ? c.metric_ids.length : 0;
-      return c.name + ' \u2014 ' + n + ' metric' + (n !== 1 ? 's' : '');
-    },
-    onNew: function() {
-      document.getElementById('im-config-name').value = '';
-      document.getElementById('im-output-name').value = 'metrics';
-      imSelectRecommended();
-    },
+    mount: 'im-presets',
+    formRoot: 'im-page',
+    collect: imCollectFormData,
+    apply: imApplyFormData,
+    defaults: imDefaultFormData,
+    inputs: ['table_urls'],
+    contextInputs: imContextInputs,
+    autoName: imAutoName,
+    summary: imPresetSummary,
+    legacyKey: 'im_selected_config',
   });
-  window.imCfg = imCfg;
+  window.imPresets = imPresets;
 
   /* ── Init ── */
   function init() {
@@ -317,7 +342,6 @@
     _loadMetrics();
     _connectSocket();
     _seedFromHost();
-    _checkUrlParams();
 
     // The add field: on `change` (a pick, or Enter/leaving the field after typing), not on every keystroke.
     var addField = document.getElementById('im-add-table');
@@ -337,14 +361,10 @@
       .then(function(metrics) {
         allMetrics = metrics;
         _renderMetricGrid(metrics);
-        // Init config manager after metrics are available so populateFn can select them
-        imCfg.init();
-        // If no config was loaded, default to recommended
-        setTimeout(function() {
-          if (!imCfg.getCurrentId() && Object.keys(selectedMetrics).length === 0) {
-            imSelectRecommended();
-          }
-        }, 300);
+        // The preset bar opens the form once the metric cards exist: as it was last left in this
+        // browser, else on Default settings (the recommended metrics), with the tables the plugin
+        // was opened with in place of its own.
+        imPresets.init();
       })
       .catch(function(err) { console.error('Failed to load metrics:', err); });
   }
@@ -400,10 +420,11 @@
       card.classList.add('selected');
     }
     _updateState();
-    imCfg.scheduleAutoSave();
+    imPresets.changed();
   }
 
   function _updateState() {
+    if (imPresets) imPresets.changed();
     var count = Object.keys(selectedMetrics).length;
     var el = document.getElementById('im-selected-count');
     if (el) el.textContent = count;
@@ -416,20 +437,20 @@
     selectedMetrics = {};
     allMetrics.forEach(function(m) { selectedMetrics[m.id] = true; });
     _refreshCards();
-    imCfg.scheduleAutoSave();
+    imPresets.changed();
   };
 
   window.imSelectNone = function() {
     selectedMetrics = {};
     _refreshCards();
-    imCfg.scheduleAutoSave();
+    imPresets.changed();
   };
 
   window.imSelectRecommended = function() {
     selectedMetrics = {};
     RECOMMENDED.forEach(function(id) { selectedMetrics[id] = true; });
     _refreshCards();
-    imCfg.scheduleAutoSave();
+    imPresets.changed();
   };
 
   function _refreshCards() {
@@ -526,25 +547,6 @@
     // Extract last path segment as table name
     var parts = url.replace(/\/+$/, '').split('/');
     return parts[parts.length - 1] || url;
-  }
-
-  /* ── Check URL params for table pre-selection ── */
-  function _checkUrlParams() {
-    // From PLUGIN_API context (action button)
-    var ctx = (typeof PLUGIN_API !== 'undefined' && PLUGIN_API.context) ? PLUGIN_API.context : {};
-    var urls = ctx.resourceUrls || [];
-
-    // Also check URL params directly
-    if (!urls.length) {
-      var params = new URLSearchParams(window.location.search);
-      urls = params.getAll('table').filter(Boolean);
-      if (!urls.length) {
-        var single = params.get('url') || '';
-        if (single) urls = [single];
-      }
-    }
-
-    urls.forEach(function(url) { _addTableUrl(url); });
   }
 
   /* ═════════════════════════════════════════════════════════════
