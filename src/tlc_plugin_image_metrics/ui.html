@@ -488,7 +488,7 @@
     var empty = document.getElementById('im-no-tables');
     if (!list) return;
     list.innerHTML = '';
-    // Browse Tables, opened from the add field, tags what is already in the list.
+    // Browse Tables, opened from the add field, marks what is already in the list as its selection.
     var addField = document.getElementById('im-add-table');
     if (addField) addField.tagged = tableEntries.map(function(e) { return { url: e.url, label: 'Added' }; });
 
