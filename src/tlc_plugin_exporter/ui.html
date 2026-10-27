@@ -63,15 +63,8 @@
 
       <!-- Table URL -->
       <div class="form-group">
-        <label class="form-label required">Table URL</label>
-        <!-- Same row recipe as the importer's table_picker and the SDK data-source widget
-             (gap 6px, centered, input flex:1) so the two Browse… buttons render identically. -->
-        <div style="display:flex;gap:6px;align-items:center">
-          <input type="text" id="export-table-url" class="form-control" style="flex:1"
-                 placeholder="Paste table URL or click Browse…" required>
-          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
-                  id="export-browse-btn">Browse…</button>
-        </div>
+        <label class="form-label required" for="export-table-url">Table URL</label>
+        <tlc-table-field id="export-table-url" placeholder="Paste table URL or click Browse…" required></tlc-table-field>
         <div class="form-help">Select a table from your projects, or paste a URL directly.</div>
       </div>
 
@@ -373,17 +366,6 @@
     el.innerHTML = '<div class="alert ' + (data.success ? 'alert-success' : 'alert-error') + '"><div><strong>' +
       _esc(data.message) + '</strong></div></div>';
   }
-
-  document.getElementById('export-browse-btn').addEventListener('click', function() {
-    if (typeof openTablePicker === 'function') {
-      openTablePicker('export-table-url', function() {
-        tableColumns = [];
-        loadColumns(document.getElementById('export-table-url').value.trim());
-      });
-    } else {
-      showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
-    }
-  });
 
   var _colDebounce = null;
   document.getElementById('export-table-url').addEventListener('input', function() {

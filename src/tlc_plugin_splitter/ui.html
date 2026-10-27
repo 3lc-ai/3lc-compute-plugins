@@ -110,13 +110,8 @@
 
       <!-- Table URL -->
       <div class="form-group">
-        <label class="form-label required">Source Table</label>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="split-table-url" class="form-control"
-                 placeholder="Select a table to split…" required>
-          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
-                  id="split-browse-btn">Browse…</button>
-        </div>
+        <label class="form-label required" for="split-table-url">Source Table</label>
+        <tlc-table-field id="split-table-url" placeholder="Select a table to split…" required></tlc-table-field>
         <div class="form-help">Select the table you want to split into train/val/test sets.</div>
       </div>
 
@@ -457,15 +452,6 @@
     el.innerHTML = '<div class="alert ' + (data.success ? 'alert-success' : 'alert-error') + '"><div><strong>' +
       _esc(data.message) + '</strong>' + extra + '</div></div>';
   }
-
-  // ── Table picker (Browse button) ───────────────────────
-  document.getElementById('split-browse-btn').addEventListener('click', function() {
-    if (typeof openTablePicker === 'function') {
-      openTablePicker('split-table-url');
-    } else {
-      showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
-    }
-  });
 
   // ── Submit button ──────────────────────────────────────
   document.getElementById('split-submit-btn').addEventListener('click', executeSplit);
