@@ -2,63 +2,76 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- Split Table — self-contained plugin UI fragment -->
 <style>
-/* Split-specific styles */
-.split-bar-wrap {
+/* Split-specific styles. Classes start with the plugin id: the fragment shares the Hub page. */
+.splitter-badge-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+.splitter-badge-text { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.splitter-bar-wrap {
   display: flex; height: 32px; border-radius: var(--radius); overflow: hidden;
   border: 1px solid var(--border); margin-bottom: 8px;
   /* Align with slider bars: offset by label+dot+gaps on left, pct+gap on right */
   margin-left: 124px; margin-right: 52px;
 }
-.split-bar-seg {
+.splitter-bar-seg {
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700; color: #fff; transition: width .2s ease;
+  font-size: 11px; font-weight: 700; color: var(--btn-primary-text); transition: width .2s ease;
   min-width: 24px;
 }
-.split-bar-train { background: var(--chart-1); }
-.split-bar-val   { background: var(--chart-2); }
-.split-bar-test  { background: var(--chart-7); }
+/* One colour per split, shared by its bar segment, its slider dot and its result card. */
+.splitter-bar-train, .splitter-dot-train { background: var(--chart-1); }
+.splitter-bar-val, .splitter-dot-val     { background: var(--chart-2); }
+.splitter-bar-test, .splitter-dot-test   { background: var(--chart-7); }
+.splitter-dot-other                      { background: var(--accent); }
 
-.split-slider-row {
+.splitter-slider-row {
   display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
 }
-.split-slider-row label {
+.splitter-slider-row label {
   width: 90px; font-size: 13px; font-weight: 600; flex-shrink: 0;
 }
-.split-slider-row .dot {
+.splitter-slider-row .dot {
   width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
 }
-.split-slider-row input[type=range] {
+.splitter-slider-row input[type=range] {
   flex: 1; accent-color: var(--accent);
 }
-.split-slider-row .pct-display {
+.splitter-slider-row .pct-display {
   width: 40px; text-align: right; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0;
 }
-.split-slider-row .row-count {
+.splitter-slider-row .row-count {
   display: none;
 }
+.form-help.splitter-total-error { color: var(--error); }
 
-.split-result-card {
+.splitter-result-card {
   display: flex; align-items: center; gap: 12px; padding: 10px 14px;
   border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--bg-card);
   margin-bottom: 8px;
 }
-.split-result-card .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-.split-result-card .info { flex: 1; }
-.split-result-card .name { font-weight: 700; font-size: 13px; }
-.split-result-card .rows { font-size: 11px; color: var(--text-muted); }
-.split-result-card .link { font-size: 11px; }
+.splitter-result-card .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.splitter-result-card .info { flex: 1; }
+.splitter-result-card .name { font-weight: 700; font-size: 13px; }
+.splitter-result-card .rows { font-size: 11px; color: var(--text-muted); }
+.splitter-result-card .link { font-size: 11px; }
+
+.splitter-status { font-size: 12px; color: var(--text-muted); }
+.splitter-elapsed { font-size: 11px; color: var(--text-muted); text-align: right; }
+.splitter-about { font-size: 13px; color: var(--text-secondary); }
 
 /* Progress bar */
-.split-progress-wrap {
+.splitter-progress-wrap {
   background: var(--bg, #f3f4f6); border-radius: var(--radius); height: 8px;
   overflow: hidden; margin: 12px 0 6px;
 }
-.split-progress-fill {
+.splitter-progress-fill {
   height: 100%; border-radius: var(--radius); background: var(--accent);
-  animation: split-progress-pulse 1.5s ease-in-out infinite;
+  animation: splitter-progress-pulse 1.5s ease-in-out infinite;
   width: 60%;
 }
-@keyframes split-progress-pulse { 0%,100% { opacity:1 } 50% { opacity:.5 } }
+@keyframes splitter-progress-pulse { 0%,100% { opacity:1 } 50% { opacity:.5 } }
 </style>
 
 <div class="plugin-page">
@@ -68,18 +81,18 @@
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
       <div class="plugin-hero-badge">
         <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9M8 17V5M12 17V8M16 17V3"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Stratified</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Balanced class distribution</div>
+        <div class="splitter-badge-title">Stratified</div>
+        <div class="splitter-badge-text">Balanced class distribution</div>
       </div>
       <div class="plugin-hero-badge">
         <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12l-2 2a2.83 2.83 0 1 1-4-4l2-2a2.83 2.83 0 0 1 4 0M12 8l2-2a2.83 2.83 0 1 1 4 4l-2 2a2.83 2.83 0 0 1-4 0"/><path d="M7 13l6-6"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Full Lineage</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">EditedTable revisions</div>
+        <div class="splitter-badge-title">Full Lineage</div>
+        <div class="splitter-badge-text">EditedTable revisions</div>
       </div>
       <div class="plugin-hero-badge">
         <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="13" r="1" fill="currentColor" stroke="none"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Reproducible</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Seeded random splits</div>
+        <div class="splitter-badge-title">Reproducible</div>
+        <div class="splitter-badge-text">Seeded random splits</div>
       </div>
     </div>
     <div class="plugin-workflow" style="margin-top:10px">
@@ -120,15 +133,15 @@
       <!-- Visual split bar -->
       <div class="form-group">
         <label class="form-label">Split Ratio</label>
-        <div class="split-bar-wrap" id="split-bar">
-          <div class="split-bar-seg split-bar-train" id="split-bar-train" style="width:70%">70%</div>
-          <div class="split-bar-seg split-bar-val" id="split-bar-val" style="width:20%">20%</div>
-          <div class="split-bar-seg split-bar-test" id="split-bar-test" style="width:10%">10%</div>
+        <div class="splitter-bar-wrap" id="split-bar">
+          <div class="splitter-bar-seg splitter-bar-train" id="split-bar-train" style="width:70%">70%</div>
+          <div class="splitter-bar-seg splitter-bar-val" id="split-bar-val" style="width:20%">20%</div>
+          <div class="splitter-bar-seg splitter-bar-test" id="split-bar-test" style="width:10%">10%</div>
         </div>
 
         <!-- Train slider -->
-        <div class="split-slider-row">
-          <span class="dot" style="background:#4e79a7"></span>
+        <div class="splitter-slider-row">
+          <span class="dot splitter-dot-train"></span>
           <label>Train</label>
           <input type="range" id="split-train-slider" min="1" max="98" value="70">
           <span class="pct-display" id="split-train-pct">70%</span>
@@ -136,8 +149,8 @@
         </div>
 
         <!-- Val slider -->
-        <div class="split-slider-row">
-          <span class="dot" style="background:#b8860b"></span>
+        <div class="splitter-slider-row">
+          <span class="dot splitter-dot-val"></span>
           <label>Validation</label>
           <input type="range" id="split-val-slider" min="1" max="98" value="20">
           <span class="pct-display" id="split-val-pct">20%</span>
@@ -145,8 +158,8 @@
         </div>
 
         <!-- Test slider -->
-        <div class="split-slider-row">
-          <span class="dot" style="background:#7b6b8a"></span>
+        <div class="splitter-slider-row">
+          <span class="dot splitter-dot-test"></span>
           <label>Test</label>
           <input type="range" id="split-test-slider" min="0" max="98" value="10">
           <span class="pct-display" id="split-test-pct">10%</span>
@@ -170,12 +183,12 @@
       <div style="display:flex;gap:10px;align-items:center">
         <button type="button" class="btn btn-primary btn-lg" id="split-submit-btn">✂ Split Table</button>
         <span class="spinner" id="split-spinner" style="display:none"></span>
-        <span id="split-status" style="display:none;font-size:12px;color:var(--text-muted)">
+        <span id="split-status" class="splitter-status" style="display:none">
           Splitting… this may take a moment.</span>
       </div>
       <div id="split-progress-area" style="display:none">
-        <div class="split-progress-wrap"><div class="split-progress-fill"></div></div>
-        <div id="split-elapsed" style="font-size:11px;color:var(--text-muted);text-align:right"></div>
+        <div class="splitter-progress-wrap"><div class="splitter-progress-fill"></div></div>
+        <div id="split-elapsed" class="splitter-elapsed"></div>
       </div>
     </div>
   </div>
@@ -184,7 +197,7 @@
   <div class="card" style="margin-bottom:16px">
     <div class="card-header"><div class="card-title">How It Works</div></div>
     <div class="card-body">
-      <div style="font-size:13px;color:var(--text-secondary)">
+      <div class="splitter-about">
         <p style="margin-bottom:8px"><strong>EditedTable revisions:</strong> Each split creates a new
         table revision (EditedTable) that references the original rows — no data is duplicated.</p>
         <p style="margin-bottom:8px"><strong>Stratified sampling:</strong> When enabled, the split
@@ -292,11 +305,10 @@
     var hint = document.getElementById('split-total-hint');
     if (totalPct === 100) {
       hint.textContent = 'Total: 100% ✓';
-      hint.style.color = '';
     } else {
       hint.textContent = 'Total: ' + totalPct + '% — must equal 100%!';
-      hint.style.color = 'var(--error)';
     }
+    hint.classList.toggle('splitter-total-error', totalPct !== 100);
   }
 
   trainSlider.addEventListener('input', function() { syncSliders('train'); });
@@ -417,13 +429,13 @@
 
     // Show split result cards
     if (data.success && data.splits && data.splits.length) {
-      var colors = { train: cssVar('--chart-1'), val: cssVar('--chart-2'), test: cssVar('--chart-7') };
       extra += '<div style="margin-top:12px">';
       for (var i = 0; i < data.splits.length; i++) {
         var s = data.splits[i];
-        var color = colors[s.name] || 'var(--accent)';
-        extra += '<div class="split-result-card">';
-        extra += '<span class="dot" style="background:' + color + '"></span>';
+        // The split's own colour, the one its bar segment and slider dot have.
+        var dot = ['train', 'val', 'test'].indexOf(s.name) >= 0 ? s.name : 'other';
+        extra += '<div class="splitter-result-card">';
+        extra += '<span class="dot splitter-dot-' + dot + '"></span>';
         extra += '<div class="info"><div class="name">' + _esc(s.name) + '</div>';
         extra += '<div class="rows">' + s.rows.toLocaleString() + ' rows</div></div>';
         extra += '</div>';
