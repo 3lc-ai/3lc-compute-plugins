@@ -52,6 +52,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Other changes
 
+- **Merge, Split and Export use the Hub's table field (`<tlc-table-field>`).** Browse…, or a
+  double-click in an empty table field, opens Browse Tables, which opens at the table the field holds.
+  In Merge it also tags the table the other field holds ("Table A"), so picking B starts where A is.
+  These three now need Hub 1.2.0 (`min_frontend_version`); an older Hub shows them disabled with an
+  update badge. Import renders its `table_picker` fields the same way, though no format has one yet.
+- **Image Metrics adds tables with a table field instead of "+ Add Table".** The field sits under the
+  list of chosen tables: a table picked there, by Browse…, a double-click or a pasted URL and Enter,
+  joins the list and the field empties for the next. Browse Tables marks the tables already in the
+  list as this field's selection ("Added"). A URL can now be pasted; before, the picker was the only way in. Image Metrics now
+  needs Hub 1.2.0.
+
 - **Run results can be closed, and look the same in every plugin.** Import, Export, Merge, Split and
   Image Metrics draw their result with the Hub's shared result box (`PLUGIN_API.showResult`), which
   has a close button (✕). Image Metrics' own banner is gone, and so is the second copy of it that a

@@ -171,21 +171,23 @@
 
 <!-- ── Table Selection ──────────────────────────────────────── -->
 <div class="card" style="margin-bottom:16px">
-  <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+  <div class="card-header">
     <h3 style="margin:0;font-size:13px;font-weight:700">
       <span class="plugin-section-number">1</span> Select Tables
     </h3>
-    <button class="btn btn-xs btn-secondary" onclick="imAddTable()" title="Add another table">+ Add Table</button>
   </div>
   <div class="card-body" style="padding:8px 16px">
     <div id="im-table-list"></div>
     <div id="im-no-tables" style="padding:12px 0;text-align:center;font-size:11px;color:var(--text-muted)">
-      No tables selected. Use the action button on a table, or click <strong>+ Add Table</strong> above.
+      No tables selected yet. Add one below, or use the action button on a table.
+    </div>
+    <!-- A table picked or pasted here goes into the list above, and the field empties for the next. -->
+    <div class="form-group" style="margin:8px 0 0">
+      <label class="form-label" for="im-add-table">Add a table</label>
+      <tlc-table-field id="im-add-table" placeholder="Paste a table URL or click Browse…"></tlc-table-field>
     </div>
     <div class="form-help" style="margin-top:6px">Add one or more tables to compute metrics on. You can also launch this from the action button on any table page.</div>
     <div id="im-table-error" style="display:none;margin-top:8px;font-size:10px;color:var(--error)"></div>
-    <!-- Hidden input for table picker -->
-    <input type="hidden" id="im-picker-target">
   </div>
 </div>
 
@@ -317,14 +319,14 @@
     _seedFromHost();
     _checkUrlParams();
 
-    // Listen for hidden picker input
-    var picker = document.getElementById('im-picker-target');
-    if (picker) {
-      picker.addEventListener('input', function() {
-        if (picker.value) {
-          _addTableUrl(picker.value);
-          picker.value = '';
-        }
+    // The add field: on `change` (a pick, or Enter/leaving the field after typing), not on every keystroke.
+    var addField = document.getElementById('im-add-table');
+    if (addField) {
+      addField.addEventListener('change', function() {
+        var url = addField.value.trim();
+        if (!url) return;
+        addField.value = '';
+        _addTableUrl(url);
       });
     }
   }
@@ -447,12 +449,6 @@
      Multi-table management
      ═════════════════════════════════════════════════════════════ */
 
-  window.imAddTable = function() {
-    if (typeof openTablePicker === 'function') {
-      openTablePicker('im-picker-target');
-    }
-  };
-
   function _addTableUrl(url) {
     // Skip duplicates
     for (var i = 0; i < tableEntries.length; i++) {
@@ -492,6 +488,9 @@
     var empty = document.getElementById('im-no-tables');
     if (!list) return;
     list.innerHTML = '';
+    // Browse Tables, opened from the add field, marks what is already in the list as its selection.
+    var addField = document.getElementById('im-add-table');
+    if (addField) addField.tagged = tableEntries.map(function(e) { return { url: e.url, label: 'Added' }; });
 
     if (tableEntries.length === 0) {
       if (empty) empty.style.display = '';

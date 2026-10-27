@@ -73,24 +73,14 @@
 
       <!-- Table A -->
       <div class="form-group">
-        <label class="form-label required">Table A</label>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="merge-table-a" class="form-control"
-                 placeholder="Select first table…" required>
-          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
-                  id="merge-browse-a">Browse…</button>
-        </div>
+        <label class="form-label required" for="merge-table-a">Table A</label>
+        <tlc-table-field id="merge-table-a" placeholder="Select first table…" required></tlc-table-field>
       </div>
 
       <!-- Table B -->
       <div class="form-group">
-        <label class="form-label required">Table B</label>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="merge-table-b" class="form-control"
-                 placeholder="Select second table…" required>
-          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
-                  id="merge-browse-b">Browse…</button>
-        </div>
+        <label class="form-label required" for="merge-table-b">Table B</label>
+        <tlc-table-field id="merge-table-b" placeholder="Select second table…" required></tlc-table-field>
       </div>
 
       <!-- Compatibility check -->
@@ -422,22 +412,6 @@
     el.innerHTML = '<div class="alert ' + (data.success ? 'alert-success' : 'alert-error') + '"><div><strong>' +
       _esc(data.message) + '</strong>' + extra + '</div></div>';
   }
-
-  // ── Table picker (Browse buttons) ──────────────────────
-  document.getElementById('merge-browse-a').addEventListener('click', function() {
-    if (typeof openTablePicker === 'function') {
-      openTablePicker('merge-table-a', onInputsChanged);
-    } else {
-      showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
-    }
-  });
-  document.getElementById('merge-browse-b').addEventListener('click', function() {
-    if (typeof openTablePicker === 'function') {
-      openTablePicker('merge-table-b', onInputsChanged);
-    } else {
-      showResult({ success: false, message: 'Table picker not available. Paste a table URL manually.' });
-    }
-  });
 
   // ── Submit button ──────────────────────────────────────
   document.getElementById('merge-submit-btn').addEventListener('click', executeMerge);

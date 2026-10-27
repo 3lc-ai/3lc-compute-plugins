@@ -377,13 +377,11 @@
       var prefill = (f.id === 'project_name' && prefillProject) ? prefillProject : '';
 
       if (f.type === 'table_picker') {
-        html += '<div style="display:flex;gap:6px;align-items:center">';
-        html += '<input type="text" name="' + f.id + '" id="import-' + f.id + '"' +
-                ' class="form-control" value="' + _esc(prefill) + '"' +
-                ' placeholder="' + _esc(f.placeholder || 'Select a table...') + '"' +
-                (f.required ? ' required' : '') + ' style="flex:1">';
-        html += '<button type="button" class="btn btn-secondary btn-sm" onclick="if(typeof openTablePicker===\'function\')openTablePicker(\'import-' + f.id + '\')">Browse…</button>';
-        html += '</div>';
+        // The Hub defines <tlc-table-field> from 1.2.0 on. No format has a table field yet; the first
+        // one to use it sets min_frontend_version = "1.2.0" in plugin.toml.
+        html += '<tlc-table-field id="import-' + f.id + '" value="' + _esc(prefill) + '"' +
+                ' placeholder="' + _esc(f.placeholder || 'Select a table…') + '"' +
+                (f.required ? ' required' : '') + '></tlc-table-field>';
       } else if (f.type === 'data_source') {
         html += _tlcDataSourceHtml('import-' + f.id, {
           placeholder: f.placeholder || '',
