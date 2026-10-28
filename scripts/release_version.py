@@ -6,15 +6,10 @@ from __future__ import annotations
 
 import argparse
 import re
-import sys
+import tomllib
 from email.parser import Parser
 from pathlib import Path
 from zipfile import ZipFile
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
 
 
 def check_sources(root: Path) -> str:

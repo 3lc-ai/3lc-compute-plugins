@@ -5,15 +5,11 @@
 from __future__ import annotations
 
 import importlib
+import tomllib
 from pathlib import Path
 from typing import Any
 
 import pytest
-
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib  # type: ignore[no-redef]
 
 SRC = Path(__file__).resolve().parent.parent / "src"
 
