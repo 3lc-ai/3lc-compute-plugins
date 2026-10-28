@@ -23,6 +23,7 @@ class ImageMetricsConfig:
     name: str = ""
     metric_ids: list[str] = field(default_factory=list)
     output_name_suffix: str = "metrics"
+    table_urls: list[str] = field(default_factory=list)  # the preset's tables
     created: str = ""
     last_run: str | None = None
 
