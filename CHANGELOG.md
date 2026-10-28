@@ -158,6 +158,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The exporter refuses option values its form does not offer.** A run body with the image
+  handling "move" used to delete the source images.
 - **Export: Deselect all no longer exports every column.** An empty column list reached the server as
   no `columns`, which it reads as all of them; Export now waits for a ticked column. A column list read
   for an earlier table can no longer go out with the table that replaced it.

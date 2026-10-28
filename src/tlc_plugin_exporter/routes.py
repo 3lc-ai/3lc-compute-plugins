@@ -71,6 +71,10 @@ def run_export(data: dict[str, Any], *, progress: UploadProgress | None = None) 
     except ValueError as exc:
         return {"success": False, "message": str(exc)}
 
+    refusal = _invalid_choice(EXPORT_FORMATS[format_name], data)
+    if refusal:
+        return {"success": False, "message": refusal}
+
     executor = _EXECUTORS.get(format_name)
     if not executor:
         return {"success": False, "message": f"No executor for format: {format_name}"}
@@ -83,6 +87,22 @@ def run_export(data: dict[str, Any], *, progress: UploadProgress | None = None) 
     except Exception as exc:
         logger.exception("Export failed for format %s", format_name)
         return {"success": False, "message": f"Export failed: {exc}", "details": {}}
+
+
+def _invalid_choice(fmt: dict[str, Any], data: dict[str, Any]) -> str:
+    """Why a select option in ``data`` is not one the form offers, or ``""``.
+
+    The form only offers its choices, but a run body is anyone's JSON: tlc also accepts
+    ``image_strategy="move"``, which deletes the source images, so every select is checked here.
+    """
+    for option in fmt.get("options", []):
+        if option.get("type") != "select" or option["name"] not in data:
+            continue
+        value = data[option["name"]]
+        choices = option.get("choices") or []
+        if value not in choices:
+            return f"{option['label']} must be one of: {', '.join(choices)}."
+    return ""
 
 
 UploadProgress = Callable[[int, int], None]
