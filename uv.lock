@@ -80,7 +80,7 @@ pandas = [
 
 [[package]]
 name = "3lc-compute-plugin-sdk"
-version = "0.5.5.20261028132908.48.1"
+version = "0.5.5.20261028143834.49.1"
 source = { registry = "https://pypi.3lc.ai/repositories/prereleases/" }
 dependencies = [
     { name = "3lc", extra = ["pandas"] },
@@ -88,9 +88,9 @@ dependencies = [
     { name = "multidict" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://pypi.3lc.ai/repositories/prereleases/3lc-compute-plugin-sdk/3lc_compute_plugin_sdk-0.5.5.20261028132908.48.1.tar.gz" }
+sdist = { url = "https://pypi.3lc.ai/repositories/prereleases/3lc-compute-plugin-sdk/3lc_compute_plugin_sdk-0.5.5.20261028143834.49.1.tar.gz" }
 wheels = [
-    { url = "https://pypi.3lc.ai/repositories/prereleases/3lc-compute-plugin-sdk/3lc_compute_plugin_sdk-0.5.5.20261028132908.48.1-py3-none-any.whl" },
+    { url = "https://pypi.3lc.ai/repositories/prereleases/3lc-compute-plugin-sdk/3lc_compute_plugin_sdk-0.5.5.20261028143834.49.1-py3-none-any.whl" },
 ]
 
 [[package]]
