@@ -117,6 +117,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Other changes
 
+- **Plugin pages start with their name and one line, without feature badges or a step strip.** Import,
+  Export, Image Metrics, Merge and Split dropped the three or four "what this does" tiles and the
+  numbered steps above their forms; the header is the plugin's name and one plain sentence.
 - **Merge, Split and Export use the Hub's table field (`<tlc-table-field>`).** Browse…, or a
   double-click in an empty table field, opens Browse Tables, which opens at the table the field holds.
   In Merge it also tags the table the other field holds ("Table A"), so picking B starts where A is.

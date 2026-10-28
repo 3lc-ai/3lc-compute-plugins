@@ -3,12 +3,6 @@
 <!-- Merge Tables — self-contained plugin UI fragment -->
 <style>
 /* Unique to merger — not in main.css. Classes start with the plugin id: the fragment shares the Hub page. */
-.merger-badge-title {
-  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
-  color: var(--text-muted);
-}
-.merger-badge-text { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
-
 .merger-name-part {
   font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: 600;
   background: var(--accent-light); color: var(--accent);
@@ -42,29 +36,7 @@
 <div class="plugin-page">
   <div class="plugin-hero">
     <h2>⇌ Merge Tables</h2>
-    <p>Vertically join two 3LC tables — stack their rows into a single table with full revision history.</p>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="3.5" rx="1"/><rect x="3" y="8.25" width="14" height="3.5" rx="1"/><path d="M10 14v3M8 15.5l2 1.5 2-1.5"/></svg></div>
-        <div class="merger-badge-title">Vertical Join</div>
-        <div class="merger-badge-text">Stack rows from both tables</div>
-      </div>
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9M8 17V5M12 17V8M16 17V3"/></svg></div>
-        <div class="merger-badge-title">Full Lineage</div>
-        <div class="merger-badge-text">Tracks in DAG view</div>
-      </div>
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="14" rx="1"/><rect x="12" y="3" width="5" height="14" rx="1"/></svg></div>
-        <div class="merger-badge-title">Schema-Aware</div>
-        <div class="merger-badge-text">Tables must share the same columns</div>
-      </div>
-    </div>
-    <div class="plugin-workflow" style="margin-top:10px">
-      <div class="plugin-workflow-step"><span class="num">1</span> Select 2 tables</div>
-      <div class="plugin-workflow-step"><span class="num">2</span> Name output</div>
-      <div class="plugin-workflow-step"><span class="num">3</span> Merge</div>
-    </div>
+      <p>Stack the rows of two tables with the same columns into one table.</p>
   </div>
 
   <div id="merge-result"></div>
