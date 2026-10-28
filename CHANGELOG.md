@@ -32,6 +32,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Image Metrics' Select All, Clear and Recommended** are disabled while the metric list loads and
   while they would change nothing ("Nothing to clear: no metric is selected."), saying so in their
   tooltips.
+- **Import says what it waits for.** The format form's Import names the first required field left
+  empty ("Fill in Project Name to enable Import YOLO Dataset."), an annotations path with no COCO
+  annotations, detected splits all unticked, a cloud project whose alias would point at a local disk,
+  and a running import, on the line under it and in its tooltip; also after split detection or
+  "Import Next Split" fill the form.
+- **The CSV / Excel wizard's Next and Import say what they wait for.** Next (step 2) is disabled until a
+  column is ticked, instead of answering with a toast. Import (step 3) waits for a project and a dataset
+  name, or the table to extend, and is disabled while "Run on" is a GPU node ("Set Run on to this
+  computer to enable Import: …"), from the moment Run on changes rather than after a click. Select All
+  and Deselect All are disabled while they would change nothing.
 
 #### Image Metrics: presets
 
@@ -140,6 +150,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Image Metrics: Compute Metrics stays disabled while metrics are computed.** Changing the metric or
   table selection during a run re-enabled it. When no job could be started at all, it stayed disabled
   until a reload; the page now says "Not started" and enables it again.
+- **Import: the CSV wizard no longer starts an import without its names.** A missing project or
+  dataset name, or table to extend, reached the job, which refused it. With a COCO annotations file
+  named directly, Import stayed disabled after detection filled the images folder, until another field
+  changed.
 - Import success messages show `initial` when the table name is left blank.
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.

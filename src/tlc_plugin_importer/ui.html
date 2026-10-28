@@ -60,6 +60,13 @@
 .csv-mode-btn:last-child { border-radius: 0 6px 6px 0; border-left: none; }
 .csv-mode-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+/* A wizard step's buttons. The main button's reason has its own line under them, starting under that
+   button, and always one line high, so nothing moves as it comes and goes (PBI 19074). The reason line
+   spans a flexible column, so a long reason wraps there and never widens the buttons' columns. */
+.csv-actions { display: grid; grid-template-columns: auto auto 1fr; column-gap: 8px; align-items: center;
+  justify-items: start; }
+.csv-actions .csv-why { grid-column: 2 / -1; margin-top: 6px; line-height: 1.5; min-height: 1.5em; }
+
 /* Format selection banner (collapsed state) */
 .format-selected-banner {
   display: flex; align-items: center; gap: 12px;
@@ -145,14 +152,15 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <div style="font-size:11px;font-weight:600">Select columns to include</div>
           <div style="display:flex;gap:6px">
-            <button class="btn btn-ghost btn-sm" id="csv-sel-all">Select All</button>
-            <button class="btn btn-ghost btn-sm" id="csv-desel-all">Deselect All</button>
+            <button class="btn btn-ghost btn-sm" id="csv-sel-all" disabled>Select All</button>
+            <button class="btn btn-ghost btn-sm" id="csv-desel-all" disabled>Deselect All</button>
           </div>
         </div>
         <div class="csv-col-list" id="csv-col-list"></div>
-        <div style="display:flex;gap:8px">
+        <div class="csv-actions">
           <button class="btn btn-secondary btn-sm" id="csv-back-2">Back</button>
-          <button class="btn btn-primary btn-sm" id="csv-next-2">Next: Output & Execute</button>
+          <button class="btn btn-primary btn-sm" id="csv-next-2" aria-describedby="csv-next-2-why" disabled>Next: Output & Execute</button>
+          <div id="csv-next-2-why" class="text-sm text-muted csv-why"></div>
         </div>
       </div>
 
@@ -205,10 +213,11 @@
           </div>
         </div>
 
-        <div style="display:flex;gap:8px;margin-top:12px">
+        <div class="csv-actions" style="margin-top:12px">
           <button class="btn btn-secondary btn-sm" id="csv-back-3">Back</button>
-          <button class="btn btn-primary btn-sm" id="csv-execute-btn">Import</button>
+          <button class="btn btn-primary btn-sm" id="csv-execute-btn" aria-describedby="csv-execute-why" disabled>Import</button>
           <span class="spinner" id="csv-spinner" style="display:none"></span>
+          <div id="csv-execute-why" class="text-sm text-muted csv-why"></div>
         </div>
         <div id="csv-result"></div>
       </div>
@@ -239,6 +248,7 @@
   var _csvSelected = {};
   var _csvColConfig = {};
   var _csvMode = 'create_new';
+  var _csvImporting = false;
 
   // ── Helpers ─────────────────────────────────────────────
   function _esc(s) {
@@ -431,13 +441,16 @@
 
     html += '<hr class="divider">';
     html += '<div style="display:flex;gap:10px;align-items:center">';
-    html += '<button type="button" class="btn btn-primary btn-lg" id="import-submit-btn" disabled>';
+    html += '<button type="button" class="btn btn-primary btn-lg" id="import-submit-btn"' +
+            ' aria-describedby="import-submit-why" disabled>';
     html += '↑ Import ' + _esc(fmt.display_name) + '</button>';
     html += '<button type="button" class="btn btn-secondary" id="import-cancel-btn">Cancel</button>';
     html += '<span class="spinner" id="import-spinner" style="display:none"></span>';
     html += '<span id="import-status" style="display:none;font-size:12px;color:var(--text-muted)">';
     html += 'Importing… this may take a moment.</span>';
     html += '</div>';
+    // Why Import cannot run yet: its own line, always one line high, so the form does not move.
+    html += '<div id="import-submit-why" class="text-sm text-muted" style="margin-top:6px;line-height:1.5;min-height:1.5em"></div>';
     html += '<div id="import-progress" style="display:none;margin-top:12px">';
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">';
     html += '<span id="import-progress-label" style="font-size:13px;color:var(--text-secondary)">Importing...</span>';
@@ -500,13 +513,10 @@
     }
 
     // ── Enable/disable submit button based on required fields ──
+    // (input/change anywhere in the form area re-run it: bound once, at the bottom of the script.)
     _currentFormFmt = fmt;
+    _watchAliasError('import', _checkImportReady);
     _checkImportReady();
-    // Bind to all form inputs
-    area.querySelectorAll('input, select, textarea').forEach(function(el) {
-      el.addEventListener('input', _checkImportReady);
-      el.addEventListener('change', _checkImportReady);
-    });
     // Auto-focus the first empty required field
     if (_importFirstMissing) {
       var firstMissing = _importFirstMissing;
@@ -518,35 +528,19 @@
   // First visible required field without a value, as of the last _checkImportReady().
   var _importFirstMissing = null;
 
-  function _checkImportReady() {
+  // Why the format form's Import cannot run yet, as what to do; '' when it can (PBI 19074).
+  function _importBlocker() {
+    var fmt = _currentFormFmt;
     var btn = document.getElementById('import-submit-btn');
-    if (!btn || !_currentFormFmt) return;
-    var fields = _currentFormFmt.form_fields || [];
-    var ready = true;
-
-    // For YOLO with auto-detect: skip 'split' (handled by checkboxes),
-    // require dataset_yaml + dataset_name + project_name + table_name
-    var isYoloMulti = _currentFormFmt.name === 'yolo' && _yoloDetectedSplits.length > 0;
+    var label = ' to enable Import ' + fmt.display_name + '.';
+    // Busy is the button's own: an import started from an earlier form does not hold up this one.
+    if (btn && btn.dataset.busy) return 'Wait for the import to finish' + label;
+    var fields = fmt.form_fields || [];
+    // For YOLO with auto-detect: skip 'split' (handled by checkboxes).
+    var isYoloMulti = fmt.name === 'yolo' && _yoloDetectedSplits.length > 0;
     // For COCO with auto-detect: skip 'annotations_file' and 'image_folder' (handled per-split)
-    var isCocoMulti = _currentFormFmt.name === 'coco' && _cocoDetectedSplits.length > 1;
-    // A folder that failed detection still leaves annotations_file non-empty — don't let
-    // that read as "ready" (it would reach the backend as a raw, unresolved directory).
-    if (_currentFormFmt.name === 'coco' && _cocoDetectFailed) ready = false;
+    var isCocoMulti = fmt.name === 'coco' && _cocoDetectedSplits.length > 1;
 
-    // Multi-split (YOLO or COCO): every split gets its own dataset_name, but they all
-    // share this same table_name — stays editable, just update the help text to say so.
-    var tnInput = document.getElementById('import-table_name');
-    if (tnInput) {
-      var tnGroup = tnInput.closest('.form-group');
-      var tnHelp = tnGroup ? tnGroup.querySelector('.form-help') : null;
-      if (tnHelp) {
-        tnHelp.textContent = (isYoloMulti || isCocoMulti)
-          ? "Applied to every split's table — only the dataset name differs per split. Leave blank for 'initial'."
-          : "Table revision name. Leave blank for 'initial'.";
-      }
-    }
-
-    _importFirstMissing = null;
     for (var i = 0; i < fields.length; i++) {
       var f = fields[i];
       if (!f.required) continue;
@@ -557,25 +551,72 @@
 
       // Skip hidden fields (display:none on form-group)
       var el = document.getElementById('import-' + f.id);
-      if (!el) { ready = false; break; }
+      if (!el) return 'Reload the page' + label;
       var group = el.closest('.form-group');
       if (group && group.style.display === 'none') continue;
 
-      if (!(el.value || '').trim()) { ready = false; _importFirstMissing = el; break; }
+      if (!(el.value || '').trim()) {
+        _importFirstMissing = el;
+        // The label as the form shows it ("Dataset Base Name" once splits are detected).
+        var lab = document.querySelector('label[for="import-' + f.id + '"]');
+        return 'Fill in ' + ((lab && lab.textContent.trim()) || f.label) + label;
+      }
+      // A path that failed detection still leaves annotations_file non-empty — don't let
+      // that read as "ready" (it would reach the backend as a raw, unresolved directory).
+      if (f.id === 'annotations_file' && fmt.name === 'coco' && _cocoDetectFailed) {
+        return 'Choose an Annotations Path with COCO annotations' + label;
+      }
     }
 
-    // For YOLO multi-split: need at least one split checked
-    if (isYoloMulti) {
-      var anyChecked = _yoloDetectedSplits.some(function(s) { return _yoloCheckedSplits[s]; });
-      if (!anyChecked) ready = false;
+    // Detected splits: at least one ticked (the import makes one table per split).
+    if (isYoloMulti && !_yoloDetectedSplits.some(function(s) { return _yoloCheckedSplits[s]; })) {
+      return 'Tick at least one split' + label;
     }
-    // For COCO multi-split: need at least one split checked
-    if (isCocoMulti) {
-      var anyCocoChecked = _cocoDetectedSplits.some(function(s) { return _cocoCheckedSplits[s.split || s.file]; });
-      if (!anyCocoChecked) ready = false;
+    if (fmt.name === 'coco' && _cocoDetectedSplits.length > 0 &&
+        !_cocoDetectedSplits.some(function(s) { return _cocoCheckedSplits[s.split || s.file]; })) {
+      return 'Tick at least one split' + label;
+    }
+    // A cloud project whose alias would point at a local disk (the alias card says more).
+    if (_tlcAliasLocationError('import')) {
+      return 'Choose a local project location, or select the data from the bucket,' + label;
+    }
+    return '';
+  }
+
+  function _checkImportReady() {
+    var btn = document.getElementById('import-submit-btn');
+    if (!btn || !_currentFormFmt) return;
+
+    // Multi-split (YOLO or COCO): every split gets its own dataset_name, but they all
+    // share this same table_name — stays editable, just update the help text to say so.
+    var multi = (_currentFormFmt.name === 'yolo' && _yoloDetectedSplits.length > 0) ||
+      (_currentFormFmt.name === 'coco' && _cocoDetectedSplits.length > 1);
+    var tnInput = document.getElementById('import-table_name');
+    if (tnInput) {
+      var tnGroup = tnInput.closest('.form-group');
+      var tnHelp = tnGroup ? tnGroup.querySelector('.form-help') : null;
+      if (tnHelp) {
+        tnHelp.textContent = multi
+          ? "Applied to every split's table — only the dataset name differs per split. Leave blank for 'initial'."
+          : "Table revision name. Leave blank for 'initial'.";
+      }
     }
 
-    btn.disabled = !ready;
+    // Import, disabled while it cannot run, with the reason in its tooltip and on the line under it.
+    _importFirstMissing = null;
+    var reason = _importBlocker();
+    btn.disabled = !!btn.dataset.busy || !!reason;
+    btn.title = reason;
+    var why = document.getElementById('import-submit-why');
+    if (why) why.textContent = reason;
+  }
+
+  // The alias card's location error changes when the project root arrives, which fires no DOM event:
+  // re-run `gate` when its text changes.
+  function _watchAliasError(prefix, gate) {
+    var el = document.getElementById(prefix + '-alias-location-error');
+    if (!el || typeof MutationObserver === 'undefined') return;
+    new MutationObserver(function() { gate(); }).observe(el, { childList: true, characterData: true, subtree: true });
   }
 
   // ── YOLO auto-detect splits from dataset.yaml ──────────
@@ -756,6 +797,7 @@
       _cocoDetectFailed = false;
       var panel = document.getElementById('coco-splits-panel');
       if (panel) panel.style.display = 'none';
+      _checkImportReady();
       return;
     }
     var trimmed = annPath.trim();
@@ -803,6 +845,7 @@
         if (isSingleFile) {
           var panel = document.getElementById('coco-splits-panel');
           if (panel) panel.style.display = 'none';
+          _checkImportReady();
           return;
         }
 
@@ -910,6 +953,7 @@
   }
 
   function executeImport(fmt) {
+    if (_importBlocker()) { _checkImportReady(); return; }
     var submitBtn = document.getElementById('import-submit-btn');
     var spinner = document.getElementById('import-spinner');
     var status = document.getElementById('import-status');
@@ -1056,7 +1100,8 @@
     var progressLabel = document.getElementById('import-progress-label');
     var progressTime = document.getElementById('import-progress-time');
 
-    submitBtn.disabled = true;
+    submitBtn.dataset.busy = '1';
+    _checkImportReady();
     spinner.style.display = 'inline-block';
     status.style.display = 'inline';
     progressEl.style.display = 'block';
@@ -1073,7 +1118,8 @@
 
     function _reset() {
       clearInterval(pulseTimer);
-      submitBtn.disabled = false;
+      delete submitBtn.dataset.busy;
+      _checkImportReady();
       spinner.style.display = 'none';
       status.style.display = 'none';
     }
@@ -1135,7 +1181,8 @@
     var resultEl = document.getElementById('import-result');
     if (resultEl) resultEl.innerHTML = '';
 
-    submitBtn.disabled = true;
+    submitBtn.dataset.busy = '1';
+    _checkImportReady();
     spinner.style.display = 'inline-block';
     status.style.display = 'inline';
     status.textContent = splitJobs.length + ' split(s) queued — safe to navigate away';
@@ -1153,7 +1200,8 @@
       if (remaining > 0) return;
       spinner.style.display = 'none';
       status.style.display = 'none';
-      submitBtn.disabled = false;
+      delete submitBtn.dataset.busy;
+      _checkImportReady();
       showResult({
         success: failed.length === 0,
         message: (completed.length ? 'Imported: ' + completed.join(', ') : '') +
@@ -1330,6 +1378,7 @@
         if (dsInput) dsInput.value = nextDs;
         var tableInput = document.getElementById('import-table_name');
         if (tableInput) tableInput.value = 'initial';
+        _checkImportReady();
         // Clear result and scroll to form
         el.innerHTML = '';
         var formArea = document.getElementById('import-form-area');
@@ -1385,6 +1434,55 @@
     // Pre-fill from URL params
     if (prefillProject) document.getElementById('csv-project').value = prefillProject;
     if (prefillTableUrl) document.getElementById('csv-extend-url').value = prefillTableUrl;
+    _csvGate();
+  }
+
+  // ── What the wizard's buttons wait for (PBI 19074) ──
+  function _csvTicked() {
+    return _csvColumns.filter(function(col) { return _csvSelected[col.index]; }).length;
+  }
+
+  // Why the final Import cannot run yet, as what to do; '' when it can.
+  function _csvImportBlocker() {
+    var label = ' to enable Import.';
+    if (_csvImporting) return 'Wait for the import to finish' + label;
+    // The uploaded file is held by the worker on this computer, where /csv/parse ran; a GPU node never sees it.
+    var runTarget = (window.PLUGIN_API && typeof PLUGIN_API.getRunTarget === 'function')
+      ? PLUGIN_API.getRunTarget() : null;
+    if (runTarget && runTarget.target === 'node') {
+      return 'Set Run on to this computer' + label.slice(0, -1) + ': a CSV import runs where the file was uploaded.';
+    }
+    if (!_csvSessionId) return 'Upload a file (step 1)' + label;
+    if (!_csvTicked()) return 'Tick at least one column (step 2)' + label;
+    if (_csvMode === 'create_new') {
+      if (!document.getElementById('csv-project').value.trim()) return 'Enter a project name' + label;
+      if (!document.getElementById('csv-dataset').value.trim()) return 'Enter a dataset name' + label;
+      if (_tlcAliasLocationError('csv')) {
+        return 'Choose a local project location, or select the data from the bucket,' + label;
+      }
+    } else if (!document.getElementById('csv-extend-url').value.trim()) {
+      return 'Enter the source table URL' + label;
+    }
+    return '';
+  }
+
+  function _csvSetGate(btnId, whyId, reason, busy) {
+    var btn = document.getElementById(btnId);
+    btn.disabled = !!busy || !!reason;
+    btn.title = reason;
+    if (whyId) document.getElementById(whyId).textContent = reason;
+  }
+
+  // The wizard's Next (step 2) and Import (step 3), each with its reason in its tooltip and on the line
+  // under it; Select All and Deselect All, disabled while they would change nothing, say so in theirs.
+  function _csvGate() {
+    var ticked = _csvTicked();
+    _csvSetGate('csv-next-2', 'csv-next-2-why',
+      ticked ? '' : 'Tick at least one column to enable Next: Output & Execute.');
+    _csvSetGate('csv-sel-all', null, !_csvColumns.length ? 'Nothing to select: no column is listed.'
+      : ticked === _csvColumns.length ? 'Nothing to select: every column is already ticked.' : '');
+    _csvSetGate('csv-desel-all', null, ticked ? '' : 'Nothing to deselect: no column is ticked.');
+    _csvSetGate('csv-execute-btn', 'csv-execute-why', _csvImportBlocker(), _csvImporting);
   }
 
   function csvGoStep(step) {
@@ -1397,6 +1495,7 @@
     });
     if (step === 2) csvRenderColumns();
     if (step === 3) csvRenderConfigSummary();
+    _csvGate();
   }
 
   // ── File upload ─────────────────────────────────────
@@ -1473,8 +1572,7 @@
   });
   document.getElementById('csv-back-2').addEventListener('click', function() { csvGoStep(1); });
   document.getElementById('csv-next-2').addEventListener('click', function() {
-    var anySelected = Object.keys(_csvSelected).some(function(k) { return _csvSelected[k]; });
-    if (!anySelected) { API.showToast('Select at least one column', 'error'); return; }
+    if (!_csvTicked()) { _csvGate(); return; }
     csvGoStep(3);
   });
   document.getElementById('csv-back-3').addEventListener('click', function() { csvGoStep(2); });
@@ -1496,6 +1594,7 @@
       });
       document.getElementById('csv-mode-create').style.display = _csvMode === 'create_new' ? '' : 'none';
       document.getElementById('csv-mode-extend').style.display = _csvMode === 'extend_existing' ? '' : 'none';
+      _csvGate();
     });
   });
 
@@ -1566,6 +1665,7 @@
 
     // Bind events via delegation
     csvBindColumnEvents();
+    _csvGate();
   }
 
   function csvBindColumnEvents() {
@@ -1638,6 +1738,7 @@
         aliasArea.innerHTML = _tlcAliasSettingsHtml('csv', proj, '');
         _tlcBindAliasToggle('csv');
         _tlcBindAliasAutoUpdate('csv', 'csv-project', null);
+        _watchAliasError('csv', _csvGate);
       } else {
         aliasArea.innerHTML = '';
       }
@@ -1646,26 +1747,12 @@
 
   // ── Execute ─────────────────────────────────────────
   document.getElementById('csv-execute-btn').addEventListener('click', function() {
+    // A GPU node, a missing name or a cloud project with a local alias: the button says which, and why.
+    if (_csvImportBlocker()) { _csvGate(); return; }
     var btn = document.getElementById('csv-execute-btn');
     var spinner = document.getElementById('csv-spinner');
-    // The uploaded file is held by the worker on this computer, where /csv/parse ran; a GPU node
-    // never sees it. Say so before submitting rather than letting the node fail the job.
-    var runTarget = (window.PLUGIN_API && typeof PLUGIN_API.getRunTarget === 'function')
-      ? PLUGIN_API.getRunTarget() : null;
-    if (runTarget && runTarget.target === 'node') {
-      var csvEl = document.getElementById('csv-result');
-      csvEl.className = 'csv-result error';
-      csvEl.innerHTML = '<strong>Error:</strong> ' + _esc(
-        'A CSV or Excel import runs where the file was uploaded, on this computer, and cannot run on a '
-        + 'GPU node. Set "Run on" to this computer and import again.');
-      return;
-    }
-    var aliasError = _csvMode === 'create_new' ? _tlcAliasLocationError('csv') : '';
-    if (aliasError) {
-      var resultEl = document.getElementById('csv-result');
-      resultEl.className = 'csv-result error'; resultEl.textContent = aliasError; return;
-    }
-    btn.disabled = true;
+    _csvImporting = true;
+    _csvGate();
     btn.textContent = 'Importing...';
     spinner.style.display = 'inline-block';
 
@@ -1713,8 +1800,9 @@
     pluginParams.format = 'csv';
 
     function _csvReset() {
-      btn.disabled = false;
+      _csvImporting = false;
       btn.textContent = 'Import';
+      _csvGate();
       spinner.style.display = 'none';
     }
     function _csvShow(result) {
@@ -1749,6 +1837,16 @@
   });
 
   // ── Init ────────────────────────────────────────────
+  // Typing, a Browse pick (the SDK's source widget fires both) and the project-location select re-run the
+  // gates; so do the wizard's fields, and "Run on" for the CSV import (it cannot run on a GPU node).
+  document.getElementById('import-form-area').addEventListener('input', _checkImportReady);
+  document.getElementById('import-form-area').addEventListener('change', _checkImportReady);
+  document.getElementById('csv-wizard-area').addEventListener('input', _csvGate);
+  document.getElementById('csv-wizard-area').addEventListener('change', _csvGate);
+  if (window.PLUGIN_API && typeof PLUGIN_API.onRunTargetChange === 'function') {
+    PLUGIN_API.onRunTargetChange(_csvGate);
+  }
+  _csvGate();
   loadFormats();
   _seedFromHost();
 })();
