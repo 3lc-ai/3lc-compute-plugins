@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same columns were chosen; the line under it and its tooltip now say which ("Choose Table B to enable
   Merge Tables.", "Choose tables with the same columns to enable Merge Tables.", or to wait while the
   columns are compared or the merge runs).
+- **Split Table is disabled until a table is chosen**, and while a split runs, saying why on the line
+  under it and in its tooltip, instead of answering a click with "Select a table to split."
 
 #### Image Metrics: presets
 
@@ -126,6 +128,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for an earlier table can no longer go out with the table that replaced it.
 - **Merge: a table changed after a successful column check no longer leaves Merge Tables enabled**
   until the new check answers, and a change while a merge runs no longer re-enables it.
+- **Split: a split cancelled from the Queue no longer leaves Split Table disabled** until the page is
+  reloaded; the page says "Split cancelled."
 - Import success messages show `initial` when the table name is left blank.
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.
