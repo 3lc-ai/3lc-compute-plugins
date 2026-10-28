@@ -152,6 +152,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Image Metrics: Compute Metrics stays disabled while metrics are computed.** Changing the metric or
   table selection during a run re-enabled it. When no job could be started at all, it stayed disabled
   until a reload; the page now says "Not started" and enables it again.
+- **Image Metrics runs until every table's job has ended.** With several tables, the first job to end
+  made the page look idle while the others ran: Cancel went away, and Compute Metrics could start them
+  again. Cancel now stops every table's job, the bar shows the run's progress ("1 of 3 tables done"),
+  and each table's result is shown, not only the last. Cancel also ends the run with one table, where the
+  page waited until a reload. Another tab's Image Metrics jobs no longer end this page's run, and a page
+  opened while jobs run follows all of them, not only the first.
 - **Import: the CSV wizard no longer starts an import without its names.** A missing project or
   dataset name, or table to extend, reached the job, which refused it. With a COCO annotations file
   named directly, Import stayed disabled after detection filled the images folder, until another field

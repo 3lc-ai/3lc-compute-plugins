@@ -256,8 +256,9 @@
   var selectedMetrics = {};
   var allMetrics = [];
   var tableEntries = [];  // [{url, name, imageCols, rowCount}]
-  var currentJobId = null;
-  var socket = null;
+  var runJobs = [];       // this page's jobs, a record each (_newJobRecord)
+  var cancelRequested = false;  // Cancel was clicked during this run
+  var earlyEvents = [];   // the plugin's events for a job no record knows the id of yet
   var metricsState = 'loading';  // the metric list: 'loading', 'ok' or 'error'
   var imBusy = false;            // a job of this plugin runs, started here or found running on mount
 
@@ -344,7 +345,7 @@
     }
 
     _loadMetrics();
-    _connectSocket();
+    _listenForEvents();
     _seedFromHost();
     imGate();
     var page = document.getElementById('im-page');
@@ -612,7 +613,7 @@
   }
 
   /* ═════════════════════════════════════════════════════════════
-     Run metrics — processes each table sequentially
+     Run metrics — one job per table, side by side
      ═════════════════════════════════════════════════════════════ */
 
   window.imRunMetrics = function() {
@@ -631,15 +632,21 @@
     _setProgress(0, 'Submitting...');
     _setStatus('Submitting...');
 
+    // A record per table, all made before any start can answer.
+    var entries = tableEntries.slice();
+    _beginRun(entries.map(function(entry) { return _newJobRecord(entry.name, null); }));
+
     // Submit one job per table
-    var starts = tableEntries.map(function(entry) {
+    entries.forEach(function(entry, i) {
+      var rec = runJobs[i];
       var outputName = entry.name + '-' + suffix;
       // Launch through the SDK's PluginJobs client. Attribute each job to ITS table's
       // project (entries can span projects); an explicit project_name wins, and when
       // the table is unknown PluginJobs falls back to the launch context's project.
       var _t = (typeof TlcData !== 'undefined')
         ? TlcData.getTables().find(function(t) { return t.url === entry.url; }) : null;
-      return PluginJobs.start('image-metrics', {
+      // run() listens before it starts the job, so a job that ends before its id is known still ends here.
+      PluginJobs.run('image-metrics', {
         table_url: entry.url,
         project_name: (_t && _t.project_name) || '',
         metric_ids: metricIds,
@@ -647,7 +654,7 @@
         output_name: outputName,
         // The preset the form is unchanged from, so the run stamps its last use; '' otherwise.
         config_id: imPresets.presetId(),
-      })
+      }, _jobHandlers(rec))
       .then(function(data) {
         if (!data || data.error) {
           _addLog('Error for ' + entry.name + ': ' + ((data && data.error) || 'failed to start job'));
@@ -656,25 +663,21 @@
           // plugin's environment is still being built (or its last build failed).
           _addLog('Not started for ' + entry.name + ': ' + _notStartedMessage(data));
         } else {
-          currentJobId = data.job_id;
           _addLog('Queued: ' + entry.name + ' (job ' + data.job_id.substring(0, 8) + ')');
-          return true;
+          _setJobId(rec, data.job_id);
+          // Cancel was clicked while this job was being started.
+          if (cancelRequested && !rec.outcome) _cancelJob(rec);
+          return;
         }
-        return false;
+        _jobEnded(rec, 'not-started');
       })
       .catch(function(err) {
         _addLog('Failed to submit ' + entry.name + ': ' + err.message);
-        return false;
+        _jobEnded(rec, 'not-started');
       });
     });
 
     _setStatus('Jobs submitted');
-    // No job started at all: nothing will end the running state, so end it here.
-    Promise.all(starts).then(function(started) {
-      if (started.some(Boolean)) return;
-      _setStatus('Not started');
-      _clearRunningState();
-    });
   };
 
   function _notStartedMessage(resp) {
@@ -690,81 +693,202 @@
     return 'job was not started (status: ' + state + ')';
   }
 
-  /* ── Cancel job ── */
+  /* ── Cancel: every job of the run; one still being started, once it has an id ── */
   window.imCancelJob = function() {
-    if (!currentJobId) return;
-    _apiPost('/api/plugins/jobs/' + currentJobId + '/cancel', {})
-      .then(function() { _setStatus('Cancelling...'); })
-      .catch(function() {});
+    cancelRequested = true;
+    _setStatus('Cancelling...');
+    _liveJobs().forEach(function(rec) { if (rec.jobId) _cancelJob(rec); });
   };
 
-  /* ── SocketIO ── */
-  function _connectSocket() {
-    var ioLib = PLUGIN_API.libs.io;
-    if (!ioLib) return;
-    try {
-      socket = ioLib(COMPUTE_URL + '/image-metrics', {
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionDelay: 2000,
-      });
+  function _cancelJob(rec) {
+    PluginJobs.cancel(rec.jobId).catch(function(err) {
+      _addLog('Could not cancel ' + rec.name + ': ' + ((err && err.message) || err));
+    });
+  }
 
-      socket.on('connect', function() {});
-      socket.on('disconnect', function() {});
+  /* ── This page's jobs ──
+     A record per job, started here or found running on mount. The run is over when every record
+     has its outcome: 'completed', 'cancelled', 'failed' or 'not-started'. */
+  function _newJobRecord(name, jobId) {
+    return {
+      name: name, jobId: jobId, outcome: null, error: '',
+      percent: 0, label: 'Submitting...',
+      shown: false,  // the plugin's `complete` drew this job's result
+      slot: null,    // this job's box in the result card
+    };
+  }
 
-      socket.on('progress', function(data) {
-        _setProgress(data.percent || 0, data.label || '');
-      });
+  // Make `records` the jobs the page follows, in place of an earlier run's.
+  function _beginRun(records) {
+    runJobs = records;
+    cancelRequested = false;
+    earlyEvents = [];
+  }
 
-      socket.on('status', function(data) {
-        _setStatus(data.message || '');
-        _addLog(data.message || '');
-      });
+  function _liveJobs() {
+    return runJobs.filter(function(rec) { return !rec.outcome; });
+  }
 
-      socket.on('complete', function(data) {
-        _setProgress(100, 'Done!');
-        _setStatus('Complete');
-        _clearRunningState();
-        _addLog('Complete: ' + (data.table_name || ''));
-        _showResult(data);
-      });
+  function _recordFor(jobId) {
+    if (!jobId) return null;
+    return runJobs.find(function(rec) { return rec.jobId === jobId; }) || null;
+  }
 
-      socket.on('error', function(data) {
-        _setStatus('Error: ' + (data.message || 'Unknown error'));
-        _addLog('ERROR: ' + (data.message || ''));
-        _clearRunningState();
-      });
+  // A record learns its job's id from the /run answer or the job's first update, whichever comes
+  // first. The plugin's events that came for that id before then are handled now.
+  function _setJobId(rec, jobId) {
+    if (rec.jobId || !jobId) return;
+    rec.jobId = jobId;
+    var early = earlyEvents;
+    earlyEvents = [];
+    early.forEach(function(e) { _onPluginEvent(e.name, e.data); });
+  }
 
-      socket.on('queue_update', function() {});
-    } catch (e) {
-      console.error('SocketIO connection failed:', e);
+  // The generic job channel says when a job ends, however it ends: the plugin emits nothing when its
+  // job is cancelled, nor when its worker dies. run() and, on mount, track() call these.
+  function _jobHandlers(rec) {
+    return {
+      onUpdate: function(job) {
+        _setJobId(rec, job.id);
+        _applyJobUpdate(rec, job);
+        _drawProgress();
+        // One table's status follows its job's own messages; several tables' says the run is going.
+        if (runJobs.length > 1 && job.status === 'running' && !cancelRequested) _setStatus('Running');
+      },
+      onDone: function(job) {
+        if (job.status === 'cancelled') {
+          _addLog('Cancelled: ' + rec.name);
+          _jobEnded(rec, 'cancelled');
+          return;
+        }
+        // The plugin's `complete` drew the result already, unless it raced this page.
+        if (!rec.shown) _showResult(_resultFromJob(job), rec);
+        _addLog('Complete: ' + rec.name);
+        _jobEnded(rec, 'completed');
+      },
+      onError: function(job) {
+        if (!job.id) return;  // a start that failed, which run()'s answer reports
+        // The plugin's own `error` text first. Failure text rides `error`; older hosts put it on `subtitle`.
+        rec.error = rec.error || job.error || job.subtitle || 'Unknown error';
+        _addLog('ERROR for ' + rec.name + ': ' + rec.error);
+        _jobEnded(rec, 'failed');
+      },
+    };
+  }
+
+  function _applyJobUpdate(rec, job) {
+    var p = job.progress || {};
+    rec.percent = (p.percent == null || p.percent < 0) ? 0 : p.percent;
+    rec.label = p.label || job.subtitle || (job.status === 'queued' ? 'Queued...' : 'Processing...');
+  }
+
+  function _jobEnded(rec, outcome) {
+    if (rec.outcome || runJobs.indexOf(rec) < 0) return;
+    rec.outcome = outcome;
+    _drawProgress();
+    if (_liveJobs().length) return;
+    _clearRunningState();
+    _setStatus(_runOutcome());
+  }
+
+  // One table's own progress; for several, the mean, a completed table counting as 100%.
+  function _drawProgress() {
+    if (runJobs.length === 1) {
+      var only = runJobs[0];
+      if (only.outcome === 'completed') _setProgress(100, 'Done!');
+      else _setProgress(only.percent, only.label);
+      return;
+    }
+    var sum = 0;
+    var ended = 0;
+    runJobs.forEach(function(rec) {
+      sum += rec.outcome === 'completed' ? 100 : rec.percent;
+      if (rec.outcome) ended++;
+    });
+    _setProgress(sum / runJobs.length, ended + ' of ' + runJobs.length + ' tables done');
+  }
+
+  // What the status says once the run is over: one table's outcome; for several, how many completed.
+  function _runOutcome() {
+    var n = runJobs.length;
+    var counts = {};
+    runJobs.forEach(function(rec) { counts[rec.outcome] = (counts[rec.outcome] || 0) + 1; });
+    if (counts.completed === n) return 'Complete';
+    if (counts.cancelled === n) return 'Cancelled';
+    if (counts['not-started'] === n) return 'Not started';
+    if (n === 1) return 'Error: ' + runJobs[0].error;
+    return (counts.completed || 0) + ' of ' + n + ' tables complete';
+  }
+
+  function _clearRunningState() {
+    var notice = document.getElementById('im-running-notice');
+    if (notice) notice.style.display = 'none';
+    document.getElementById('im-cancel-btn').style.display = 'none';
+    earlyEvents = [];
+    imBusy = false;
+    imGate();
+  }
+
+  /* ── The plugin's own events ──
+     Every page on the namespace gets every job's events: handle only this page's. They ride
+     PluginJobs' socket, the one run() and track() use, so a job's `complete` and `error` come
+     before the update that ends it. */
+  var PLUGIN_EVENTS = {
+    status: function(rec, data) {
+      _addLog(rec.name + ': ' + (data.message || ''));
+      if (runJobs.length === 1 && !rec.outcome) _setStatus(data.message || '');
+    },
+    // The job's failure as the plugin words it, without the exception type the host adds.
+    error: function(rec, data) { rec.error = data.message || ''; },
+    complete: function(rec, data) {
+      rec.shown = true;
+      _showResult(data, rec);
+    },
+  };
+
+  function _listenForEvents() {
+    if (typeof PluginJobs === 'undefined') return;
+    Object.keys(PLUGIN_EVENTS).forEach(function(name) {
+      PluginJobs.on('/image-metrics', name, function(data) { _onPluginEvent(name, data); });
+    });
+  }
+
+  function _onPluginEvent(name, data) {
+    var rec = _recordFor(data && data.job_id);
+    if (rec) { PLUGIN_EVENTS[name](rec, data); return; }
+    // A job of this run can emit before its /run answer names it: keep the event until then.
+    if (runJobs.some(function(r) { return !r.jobId && !r.outcome; })) {
+      earlyEvents.push({ name: name, data: data });
     }
   }
 
   /* ── Seed from the host's job list on mount ──
-     The fragment is torn down on navigation and the socket events above are live-only,
-     so a job started before this mount shows nothing until it next progresses (or never,
-     if it already finished). Ask the host for this plugin's queued/running jobs and
-     re-attach to the first one: the page then shows its running state, not the empty form. */
+     The fragment is torn down on navigation and the job events are live-only, so a job
+     started before this mount shows nothing until it next progresses (or never, if it
+     already finished). Ask the host for this plugin's queued/running jobs and follow
+     every one: the page then shows its running state, not the empty form. */
   function _seedFromHost() {
     if (typeof PluginJobs === 'undefined' || !PluginJobs.list) return;
     PluginJobs.list('image-metrics')
       .then(function(jobs) {
         var live = jobs.filter(function(j) { return j.status === 'queued' || j.status === 'running'; });
-        if (live.length) _showRunningState(live[0], live.length);
+        // A run started on this page before the list answered is followed already.
+        if (live.length && !imBusy) _showRunningState(live);
       })
       .catch(function() {});
   }
 
-  function _showRunningState(job, liveCount) {
-    currentJobId = job.id;
+  function _showRunningState(jobs) {
+    _beginRun(jobs.map(function(job) {
+      return _newJobRecord(job.title || 'job ' + job.id.substring(0, 8), job.id);
+    }));
     var notice = document.getElementById('im-running-notice');
     if (notice) {
       notice.innerHTML =
         '<span class="alert-icon">⟳</span>' +
         '<div><strong>' +
-          (liveCount > 1 ? liveCount + ' Image Metrics jobs are running' : 'An Image Metrics job is running') +
-        '</strong>' + (job.title ? ' — ' + _esc(job.title) : '') +
+          (jobs.length > 1 ? jobs.length + ' Image Metrics jobs are running' : 'An Image Metrics job is running') +
+        '</strong>' + (jobs.length === 1 && jobs[0].title ? ' — ' + _esc(jobs[0].title) : '') +
         '. Progress shows below; you can also <a href="/queue">watch it in the Queue</a>.</div>';
       notice.style.display = '';
     }
@@ -772,46 +896,12 @@
     imBusy = true;
     imGate();
     document.getElementById('im-cancel-btn').style.display = '';
-    _applyJobUpdate(job);
-    _setStatus(job.status === 'queued' ? 'Queued' : 'Running');
-
-    PluginJobs.track('/image-metrics', job.id, {
-      onUpdate: _applyJobUpdate,
-      onDone: function(j) {
-        // The plugin's own `complete` event (above) already rendered the result and
-        // reset the buttons; fill in only when it didn't (cancelled, or the terminal
-        // events raced this mount).
-        if (currentJobId !== j.id) return;
-        _clearRunningState();
-        if (j.status === 'cancelled') { _setStatus('Cancelled'); _addLog('Cancelled'); return; }
-        _setProgress(100, 'Done!');
-        _setStatus('Complete');
-        _showResult(_resultFromJob(j));
-      },
-      onError: function(j) {
-        if (currentJobId !== j.id) return;
-        _clearRunningState();
-        // Failure text rides `error`; older hosts put it on `subtitle`.
-        var msg = j.error || j.subtitle || 'Unknown error';
-        _setStatus('Error: ' + msg);
-        _addLog('ERROR: ' + msg);
-      },
+    runJobs.forEach(function(rec, i) {
+      _applyJobUpdate(rec, jobs[i]);
+      PluginJobs.track('/image-metrics', rec.jobId, _jobHandlers(rec));
     });
-  }
-
-  function _applyJobUpdate(job) {
-    var p = job.progress || {};
-    var pct = (p.percent == null || p.percent < 0) ? 0 : p.percent;
-    _setProgress(pct, p.label || job.subtitle || (job.status === 'queued' ? 'Queued...' : 'Processing...'));
-  }
-
-  function _clearRunningState() {
-    var notice = document.getElementById('im-running-notice');
-    if (notice) notice.style.display = 'none';
-    document.getElementById('im-cancel-btn').style.display = 'none';
-    currentJobId = null;
-    imBusy = false;
-    imGate();
+    _drawProgress();
+    _setStatus(jobs.every(function(j) { return j.status === 'queued'; }) ? 'Queued' : 'Running');
   }
 
   // Rebuild the result banner's inputs from the generic job record: `run_url` is the
@@ -861,10 +951,16 @@
     log.scrollTop = log.scrollHeight;
   }
 
-  function _showResult(data) {
-    var container = document.getElementById('im-result-card');
-    if (!container) return;
-    container.style.display = '';
+  // A job's result, in that job's own box in the result card, so the tables' results stack.
+  function _showResult(data, rec) {
+    var card = document.getElementById('im-result-card');
+    if (!card) return;
+    card.style.display = '';
+    if (!rec.slot) {
+      rec.slot = document.createElement('div');
+      card.appendChild(rec.slot);
+    }
+    var container = rec.slot;
 
     // Build "View in Project" link using project/dataset from result
     var viewHref = '';
@@ -885,7 +981,7 @@
         (data.row_count || '?') + ' rows &times; ' + (data.metrics_count || '?') + ' metric columns' +
       '</div>' +
       (viewHref ? '<div style="margin-top:8px"><a href="' + viewHref + '" class="btn btn-primary btn-sm">View in Project</a></div>' : '');
-    // Replaces what the card held: the plugin's `complete` event and the job's onDone can both land here.
+    // Replaces what the box held: the plugin's `complete` event and the job's onDone can both land here.
     if (PLUGIN_API.showResult) { PLUGIN_API.showResult(container, result, { extra: extra }); return; }
     // Frontends without the shared result box: the message and its link.
     container.innerHTML = '<div class="alert alert-success"><div><strong>' + _esc(result.message) + '</strong>' +
@@ -899,19 +995,6 @@
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       });
-  }
-
-  function _apiPost(path, body) {
-    return PLUGIN_API.authFetch(COMPUTE_URL + path, {
-      method: 'POST',
-      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      timeout: 300000,
-    })
-    .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    });
   }
 
   function _esc(s) {
