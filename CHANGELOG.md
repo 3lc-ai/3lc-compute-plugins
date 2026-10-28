@@ -125,6 +125,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Image Metrics: Mean Red, Mean Green and Mean Blue.** Three metrics in the Color category, each
+  the mean of one channel over the image's pixels (0-255), so an image's color cast, a source with
+  its own white balance, or an image saved in BGR order stands out when they are charted side by
+  side. A grayscale image gets three equal means.
 - **Importer: locations may be bucket URLs.** A project can be created "in this computer" or at the
   bucket root the deployment names. A cloud project requires a durable cloud alias; a local default
   alias is refused with a reason. Import never relocates the source. Every

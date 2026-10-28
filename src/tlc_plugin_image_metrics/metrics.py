@@ -111,6 +111,30 @@ METRICS: list[MetricDef] = [
         category="Color",
         icon="🌈",
     ),
+    MetricDef(
+        id="mean_red",
+        name="Mean Red",
+        description="Mean of the red channel (0-255). Next to green and blue, reveals color casts "
+        "and images saved in BGR order.",
+        category="Color",
+        icon="🔴",
+    ),
+    MetricDef(
+        id="mean_green",
+        name="Mean Green",
+        description="Mean of the green channel (0-255). Next to red and blue, reveals color casts "
+        "such as green-tinted lighting.",
+        category="Color",
+        icon="🟢",
+    ),
+    MetricDef(
+        id="mean_blue",
+        name="Mean Blue",
+        description="Mean of the blue channel (0-255). Next to red and green, reveals color casts "
+        "such as an underwater tint.",
+        category="Color",
+        icon="🔵",
+    ),
     # ── Information ──
     MetricDef(
         id="entropy",
@@ -255,6 +279,21 @@ def compute_colorfulness(rgb: np.ndarray, **_: Any) -> float:
     return std_root + 0.3 * mean_root
 
 
+def compute_mean_red(rgb: np.ndarray, **_: Any) -> float:
+    """Mean of the red channel (0-255)."""
+    return float(np.mean(rgb[..., 0]))
+
+
+def compute_mean_green(rgb: np.ndarray, **_: Any) -> float:
+    """Mean of the green channel (0-255)."""
+    return float(np.mean(rgb[..., 1]))
+
+
+def compute_mean_blue(rgb: np.ndarray, **_: Any) -> float:
+    """Mean of the blue channel (0-255)."""
+    return float(np.mean(rgb[..., 2]))
+
+
 def compute_entropy(gray: np.ndarray, **_: Any) -> float:
     """Shannon entropy (bits) of the grayscale histogram."""
     hist, _edges = np.histogram(gray, bins=256, range=(0, 256))
@@ -300,6 +339,9 @@ _COMPUTE_FNS: dict[str, Any] = {
     "contrast": compute_contrast,
     "saturation": compute_saturation,
     "colorfulness": compute_colorfulness,
+    "mean_red": compute_mean_red,
+    "mean_green": compute_mean_green,
+    "mean_blue": compute_mean_blue,
     "entropy": compute_entropy,
     "width": compute_width,
     "height": compute_height,
