@@ -74,6 +74,6 @@ how to build a plugin against the contract.
 
 ## Conventions
 
-Python 3.10+, uv, Hatchling, Litestar route handlers (`get_route_handlers()`), Ruff (line-length
+Python 3.11+, uv, Hatchling, Litestar route handlers (`get_route_handlers()`), Ruff (line-length
 120), mypy `--strict` where deps allow. Google-style docstrings. SPDX header on new files
 (`# Copyright <year> 3LC Inc.` / `# SPDX-License-Identifier: Apache-2.0`).
