@@ -63,7 +63,7 @@ class _ColAccum:
             return  # nothing to accumulate
 
         if self.kind == "bool":
-            for v in pc.value_counts(arr):
+            for v in pc.value_counts(_flatten_lists(arr)):
                 self._value_counts[str(v["values"].as_py())] += v["counts"].as_py()
             return
 
@@ -91,7 +91,9 @@ class _ColAccum:
             return
 
         if self.kind in ("categorical", "label"):
-            for v in pc.value_counts(arr):
+            # A list-valued label column (multi-label, or one label per instance) counts every label
+            # in every row, as the Dashboard's filter histograms count per-instance labels.
+            for v in pc.value_counts(_flatten_lists(arr)):
                 raw = v["values"].as_py()
                 if self._value_map and raw is not None:
                     label = self._value_map.get(float(raw), str(raw))
@@ -302,7 +304,15 @@ def _compute_progressive(session: StatsSession) -> None:
                 if name not in session._accums:
                     continue
                 batch = arr.slice(processed, batch_len)
-                session._accums[name].update(batch)
+                accum = session._accums[name]
+                try:
+                    accum.update(batch)
+                except Exception:
+                    # One column PyArrow cannot count must not fail the statistics of the whole table.
+                    logger.warning("Table statistics skip column %s (%s) of %s", name, accum.dtype, url, exc_info=True)
+                    session._accums[name] = _ColAccum(
+                        name=name, kind="unknown", dtype=accum.dtype, count=accum.count, null_count=accum.null_count
+                    )
 
             processed = end
             session.rows_processed = processed
@@ -353,6 +363,13 @@ def _get_value_map(table: Any, col_name: str) -> dict[float, str] | None:
     from tlc_plugin_sdk.shared.labels import get_display_value_map
 
     return get_display_value_map(table, col_name)
+
+
+def _flatten_lists(arr: pa.Array) -> pa.Array:
+    """Return the items of a (possibly nested) list array, one element per list item; other arrays as they are."""
+    while pa.types.is_list(arr.type) or pa.types.is_large_list(arr.type) or pa.types.is_fixed_size_list(arr.type):
+        arr = pc.list_flatten(arr)
+    return arr
 
 
 def _safe_scalar(scalar: Any) -> float | None:
