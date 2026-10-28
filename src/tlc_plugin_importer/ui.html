@@ -339,12 +339,8 @@
 
   function _resetToFormatGrid() {
     selectedFormat = null;
-    _yoloDetectedSplits = [];
-    _yoloCheckedSplits = {};
-    _cocoDetectedSplits = [];
-    _cocoCheckedSplits = {};
-    _cocoAllTypes = [];
-    _cocoSelectedType = '';
+    _yoloResetDetect('');
+    _cocoResetDetect('');
     var url = new URL(window.location);
     url.searchParams.delete('format');
     history.replaceState(null, '', url);
@@ -503,6 +499,9 @@
       }
     });
 
+    // A new form has nothing read, and an answer for the last form's path must not land on it.
+    _yoloResetDetect('');
+    _cocoResetDetect('');
     // YOLO: auto-detect splits from YAML
     if (fmt.name === 'yolo') {
       _setupYoloAutoDetect();
@@ -561,10 +560,19 @@
         var lab = document.querySelector('label[for="import-' + f.id + '"]');
         return 'Fill in ' + ((lab && lab.textContent.trim()) || f.label) + label;
       }
-      // A path that failed detection still leaves annotations_file non-empty — don't let
-      // that read as "ready" (it would reach the backend as a raw, unresolved directory).
-      if (f.id === 'annotations_file' && fmt.name === 'coco' && _cocoDetectFailed) {
-        return 'Choose an Annotations Path with COCO annotations' + label;
+      // The splits imported are the ones read from this very path (Bug 19083). A path being read, or
+      // one that failed, still leaves the field non-empty — don't let that read as "ready": YOLO would
+      // import the hidden Split select's train alone, COCO send a raw, unresolved directory.
+      if (f.id === 'dataset_yaml' && fmt.name === 'yolo' &&
+          (_yoloDetectState !== 'read' || el.value.trim() !== _yoloDetectPath)) {
+        if (_yoloDetectState === 'unreadable') return 'Choose a YAML file that can be read' + label;
+        if (_yoloDetectState === 'nosplit') return 'Choose a YAML that lists a train, val or test split' + label;
+        return 'Wait while the YAML is read' + label;
+      }
+      if (f.id === 'annotations_file' && fmt.name === 'coco' &&
+          (_cocoDetectState !== 'read' || el.value.trim() !== _cocoDetectPath)) {
+        if (_cocoDetectState === 'failed') return 'Choose an Annotations Path with COCO annotations' + label;
+        return 'Wait while the annotations are read' + label;
       }
     }
 
@@ -624,6 +632,13 @@
   var _yoloCheckedSplits = {};    // e.g. {train: true, val: true}
   var _yoloBaseName = '';         // e.g. 'coco128'
   var _yoloDetectTimer = null;
+  // The splits above are read from _yoloDetectPath, and only from it (Bug 19083). _yoloDetectState
+  // is '' (no path), 'reading', 'read', 'unreadable' or 'nosplit'. Each path change and each request
+  // takes a new _yoloDetectSeq, so an answer for an earlier one is dropped.
+  var _yoloDetectPath = '';
+  var _yoloDetectState = '';
+  var _yoloDetectSeq = 0;
+  var _yoloNoPathNote = 'Enter a YAML path above to auto-detect splits.';
 
   function _setupYoloAutoDetect() {
     var yamlInput = document.getElementById('import-dataset_yaml');
@@ -637,10 +652,9 @@
       // Insert the splits panel in the same spot (inside the same column wrapper)
       var panel = document.createElement('div');
       panel.id = 'yolo-splits-panel';
-      // Show a placeholder so column doesn't collapse
-      panel.innerHTML = '<div class="form-group"><label class="form-label">Splits</label>' +
-        '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Enter a YAML path above to auto-detect splits.</div></div>';
       splitGroup.parentNode.insertBefore(panel, splitGroup.nextSibling);
+      // Show a placeholder so column doesn't collapse
+      _yoloSplitsNote(_yoloNoPathNote);
     }
 
     // Update dataset_name help text
@@ -654,24 +668,69 @@
       if (dsLabel) dsLabel.textContent = 'Dataset Base Name';
     }
 
-    // Auto-detect on blur or after typing pause
-    yamlInput.addEventListener('blur', function() { _yoloDetect(yamlInput.value); });
+    // Auto-detect after a typing pause, or at once when the path is committed (a blur after an edit,
+    // or the browse dialog). A blur with no edit reads nothing again, so unticked splits stay so.
+    // This listener runs before the form area's, so _checkImportReady sees the path's new state.
     yamlInput.addEventListener('input', function() {
-      clearTimeout(_yoloDetectTimer);
-      _yoloDetectTimer = setTimeout(function() { _yoloDetect(yamlInput.value); }, 800);
+      var path = yamlInput.value.trim();
+      if (path !== _yoloDetectPath) _yoloResetDetect(path);
+    });
+    yamlInput.addEventListener('change', function() {
+      if (_yoloDetectTimer) { clearTimeout(_yoloDetectTimer); _yoloDetect(); }
     });
   }
 
-  function _yoloDetect(yamlPath) {
-    if (!yamlPath || !yamlPath.trim()) return;
-    API.authFetch(computeUrl + '/api/plugins/importer/parse-yolo?yaml_path=' + encodeURIComponent(yamlPath.trim()))
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.error) return;
-        _yoloDetectedSplits = data.splits || [];
-        _yoloBaseName = data.name || '';
+  // A new YAML path, or a new form: the previous path's splits go at once, and Import waits until
+  // this path is read (Bug 19083).
+  function _yoloResetDetect(path) {
+    _yoloDetectPath = path;
+    _yoloDetectSeq++;
+    _yoloDetectState = path ? 'reading' : '';
+    _yoloDetectedSplits = [];
+    _yoloCheckedSplits = {};
+    _yoloBaseName = '';
+    _yoloSplitsNote(path ? 'Reading the YAML…' : _yoloNoPathNote);
+    clearTimeout(_yoloDetectTimer);
+    _yoloDetectTimer = path ? setTimeout(_yoloDetect, 800) : null;
+  }
 
-        if (_yoloDetectedSplits.length === 0) return;
+  // The splits panel before there are splits to tick: its label and one line, muted or an error.
+  function _yoloSplitsNote(text, isError) {
+    var panel = document.getElementById('yolo-splits-panel');
+    if (!panel) return;
+    panel.innerHTML = '<div class="form-group"><label class="form-label">Splits</label>' +
+      '<div style="font-size:12px;color:var(' + (isError ? '--error' : '--text-muted') + ');padding:8px 0">' +
+      _esc(text) + '</div></div>';
+  }
+
+  // The YAML could not be read, or lists no split: say so under the path; Import stays disabled.
+  function _yoloShowDetectError(state, message) {
+    _yoloDetectState = state;
+    _yoloSplitsNote(message, true);
+    _checkImportReady();
+  }
+
+  function _yoloDetect() {
+    _yoloDetectTimer = null;
+    var seq = ++_yoloDetectSeq;
+    API.authFetch(computeUrl + '/api/plugins/importer/parse-yolo?yaml_path=' + encodeURIComponent(_yoloDetectPath))
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function(data) {
+        if (seq !== _yoloDetectSeq) return;  // the path changed while this one was read
+        if (data.error) {
+          _yoloShowDetectError('unreadable', 'Could not read the YAML: ' + data.error);
+          return;
+        }
+        if (!data.splits || data.splits.length === 0) {
+          _yoloShowDetectError('nosplit', 'This YAML lists no train, val or test split.');
+          return;
+        }
+        _yoloDetectState = 'read';
+        _yoloDetectedSplits = data.splits;
+        _yoloBaseName = data.name || '';
 
         // Auto-fill dataset base name if empty
         var dsInput = document.getElementById('import-dataset_name');
@@ -694,7 +753,10 @@
         _renderYoloSplitsPanel(data);
         _checkImportReady();
       })
-      .catch(function() {});
+      .catch(function() {
+        if (seq !== _yoloDetectSeq) return;
+        _yoloShowDetectError('unreadable', 'Could not read the YAML.');
+      });
   }
 
   function _renderYoloSplitsPanel(data) {
@@ -742,10 +804,12 @@
   var _cocoCheckedSplits = {};     // e.g. {train: true, val: true}
   var _cocoBaseName = '';
   var _cocoDetectTimer = null;
-  // True when the last detect call couldn't resolve the current path to a COCO
-  // annotation file — blocks "Ready" so a bad path can't reach the backend as a
-  // raw directory (see _checkImportReady).
-  var _cocoDetectFailed = false;
+  // As YOLO's: the splits above are read from _cocoDetectPath, and only from it (Bug 19083).
+  // _cocoDetectState is '' (no path), 'reading', 'read' or 'failed'; 'failed' blocks Import so a bad
+  // path can't reach the backend as a raw directory (see _importBlocker).
+  var _cocoDetectPath = '';
+  var _cocoDetectState = '';
+  var _cocoDetectSeq = 0;
 
   function _setupCocoAutoDetect() {
     var annInput = document.getElementById('import-annotations_file');
@@ -761,20 +825,42 @@
       imgGroup.parentNode.insertBefore(panel, imgGroup.nextSibling);
     }
 
-    annInput.addEventListener('blur', function() { _cocoDetect(annInput.value); });
+    // As YOLO's: after a typing pause, or at once when the path is committed.
     annInput.addEventListener('input', function() {
-      clearTimeout(_cocoDetectTimer);
-      _cocoDetectTimer = setTimeout(function() { _cocoDetect(annInput.value); }, 800);
+      var path = annInput.value.trim();
+      if (path !== _cocoDetectPath) _cocoResetDetect(path);
+    });
+    annInput.addEventListener('change', function() {
+      if (_cocoDetectTimer) { clearTimeout(_cocoDetectTimer); _cocoDetect(); }
     });
   }
 
   var _cocoAllTypes = [];         // [{type, splits}]
   var _cocoSelectedType = '';      // e.g. 'instances'
 
-  function _cocoShowDetectError(message) {
+  // A new annotations path, or a new form: the previous path's splits go at once, and Import waits
+  // until this path is read (Bug 19083).
+  function _cocoResetDetect(path) {
+    _cocoDetectPath = path;
+    _cocoDetectSeq++;
+    _cocoDetectState = path ? 'reading' : '';
     _cocoDetectedSplits = [];
+    _cocoCheckedSplits = {};
     _cocoAllTypes = [];
-    _cocoDetectFailed = true;
+    _cocoSelectedType = '';
+    _cocoBaseName = '';
+    var panel = document.getElementById('coco-splits-panel');
+    if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
+    // Re-show image_folder: a multi-split path hid it (each split brings its own)
+    var imgInput = document.getElementById('import-image_folder');
+    var imgGroup = imgInput ? imgInput.closest('.form-group') : null;
+    if (imgGroup) imgGroup.style.display = '';
+    clearTimeout(_cocoDetectTimer);
+    _cocoDetectTimer = path ? setTimeout(_cocoDetect, 800) : null;
+  }
+
+  function _cocoShowDetectError(message) {
+    _cocoDetectState = 'failed';
     var panel = document.getElementById('coco-splits-panel');
     if (panel) {
       panel.style.display = '';
@@ -783,33 +869,26 @@
         '(e.g. instances_train2017.json), or train/val/test subfolders each with ' +
         '_annotations.coco.json.</div>';
     }
-    // Re-show image_folder if it was hidden
-    var imgInput = document.getElementById('import-image_folder');
-    if (imgInput) {
-      var imgGroup = imgInput.closest('.form-group');
-      if (imgGroup) imgGroup.style.display = '';
-    }
     _checkImportReady();
   }
 
-  function _cocoDetect(annPath) {
-    if (!annPath || !annPath.trim()) {
-      _cocoDetectFailed = false;
-      var panel = document.getElementById('coco-splits-panel');
-      if (panel) panel.style.display = 'none';
-      _checkImportReady();
-      return;
-    }
-    var trimmed = annPath.trim();
+  function _cocoDetect() {
+    _cocoDetectTimer = null;
+    var seq = ++_cocoDetectSeq;
+    var trimmed = _cocoDetectPath;
 
     API.authFetch(computeUrl + '/api/plugins/importer/parse-coco?annotations_dir=' + encodeURIComponent(trimmed))
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then(function(data) {
+        if (seq !== _cocoDetectSeq) return;  // the path changed while this one was read
         if (data.error || !data.splits || data.splits.length === 0) {
           _cocoShowDetectError(data.error || 'No COCO annotations found at this path.');
           return;
         }
-        _cocoDetectFailed = false;
+        _cocoDetectState = 'read';
 
         _cocoAllTypes = data.types || [];
         _cocoSelectedType = data.default_type || '';
@@ -867,6 +946,7 @@
         _checkImportReady();
       })
       .catch(function() {
+        if (seq !== _cocoDetectSeq) return;
         _cocoShowDetectError('Failed to inspect this path.');
       });
   }
