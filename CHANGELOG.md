@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Browse panel
+
+- **The Browse panel under a path field takes a click anywhere on a row** (from the SDK's data-source
+  picker). In Export's Output Path and the Importer's folder fields each folder row has its own Select, a
+  click elsewhere on the row opens it, as `..` does, and files are listed dimmed and cannot be picked; in
+  the Importer's file fields a click anywhere on a file row picks it. A double-click in the empty field
+  opens the panel, as it does in the table fields.
+
 #### Actions that cannot run yet
 
 - **Export waits for what an export needs, and says so.** It stays disabled until there is a table, an
