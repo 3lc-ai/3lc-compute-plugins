@@ -373,6 +373,8 @@
     var train = parseInt(trainSlider.value);
     var val = parseInt(valSlider.value);
     var test = parseInt(testSlider.value);
+    // 42 only for a blank or non-integer seed: 0 is a seed like any other. Not parseInt, which makes 1.5 into 1.
+    var seed = document.getElementById('split-seed').valueAsNumber;
 
     var spinner = document.getElementById('split-spinner');
     var status = document.getElementById('split-status');
@@ -397,7 +399,7 @@
       train_pct: train,
       val_pct: val,
       test_pct: test,
-      seed: parseInt(document.getElementById('split-seed').value) || 42,
+      seed: Number.isInteger(seed) ? seed : 42,
     };
 
     var startTime = Date.now();

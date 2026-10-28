@@ -147,6 +147,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   until the new check answers, and a change while a merge runs no longer re-enables it.
 - **Split: a split cancelled from the Queue no longer leaves Split Table disabled** until the page is
   reloaded; the page says "Split cancelled."
+- **Split: a Random Seed of 0 is used as 0.** The page and the job both replaced it with 42, so a seed-0
+  split was the seed-42 split and its result said seed 42. A blank seed still means 42.
 - **Image Metrics: Compute Metrics stays disabled while metrics are computed.** Changing the metric or
   table selection during a run re-enabled it. When no job could be started at all, it stayed disabled
   until a reload; the page now says "Not started" and enables it again.
