@@ -156,6 +156,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dataset name, or table to extend, reached the job, which refused it. With a COCO annotations file
   named directly, Import stayed disabled after detection filled the images folder, until another field
   changed.
+- **Import: a YOLO or COCO import uses only the splits read from the path it is given.** A YOLO YAML
+  that could not be read, or lists no train, val or test split, imported the train split alone as if
+  it were the dataset; it is now reported under the path, and Import stays disabled ("Choose a YAML
+  file that can be read to enable Import YOLO Dataset."). A changed YAML or annotations path clears
+  the previous path's splits at once, and Import waits until the new path is read, so they are no
+  longer sent with it; an answer for an earlier path is ignored. Leaving the path field without
+  changing it no longer reads it again and ticks every split.
 - Import success messages show `initial` when the table name is left blank.
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.
