@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Actions that cannot run yet
+
+- **Export waits for what an export needs, and says so.** It stays disabled until there is a table, an
+  output path and, for CSV and Excel, a ticked column; the line under it and its tooltip name the first
+  thing missing ("Tick at least one column to enable Export."), and say to wait while the table's
+  columns are listed or while an export runs. A click no longer reports a missing field afterwards.
+- **Export's Select all and Deselect all** are disabled until the table's columns are listed, and
+  while they would change nothing ("Nothing to deselect: no column is ticked."), saying so in their
+  tooltips.
+
 #### Image Metrics: presets
 
 - **The Config bar is the SDK's preset bar.** One line at the top of the page: a select with Default
@@ -107,6 +117,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Export: Deselect all no longer exports every column.** An empty column list reached the server as
+  no `columns`, which it reads as all of them; Export now waits for a ticked column. A column list read
+  for an earlier table can no longer go out with the table that replaced it.
 - Import success messages show `initial` when the table name is left blank.
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.

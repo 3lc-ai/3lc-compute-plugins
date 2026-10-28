@@ -24,7 +24,8 @@
 .export-col-actions button { font-size: 11px; padding: 3px 10px; background: transparent;
   border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer;
   color: var(--text-muted); font-weight: 500; }
-.export-col-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.export-col-actions button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.export-col-actions button:disabled { opacity: .5; cursor: not-allowed; }
 </style>
 
 <div class="plugin-page">
@@ -57,7 +58,7 @@
 
   <div id="export-result"></div>
 
-  <div class="card">
+  <div class="card" id="export-form">
     <div class="card-header"><div class="card-title">Export Configuration</div></div>
     <div class="card-body">
 
@@ -89,8 +90,8 @@
           <div class="form-group">
             <label class="form-label">Columns</label>
             <div class="export-col-actions">
-              <button type="button" onclick="_expSelectAll(true)">Select all</button>
-              <button type="button" onclick="_expSelectAll(false)">Deselect all</button>
+              <button type="button" id="export-select-all" onclick="_expSelectAll(true)" disabled>Select all</button>
+              <button type="button" id="export-deselect-all" onclick="_expSelectAll(false)" disabled>Deselect all</button>
               <span id="export-col-count" style="font-size:11px;color:var(--text-muted);margin-left:auto"></span>
             </div>
             <div class="export-col-list" id="export-col-list">
@@ -106,11 +107,14 @@
 
         <hr class="divider">
         <div style="display:flex;gap:10px;align-items:center">
-          <button type="button" class="btn btn-primary btn-lg" id="export-submit-btn">↓ Export</button>
+          <button type="button" class="btn btn-primary btn-lg" id="export-submit-btn"
+                  aria-describedby="export-submit-why" disabled>↓ Export</button>
           <span class="spinner" id="export-spinner" style="display:none"></span>
           <span id="export-status" style="display:none;font-size:12px;color:var(--text-muted)">
             Exporting… this may take a moment.</span>
         </div>
+        <!-- Why Export cannot run yet; always one line high, so the page does not move as it comes and goes. -->
+        <div class="text-sm text-muted" id="export-submit-why" style="margin-top:6px;line-height:1.5;min-height:1.5em"></div>
       </div>
 
     </div>
@@ -166,24 +170,32 @@
     renderFormatGrid();
     document.getElementById('export-details').style.display = '';
     renderFormatOptions();
-    var fmt = formats.find(function(f) { return f.name === name; });
     var colSection = document.getElementById('export-column-section');
-    if (fmt && fmt.needs_column_select) {
+    if (needsColumns()) {
       colSection.style.display = '';
-      var tableUrl = document.getElementById('export-table-url').value.trim();
+      var tableUrl = currentTableUrl();
       if (tableUrl && tableColumns.length === 0) loadColumns(tableUrl);
     } else {
       colSection.style.display = 'none';
     }
+    gate();
   }
+
+  // Which table the column list belongs to, and how its listing went ('loading', 'ok' or 'error'). The
+  // gate compares it with the field, so a list read for an earlier table never goes out with a new one.
+  var _colsUrl = '';
+  var _colsState = '';
 
   function loadColumns(tableUrl) {
     if (!tableUrl) return;
     tableProject = '';
+    _colsUrl = tableUrl;
+    _colsState = 'loading';
     // The column list only exists for needs_column_select formats; this also runs
     // for yolo/coco purely to resolve the table's project for job attribution.
     var list = document.getElementById('export-col-list');
     if (list) list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Loading columns…</div>';
+    gate();
     API.authFetch(computeUrl + '/api/plugins/exporter/columns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -191,16 +203,23 @@
     })
       .then(function(r) { return r.json(); })
       .then(function(data) {
+        if (_colsUrl !== tableUrl) return;  // another table was asked for since
         if (data.error) {
+          _colsState = 'error';
           if (list) list.innerHTML = '<div style="color:var(--error);font-size:12px;padding:8px 0">' + _esc(data.error) + '</div>';
+          gate();
           return;
         }
         tableProject = data.project_name || '';
         tableColumns = data.columns || [];
+        _colsState = 'ok';
         renderColumnList();
       })
       .catch(function(err) {
+        if (_colsUrl !== tableUrl) return;
+        _colsState = 'error';
         if (list) list.innerHTML = '<div style="color:var(--error);font-size:12px;padding:8px 0">Failed: ' + _esc(err.message) + '</div>';
+        gate();
       });
   }
 
@@ -208,6 +227,7 @@
     var list = document.getElementById('export-col-list');
     if (!tableColumns.length) {
       list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">No columns found.</div>';
+      gate();
       return;
     }
     var html = '';
@@ -234,6 +254,7 @@
     var n = 0; cbs.forEach(function(cb) { if (cb.checked) n++; });
     var el = document.getElementById('export-col-count');
     if (el) el.textContent = n + ' / ' + cbs.length + ' columns selected';
+    gate();
   };
 
   function getSelectedColumns() {
@@ -241,6 +262,72 @@
     var cols = [];
     cbs.forEach(function(cb) { cols.push(cb.getAttribute('data-col')); });
     return cols;
+  }
+
+  // ── What Export, Select all and Deselect all wait for (PBI 19074) ──
+  function currentTableUrl() { return document.getElementById('export-table-url').value.trim(); }
+
+  function currentOutputPath() {
+    var el = document.getElementById('export-output-path');
+    return el ? el.value.trim() : '';
+  }
+
+  function needsColumns() {
+    var fmt = formats.find(function(f) { return f.name === selectedFormat; });
+    return !!(fmt && fmt.needs_column_select);
+  }
+
+  // Why the current table's columns are not listed yet, as what to do to enable `label`; '' once they are.
+  function columnsBlocker(label) {
+    var tableUrl = currentTableUrl();
+    if (!tableUrl) return 'Choose a table to enable ' + label + '.';
+    if (_colsUrl !== tableUrl || _colsState === 'loading') {
+      return 'Wait while the table\'s columns are listed to enable ' + label + '.';
+    }
+    if (_colsState !== 'ok' || !tableColumns.length) {
+      return 'Choose a table whose columns can be listed to enable ' + label + '.';
+    }
+    return '';
+  }
+
+  var _exporting = false;
+
+  // Why Export cannot run yet, as what to do; '' when it can. An empty column list used to export every
+  // column (the server reads no columns as all of them), so a CSV or Excel export needs one ticked.
+  function exportBlocker() {
+    if (_exporting) return 'Wait for the export to finish to enable Export.';
+    if (!currentTableUrl()) return 'Choose a table to enable Export.';
+    if (!selectedFormat) return 'Choose an export format to enable Export.';
+    if (!currentOutputPath()) return 'Enter an output path to enable Export.';
+    if (needsColumns()) {
+      var cols = columnsBlocker('Export');
+      if (cols) return cols;
+      if (!getSelectedColumns().length) return 'Tick at least one column to enable Export.';
+    }
+    return '';
+  }
+
+  // Export, and the column list's Select all and Deselect all, disabled while they cannot run or would
+  // change nothing, each saying why in its tooltip; Export's reason also shows on the line under it.
+  function gate() {
+    var btn = document.getElementById('export-submit-btn');
+    var reason = exportBlocker();
+    btn.disabled = _exporting || !!reason;
+    btn.title = reason;
+    document.getElementById('export-submit-why').textContent = reason;
+
+    var cbs = document.getElementById('export-col-list').querySelectorAll('input[type="checkbox"]');
+    var ticked = 0;
+    cbs.forEach(function(cb) { if (cb.checked) ticked++; });
+    var all = document.getElementById('export-select-all');
+    var allWhy = columnsBlocker('Select all') ||
+      (ticked === cbs.length ? 'Nothing to select: every column is already ticked.' : '');
+    all.disabled = !!allWhy;
+    all.title = allWhy;
+    var none = document.getElementById('export-deselect-all');
+    var noneWhy = columnsBlocker('Deselect all') || (ticked === 0 ? 'Nothing to deselect: no column is ticked.' : '');
+    none.disabled = !!noneWhy;
+    none.title = noneWhy;
   }
 
   function renderFormatOptions() {
@@ -276,14 +363,11 @@
   var _resultShown = false;
 
   function executeExport() {
-    var tableUrl = document.getElementById('export-table-url').value.trim();
-    var outputPath = document.getElementById('export-output-path').value.trim();
-    var submitBtn = document.getElementById('export-submit-btn');
+    if (exportBlocker()) { gate(); return; }
+    var tableUrl = currentTableUrl();
+    var outputPath = currentOutputPath();
     var spinner = document.getElementById('export-spinner');
     var status = document.getElementById('export-status');
-    if (!tableUrl) { showResult({ success: false, message: 'Table URL is required.' }); return; }
-    if (!selectedFormat) { showResult({ success: false, message: 'Please select an export format.' }); return; }
-    if (!outputPath) { showResult({ success: false, message: 'Output path is required.' }); return; }
 
     // project_name doubles as the Queue & Progress panel's project filter on the
     // host. The exported TABLE's project wins: on a bare sidebar launch the
@@ -299,18 +383,18 @@
         if (el) body[opt.name] = el.value;
       });
     }
-    if (fmt && fmt.needs_column_select) {
-      var cols = getSelectedColumns();
-      if (cols.length > 0) body.columns = cols;
-    }
+    // Never empty here: the gate waits for a ticked column (none would export them all).
+    if (fmt && fmt.needs_column_select) body.columns = getSelectedColumns();
 
-    submitBtn.disabled = true;
+    _exporting = true;
+    gate();
     spinner.style.display = 'inline-block';
     status.style.display = 'inline';
     _resultShown = false;
 
     function cleanup() {
-      submitBtn.disabled = false;
+      _exporting = false;
+      gate();
       spinner.style.display = 'none';
       status.style.display = 'none';
       status.textContent = '';
@@ -379,6 +463,9 @@
   });
 
   document.getElementById('export-submit-btn').addEventListener('click', executeExport);
+  // Typing, a Browse pick (the table field and the output widget fire both) and the column ticks.
+  document.getElementById('export-form').addEventListener('input', gate);
+  document.getElementById('export-form').addEventListener('change', gate);
 
   function _esc(s) {
     if (!s) return '';
@@ -399,6 +486,7 @@
   document.getElementById('export-output-path').required = true;
 
   if (prefillUrl) document.getElementById('export-table-url').value = prefillUrl;
+  gate();
   loadFormats();
 })();
 </script>
