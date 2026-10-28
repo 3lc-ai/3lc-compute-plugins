@@ -7,6 +7,7 @@ from __future__ import annotations
 import csv
 import json
 import logging
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -201,6 +202,25 @@ def _classify_column_type(schema: Any, col_name: str = "") -> str:
 # ---------------------------------------------------------------------------
 # Execution logic
 # ---------------------------------------------------------------------------
+
+
+def suggested_stem(project: str, dataset: str, table: str) -> str:
+    """The name an export suggests, without its extension, from the table's project, dataset and name.
+
+    ``TestCoco`` / ``TestCoco`` / ``train`` gives ``TestCoco-train``; ``boulder_detection`` / ``train`` /
+    ``initial`` gives ``boulder_detection-train``. The parts are joined with ``-``; a part equal to the one
+    before it is dropped, as is a table called ``initial`` (what most tables start as, which says nothing
+    once the dataset is named); characters outside ``[A-Za-z0-9._-]`` become ``_``. Empty when nothing is
+    known.
+    """
+    parts: list[str] = []
+    for part in (project, dataset, table):
+        part = (part or "").strip()
+        if part and not (parts and part == parts[-1]):
+            parts.append(part)
+    if len(parts) > 1 and parts[-1] == "initial":
+        parts.pop()
+    return re.sub(r"[^A-Za-z0-9._-]+", "_", "-".join(parts))
 
 
 def _execute_yolo(table_url: str, output_path: str, options: dict[str, Any]) -> dict[str, Any]:

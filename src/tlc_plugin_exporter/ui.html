@@ -82,7 +82,9 @@
         <div class="form-group">
           <label class="form-label required">Output Path</label>
           <div id="export-output-ds"></div>
-          <div class="form-help">A folder or a full file path on the machine the export runs on, or a bucket URL (written there when the export finishes).</div>
+          <div class="form-help" id="export-output-help"></div>
+          <!-- What the export writes, from the value as the server reads it (updateOutputNotes). -->
+          <div class="form-help" id="export-writes" style="min-height:1.5em"></div>
         </div>
 
         <!-- Column selector (for CSV/XLSX) -->
@@ -131,6 +133,8 @@
   var selectedFormat = null;
   var tableColumns = [];
   var tableProject = '';  // the exported table's own project (from /columns)
+  var tableStem = '';     // the name the output chooser suggests, before the extension (from /columns)
+  var outputChooser = null;  // the output path's chooser (bound below); told when the format changes
 
   var urlParams = new URLSearchParams(window.location.search);
   var prefillUrl = '';
@@ -166,10 +170,12 @@
   }
 
   function selectFormat(name) {
+    var before = selectedFormatDef();
     selectedFormat = name;
     renderFormatGrid();
     document.getElementById('export-details').style.display = '';
     renderFormatOptions();
+    followFormat(before);
     var colSection = document.getElementById('export-column-section');
     if (needsColumns()) {
       colSection.style.display = '';
@@ -189,6 +195,7 @@
   function loadColumns(tableUrl) {
     if (!tableUrl) return;
     tableProject = '';
+    tableStem = '';
     _colsUrl = tableUrl;
     _colsState = 'loading';
     // The column list only exists for needs_column_select formats; this also runs
@@ -211,6 +218,7 @@
           return;
         }
         tableProject = data.project_name || '';
+        tableStem = data.suggested_stem || '';
         tableColumns = data.columns || [];
         _colsState = 'ok';
         renderColumnList();
@@ -272,6 +280,67 @@
     return el ? el.value.trim() : '';
   }
 
+  // ── The output, as the server reads it (PBI 19097) ──
+  function selectedFormatDef() { return formats.find(function(f) { return f.name === selectedFormat; }) || null; }
+  // YOLO writes a folder (its YAML, images and labels); every other format writes one file.
+  function outputIsFolder() { return selectedFormat === 'yolo'; }
+  function formatExtension() { var f = selectedFormatDef(); return (f && f.file_extension) || ''; }
+  function hasExtension(v) { return /\.[A-Za-z0-9]{1,6}$/.test(v.replace(/\/$/, '')); }
+  function safeName(s) { return String(s || '').replace(/[^A-Za-z0-9._-]+/g, '_'); }
+  // The file each format writes into a folder, as the executors in __init__.py name it.
+  var DEFAULT_FILE = { csv: 'export.csv', xlsx: 'export.xlsx', coco: 'annotations.json' };
+
+  // What the chooser's name box starts with: the table's own name (project, dataset, table, from /columns)
+  // plus the format's extension; for YOLO one folder per project, so train and val export into one dataset.
+  function suggestedOutputName() {
+    var stem = tableStem || 'export';
+    if (outputIsFolder()) return (safeName(tableProject) || stem) + '-yolo';
+    return stem + formatExtension();
+  }
+
+  // What the export writes, for the line under the field: a value ending in the format's extension is the
+  // file; anything else is a folder the default file goes in (the executors read it the same way).
+  function writesLine() {
+    var v = currentOutputPath();
+    var fmt = selectedFormatDef();
+    if (!v || !fmt) return '';
+    var later = v.indexOf('://') !== -1 ? ', written there when the export finishes' : '';
+    var dir = v.replace(/\/$/, '');
+    if (outputIsFolder()) {
+      if (hasExtension(v)) return 'A YOLO export writes a folder, not a file.';
+      return 'Writes ' + dir + '/dataset.yaml, with images/<split> and labels/<split>' + later + '.';
+    }
+    var ext = formatExtension();
+    var isFile = ext && v.toLowerCase().slice(-ext.length) === ext;
+    return 'Writes ' + (isFile ? v : dir + '/' + (DEFAULT_FILE[fmt.name] || 'export' + ext)) + later + '.';
+  }
+
+  function updateOutputNotes() {
+    var help = document.getElementById('export-output-help');
+    if (help) {
+      help.textContent = !selectedFormat ? ''
+        : outputIsFolder()
+          ? 'A folder, on the machine the export runs on or in a bucket: the dataset\'s YAML, images and labels go in it.'
+          : 'A file, or a folder to write ' + (DEFAULT_FILE[selectedFormat] || 'the export') + ' in, on the machine'
+            + ' the export runs on or in a bucket.';
+    }
+    var writes = document.getElementById('export-writes');
+    if (writes) writes.textContent = writesLine();
+  }
+
+  // A value named for the format before (x.csv) follows a switch to another file format (x.xlsx).
+  function followFormat(before) {
+    var v = currentOutputPath();
+    var was = before && before.file_extension;
+    var ext = formatExtension();
+    if (was && before.name !== 'yolo' && !outputIsFolder() && ext && v.toLowerCase().slice(-was.length) === was) {
+      _tlcSetDataSourceValue('export-output-path', v.slice(0, -was.length) + ext);
+    }
+    updateOutputNotes();
+    // The chooser, if open, follows the format too: a file or a folder, the filter, the suggested name.
+    if (outputChooser && outputChooser.refresh) outputChooser.refresh();
+  }
+
   function needsColumns() {
     var fmt = formats.find(function(f) { return f.name === selectedFormat; });
     return !!(fmt && fmt.needs_column_select);
@@ -299,6 +368,9 @@
     if (!currentTableUrl()) return 'Choose a table to enable Export.';
     if (!selectedFormat) return 'Choose an export format to enable Export.';
     if (!currentOutputPath()) return 'Enter an output path to enable Export.';
+    if (outputIsFolder() && hasExtension(currentOutputPath())) {
+      return 'Choose a folder, not a file, to enable Export.';
+    }
     if (needsColumns()) {
       var cols = columnsBlocker('Export');
       if (cols) return cols;
@@ -310,6 +382,7 @@
   // Export, and the column list's Select all and Deselect all, disabled while they cannot run or would
   // change nothing, each saying why in its tooltip; Export's reason also shows on the line under it.
   function gate() {
+    updateOutputNotes();
     var btn = document.getElementById('export-submit-btn');
     var reason = exportBlocker();
     btn.disabled = _exporting || !!reason;
@@ -474,14 +547,18 @@
     return d.innerHTML;
   }
 
-  // Render the data-source widget for the output path
+  // The output path's chooser follows the format: a folder for YOLO, else a file with the format's extension,
+  // and its name box starts with a name made from the table (suggestedOutputName).
   var dsContainer = document.getElementById('export-output-ds');
   dsContainer.innerHTML = _tlcDataSourceHtml('export-output-path', {
-    placeholder: '/path/to/output/folder',
-    mode: 'folder',
-    purpose: 'output',
+    placeholder: 'Folder or file to write to, or a bucket URL',
   });
-  _tlcBindDataSource('export-output-path', computeUrl, 'exporter', { mode: 'folder', purpose: 'output' });
+  outputChooser = _tlcBindDataSource('export-output-path', computeUrl, 'exporter', {
+    purpose: 'output',
+    mode: function() { return outputIsFolder() ? 'folder' : 'file'; },
+    accept: function() { var ext = formatExtension(); return !outputIsFolder() && ext ? '*' + ext : ''; },
+    suggestedName: suggestedOutputName,
+  });
   // The SDK widget has no required flag; the host's required-field cue keys off the attribute.
   document.getElementById('export-output-path').required = true;
 

@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Browse panel
+
+- **The Browse panel under a path field is the SDK's file chooser.** A Location line names the place being
+  browsed (the machine's folder, a bucket); a path bar follows the browsing; a click opens a folder or
+  picks a file; the arrow keys, Enter, Backspace and Escape work; the Importer's folder fields dim files
+  and pick with "Select this folder"; and a double-click in the empty field opens it, as it does in the
+  table fields.
+- **Export's Output Path is a Save dialog that knows the table and the format.** For CSV, Excel and COCO
+  the chooser's name box starts with a name made from the table (`TestCoco-train.csv`: project, dataset
+  and table joined with `-`, repeats and `initial` dropped; `/columns` sends it as `suggested_stem`), Save
+  picks `<folder>/<name>`, a typed name without the extension gets it, and a click on an existing file
+  names it ("Replaces …"). For YOLO, which writes a folder, the box names a new folder, `<project>-yolo`,
+  one per project so train and val export into the same dataset. A line under the field says what the
+  export writes, as the server reads the value; a value named for the format before follows a switch to
+  another file format (`x.csv` → `x.xlsx`); a YOLO value with an extension disables Export with "Choose a
+  folder, not a file, to enable Export."; the help text says what each format needs; and the chooser, if
+  open, follows a format switch.
+
 #### Actions that cannot run yet
 
 - **Export waits for what an export needs, and says so.** It stays disabled until there is a table, an
