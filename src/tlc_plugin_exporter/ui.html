@@ -134,6 +134,7 @@
   var tableColumns = [];
   var tableProject = '';  // the exported table's own project (from /columns)
   var tableStem = '';     // the name the output chooser suggests, before the extension (from /columns)
+  var outputChooser = null;  // the output path's chooser (bound below); told when the format changes
 
   var urlParams = new URLSearchParams(window.location.search);
   var prefillUrl = '';
@@ -336,6 +337,8 @@
       _tlcSetDataSourceValue('export-output-path', v.slice(0, -was.length) + ext);
     }
     updateOutputNotes();
+    // The chooser, if open, follows the format too: a file or a folder, the filter, the suggested name.
+    if (outputChooser && outputChooser.refresh) outputChooser.refresh();
   }
 
   function needsColumns() {
@@ -550,7 +553,7 @@
   dsContainer.innerHTML = _tlcDataSourceHtml('export-output-path', {
     placeholder: 'Folder or file to write to, or a bucket URL',
   });
-  _tlcBindDataSource('export-output-path', computeUrl, 'exporter', {
+  outputChooser = _tlcBindDataSource('export-output-path', computeUrl, 'exporter', {
     purpose: 'output',
     mode: function() { return outputIsFolder() ? 'folder' : 'file'; },
     accept: function() { var ext = formatExtension(); return !outputIsFolder() && ext ? '*' + ext : ''; },
