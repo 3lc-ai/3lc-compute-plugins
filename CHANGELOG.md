@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Export's Select all and Deselect all** are disabled until the table's columns are listed, and
   while they would change nothing ("Nothing to deselect: no column is ticked."), saying so in their
   tooltips.
+- **Merge Tables says what it waits for.** It was already disabled until two distinct tables with the
+  same columns were chosen; the line under it and its tooltip now say which ("Choose Table B to enable
+  Merge Tables.", "Choose tables with the same columns to enable Merge Tables.", or to wait while the
+  columns are compared or the merge runs).
 
 #### Image Metrics: presets
 
@@ -120,6 +124,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Export: Deselect all no longer exports every column.** An empty column list reached the server as
   no `columns`, which it reads as all of them; Export now waits for a ticked column. A column list read
   for an earlier table can no longer go out with the table that replaced it.
+- **Merge: a table changed after a successful column check no longer leaves Merge Tables enabled**
+  until the new check answers, and a change while a merge runs no longer re-enables it.
 - Import success messages show `initial` when the table name is left blank.
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.
