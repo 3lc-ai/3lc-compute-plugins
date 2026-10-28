@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   columns are compared or the merge runs).
 - **Split Table is disabled until a table is chosen**, and while a split runs, saying why on the line
   under it and in its tooltip, instead of answering a click with "Select a table to split."
+- **Compute Metrics says what it waits for.** It stays disabled until a table is added, the metric list
+  has loaded and a metric is selected, and while metrics are computed; the line under it and its
+  tooltip name the first ("Select at least one metric, or click Recommended, to enable Compute
+  Metrics."), also after a preset fills the form. The alerts a click raised are gone.
+- **Image Metrics' Select All, Clear and Recommended** are disabled while the metric list loads and
+  while they would change nothing ("Nothing to clear: no metric is selected."), saying so in their
+  tooltips.
 
 #### Image Metrics: presets
 
@@ -130,6 +137,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   until the new check answers, and a change while a merge runs no longer re-enables it.
 - **Split: a split cancelled from the Queue no longer leaves Split Table disabled** until the page is
   reloaded; the page says "Split cancelled."
+- **Image Metrics: Compute Metrics stays disabled while metrics are computed.** Changing the metric or
+  table selection during a run re-enabled it. When no job could be started at all, it stayed disabled
+  until a reload; the page now says "Not started" and enables it again.
 - Import success messages show `initial` when the table name is left blank.
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.
