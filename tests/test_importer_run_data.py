@@ -126,4 +126,6 @@ def test_csv_upload_not_held_here_says_why(tmp_path: Path) -> None:
     params = {"format": "csv", "session_id": "gone", "selected_columns": [{"index": 0}]}
     with pytest.raises(JobFailed, match="cannot run on a GPU node"):
         imp._run_csv_import(_ctx(params, tmp_path))
-    assert "PLUGIN_API.getRunTarget()" in UI and "and cannot run on a" in UI
+    # The fragment refuses up front: Import is disabled, with the reason, while "Run on" is a node.
+    assert "PLUGIN_API.getRunTarget()" in UI and "PLUGIN_API.onRunTargetChange(_csvGate)" in UI
+    assert "a CSV import runs where the file was uploaded" in UI

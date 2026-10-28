@@ -21,6 +21,8 @@
 .merger-compat-err { background: var(--error-bg); color: var(--error); }
 
 .merger-status { font-size: 12px; color: var(--text-muted); }
+/* One line kept free for Merge Tables' reason, so the page does not move as it comes and goes. */
+.merger-why { margin-top: 6px; line-height: 1.5; min-height: 1.5em; }
 .merger-elapsed { font-size: 11px; color: var(--text-muted); text-align: right; }
 .merger-about { font-size: 13px; color: var(--text-secondary); }
 
@@ -67,7 +69,7 @@
 
   <div id="merge-result"></div>
 
-  <div class="card" style="margin-bottom:16px">
+  <div class="card" id="merge-form" style="margin-bottom:16px">
     <div class="card-header"><div class="card-title">Merge Configuration</div></div>
     <div class="card-body">
 
@@ -102,11 +104,13 @@
 
       <hr class="divider">
       <div style="display:flex;gap:10px;align-items:center">
-        <button type="button" class="btn btn-primary btn-lg" id="merge-submit-btn" disabled>⇌ Merge Tables</button>
+        <button type="button" class="btn btn-primary btn-lg" id="merge-submit-btn"
+                aria-describedby="merge-submit-why" disabled>⇌ Merge Tables</button>
         <span class="spinner" id="merge-spinner" style="display:none"></span>
         <span id="merge-status" class="merger-status" style="display:none">
           Merging… this may take a moment.</span>
       </div>
+      <div id="merge-submit-why" class="text-sm text-muted merger-why"></div>
       <div id="merge-progress-area" style="display:none">
         <div class="merger-progress-wrap"><div class="merger-progress-fill"></div></div>
         <div id="merge-elapsed" class="merger-elapsed"></div>
@@ -173,7 +177,9 @@
   }
 
   // ── Compatibility check + submit-button gating ─────────
-  // compatState: 'none' | 'checking' | 'ok' | 'warn' | 'err'
+  // compatState: 'none' | 'checking' | 'ok' | 'differ' (the columns differ) | 'a-err' / 'b-err' (a table
+  // could not be read) | 'failed' (the check itself failed). Any column difference blocks: the merge
+  // refuses it (a vertical join needs the same columns), so there is no "compatible with a warning".
   var compatState = 'none';
   var _compatToken = 0;         // guards against out-of-order fetch responses
   var _compatDebounce = null;
@@ -190,18 +196,37 @@
     el.innerHTML = cls ? '<div class="merger-compat ' + cls + '">' + html + '</div>' : '';
   }
 
-  // Enable the merge button only when every gate holds: two distinct tables,
-  // a resolvable project/dataset, and a compatible (or cautiously compatible) schema.
-  function updateSubmitState() {
+  var _merging = false;
+
+  // Why Merge Tables cannot run yet, as what to do; '' when it can (PBI 19074): two distinct
+  // tables, the same columns in both, and a project/dataset to write the result to.
+  function mergeBlocker() {
+    var label = ' to enable Merge Tables.';
+    if (_merging) return 'Wait for the merge to finish' + label;
     var t = _tableInputs();
+    if (!t.a) return 'Choose Table A' + label;
+    if (!t.b) return 'Choose Table B' + label;
+    if (t.a === t.b) return 'Choose two different tables' + label;
+    if (compatState === 'checking' || compatState === 'none') {
+      return 'Wait while the tables\' columns are compared' + label;
+    }
+    if (compatState === 'a-err') return 'Choose a Table A that can be read' + label;
+    if (compatState === 'b-err') return 'Choose a Table B that can be read' + label;
+    if (compatState === 'failed') return 'Choose tables whose columns can be compared' + label;
+    if (compatState === 'differ') return 'Choose tables with the same columns' + label;
     var proj = document.getElementById('merge-out-project').textContent;
     var ds = document.getElementById('merge-out-dataset').textContent;
+    if (proj === '—' || ds === '—') return 'Choose a Table A that sits in a project\'s dataset' + label;
+    return '';
+  }
 
-    var twoDistinct = !!t.a && !!t.b && t.a !== t.b;
-    var namingOk = proj !== '—' && ds !== '—';
-    var schemaOk = compatState === 'ok';
-
-    document.getElementById('merge-submit-btn').disabled = !(twoDistinct && namingOk && schemaOk);
+  // Merge Tables, disabled while it cannot run, with the reason in its tooltip and on the line under it.
+  function updateSubmitState() {
+    var btn = document.getElementById('merge-submit-btn');
+    var reason = mergeBlocker();
+    btn.disabled = _merging || !!reason;
+    btn.title = reason;
+    document.getElementById('merge-submit-why').textContent = reason;
   }
 
   function fetchColumns(url) {
@@ -234,13 +259,13 @@
       var rb = res[1] || {};
 
       if (ra.error) {
-        compatState = 'err';
+        compatState = 'a-err';
         renderCompat('merger-compat-err', '✗ Table A could not be loaded: ' + _esc(ra.error));
         updateSubmitState();
         return;
       }
       if (rb.error) {
-        compatState = 'err';
+        compatState = 'b-err';
         renderCompat('merger-compat-err', '✗ Table B could not be loaded: ' + _esc(rb.error));
         updateSubmitState();
         return;
@@ -269,7 +294,7 @@
         // Any column difference fails a vertical join — rows can't be stacked when the
         // tables don't share the same columns — so block rather than warn, and name the
         // columns that differ so the mismatch is clear before pressing Merge.
-        compatState = 'err';
+        compatState = 'differ';
         var diff = [];
         if (onlyA.length) { diff.push('only in A: ' + onlyA.join(', ')); }
         if (onlyB.length) { diff.push('only in B: ' + onlyB.join(', ')); }
@@ -280,7 +305,7 @@
       updateSubmitState();
     }).catch(function(e) {
       if (token !== _compatToken) { return; }
-      compatState = 'err';
+      compatState = 'failed';
       renderCompat('merger-compat-err', '✗ Could not check table compatibility: ' + _esc(String(e)));
       updateSubmitState();
     });
@@ -291,8 +316,13 @@
     _compatDebounce = setTimeout(refreshCompat, 300);
   }
 
-  // React to any change that affects naming or compatibility.
+  // React to any change that affects naming or compatibility. Until the debounced check answers, the
+  // last check's verdict is about other tables: it no longer counts, and an answer still on its way is
+  // dropped.
   function onInputsChanged() {
+    var t = _tableInputs();
+    _compatToken++;
+    compatState = (t.a && t.b && t.a !== t.b) ? 'checking' : 'none';
     updateOutputNaming();
     updateSubmitState();
     scheduleCompat();
@@ -304,23 +334,16 @@
   tableAEl.addEventListener('input', onInputsChanged);
   tableBEl.addEventListener('change', onInputsChanged);
   tableBEl.addEventListener('input', onInputsChanged);
-  document.getElementById('merge-table-name').addEventListener('input', updateSubmitState);
+  document.getElementById('merge-form').addEventListener('input', updateSubmitState);
+  document.getElementById('merge-form').addEventListener('change', updateSubmitState);
 
   // ── Execute merge ──────────────────────────────────────
   function executeMerge() {
+    if (mergeBlocker()) { updateSubmitState(); return; }
     var tableA = document.getElementById('merge-table-a').value.trim();
     var tableB = document.getElementById('merge-table-b').value.trim();
     var tableName = document.getElementById('merge-table-name').value.trim();
 
-    // Defensive final guard — the live state normally blocks these before we get here.
-    if (!tableA || !tableB) {
-      showResult({ success: false, message: 'Select both Table A and Table B.' });
-      return;
-    }
-    if (tableA === tableB) {
-      showResult({ success: false, message: 'Table A and Table B must be different tables.' });
-      return;
-    }
     if (!tableName) {
       var nameA = tableA.replace(/\\/g, '/').replace(/\/+$/, '').split('/').pop();
       var nameB = tableB.replace(/\\/g, '/').replace(/\/+$/, '').split('/').pop();
@@ -329,17 +352,13 @@
 
     var proj = document.getElementById('merge-out-project').textContent;
     var ds = document.getElementById('merge-out-dataset').textContent;
-    if (proj === '—' || ds === '—') {
-      showResult({ success: false, message: 'Could not determine project/dataset. Please select Table A first.' });
-      return;
-    }
 
-    var submitBtn = document.getElementById('merge-submit-btn');
     var spinner = document.getElementById('merge-spinner');
     var status = document.getElementById('merge-status');
     var progressArea = document.getElementById('merge-progress-area');
 
-    submitBtn.disabled = true;
+    _merging = true;
+    updateSubmitState();
     spinner.style.display = 'inline-block';
     status.style.display = 'inline';
     progressArea.style.display = '';
@@ -390,6 +409,7 @@
     document.getElementById('merge-spinner').style.display = 'none';
     document.getElementById('merge-status').style.display = 'none';
     document.getElementById('merge-progress-area').style.display = 'none';
+    _merging = false;
     updateSubmitState();  // re-enable only if the gates still hold
   }
 

@@ -108,7 +108,8 @@
 .im-log-area { height: 120px; max-height: none; }
 .im-log-area div { padding: 1px 0; }
 
-/* Result banner */
+/* One line kept free for Compute Metrics' reason, so the page does not move as it comes and goes. */
+.im-run-why { margin-top: 6px; line-height: 1.5; min-height: 1.5em; }
 </style>
 
 <div class="plugin-page" id="im-page">
@@ -187,9 +188,9 @@
   <div class="card-body" style="padding:12px 16px">
     <div class="im-select-bar">
       <span class="count"><span id="im-selected-count">0</span> selected</span>
-      <button class="btn btn-xs btn-secondary" onclick="imSelectAll()">Select All</button>
-      <button class="btn btn-xs btn-secondary" onclick="imSelectNone()">Clear</button>
-      <button class="btn btn-xs btn-secondary" onclick="imSelectRecommended()">Recommended</button>
+      <button class="btn btn-xs btn-secondary" id="im-select-all" onclick="imSelectAll()" disabled>Select All</button>
+      <button class="btn btn-xs btn-secondary" id="im-select-none" onclick="imSelectNone()" disabled>Clear</button>
+      <button class="btn btn-xs btn-secondary" id="im-select-recommended" onclick="imSelectRecommended()" disabled>Recommended</button>
     </div>
     <div class="form-help" style="margin-bottom:8px">Click <strong>Recommended</strong> for a quick start, or select individual metrics. Results are stored as new columns on an EditedTable.</div>
     <div id="im-metrics-container"></div>
@@ -212,7 +213,7 @@
       </div>
     </div>
     <div class="plugin-action-bar">
-      <button id="im-run-btn" class="btn btn-primary" onclick="imRunMetrics()" disabled>
+      <button id="im-run-btn" class="btn btn-primary" onclick="imRunMetrics()" aria-describedby="im-run-why" disabled>
         Compute Metrics
       </button>
       <button id="im-cancel-btn" class="btn btn-secondary" onclick="imCancelJob()" style="display:none">
@@ -220,6 +221,7 @@
       </button>
       <span id="im-status-text" class="status-text"></span>
     </div>
+    <div id="im-run-why" class="text-sm text-muted im-run-why"></div>
   </div>
 </div>
 
@@ -256,6 +258,8 @@
   var tableEntries = [];  // [{url, name, imageCols, rowCount}]
   var currentJobId = null;
   var socket = null;
+  var metricsState = 'loading';  // the metric list: 'loading', 'ok' or 'error'
+  var imBusy = false;            // a job of this plugin runs, started here or found running on mount
 
   /* ── Recommended metrics for "quick start" ── */
   var RECOMMENDED = ['brightness', 'sharpness', 'contrast', 'noise_estimate', 'entropy', 'saturation'];
@@ -342,6 +346,9 @@
     _loadMetrics();
     _connectSocket();
     _seedFromHost();
+    imGate();
+    var page = document.getElementById('im-page');
+    if (page) { page.addEventListener('input', imGate); page.addEventListener('change', imGate); }
 
     // The add field: on `change` (a pick, or Enter/leaving the field after typing), not on every keystroke.
     var addField = document.getElementById('im-add-table');
@@ -360,13 +367,19 @@
     _apiFetch('/api/plugins/image-metrics/metrics')
       .then(function(metrics) {
         allMetrics = metrics;
+        metricsState = 'ok';
         _renderMetricGrid(metrics);
+        imGate();
         // The preset bar opens the form once the metric cards exist: as it was last left in this
         // browser, else on Default settings (the recommended metrics), with the tables the plugin
         // was opened with in place of its own.
         imPresets.init();
       })
-      .catch(function(err) { console.error('Failed to load metrics:', err); });
+      .catch(function(err) {
+        console.error('Failed to load metrics:', err);
+        metricsState = 'error';
+        imGate();
+      });
   }
 
   /* ── Render metric selection grid grouped by category ── */
@@ -428,8 +441,57 @@
     var count = Object.keys(selectedMetrics).length;
     var el = document.getElementById('im-selected-count');
     if (el) el.textContent = count;
-    var btn = document.getElementById('im-run-btn');
-    if (btn) btn.disabled = count === 0 || tableEntries.length === 0;
+    imGate();
+  }
+
+  /* ── What the buttons wait for (PBI 19074) ── */
+  // Why the metric list cannot be used yet, as what to do to enable `label`; '' once it is listed.
+  function _metricsBlocker(label) {
+    if (metricsState === 'loading') return 'Wait while the metrics are listed to enable ' + label + '.';
+    if (metricsState === 'error') return 'Reload the page to enable ' + label + ': the metrics could not be listed.';
+    return '';
+  }
+
+  // Why Compute Metrics cannot run yet, as what to do; '' when it can.
+  function imRunBlocker() {
+    if (imBusy) return 'Wait while the metrics are computed to enable Compute Metrics.';
+    if (!tableEntries.length) return 'Add at least one table to enable Compute Metrics.';
+    var list = _metricsBlocker('Compute Metrics');
+    if (list) return list;
+    if (!Object.keys(selectedMetrics).length) {
+      return 'Select at least one metric, or click Recommended, to enable Compute Metrics.';
+    }
+    if (typeof PluginJobs === 'undefined') {
+      return 'Reload the page to enable Compute Metrics: the job tracker is unavailable.';
+    }
+    return '';
+  }
+
+  function _setGate(id, reason, disabled) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    btn.disabled = disabled || !!reason;
+    btn.title = reason;
+  }
+
+  // Compute Metrics, disabled while it cannot run, with the reason in its tooltip and on the line under
+  // it; Select All, Clear and Recommended, disabled while they would change nothing, say so in theirs.
+  function imGate() {
+    var reason = imRunBlocker();
+    _setGate('im-run-btn', reason, imBusy);
+    var why = document.getElementById('im-run-why');
+    if (why) why.textContent = reason;
+
+    var ids = Object.keys(selectedMetrics);
+    var everyOne = allMetrics.length > 0 && ids.length === allMetrics.length &&
+      allMetrics.every(function(m) { return selectedMetrics[m.id]; });
+    var recommended = ids.slice().sort().join() === RECOMMENDED.slice().sort().join();
+    _setGate('im-select-all', _metricsBlocker('Select All') ||
+      (everyOne ? 'Nothing to select: every metric is already selected.' : ''));
+    _setGate('im-select-none', _metricsBlocker('Clear') ||
+      (ids.length ? '' : 'Nothing to clear: no metric is selected.'));
+    _setGate('im-select-recommended', _metricsBlocker('Recommended') ||
+      (recommended ? 'Nothing to select: exactly the recommended metrics are selected.' : ''));
   }
 
   /* ── Selection helpers ── */
@@ -554,33 +616,30 @@
      ═════════════════════════════════════════════════════════════ */
 
   window.imRunMetrics = function() {
-    if (tableEntries.length === 0) { alert('Please select at least one table.'); return; }
-
+    if (imRunBlocker()) { imGate(); return; }
     var metricIds = Object.keys(selectedMetrics);
-    if (metricIds.length === 0) { alert('Please select at least one metric.'); return; }
-    if (typeof PluginJobs === 'undefined') { alert('Job tracker unavailable — reload the page.'); return; }
-
     var suffix = (document.getElementById('im-output-name').value || 'metrics').trim();
 
     // Show progress
     document.getElementById('im-progress-card').style.display = '';
     document.getElementById('im-result-card').style.display = 'none';
     document.getElementById('im-result-card').innerHTML = '';
-    document.getElementById('im-run-btn').disabled = true;
+    imBusy = true;
+    imGate();
     document.getElementById('im-cancel-btn').style.display = '';
     document.getElementById('im-log').innerHTML = '';
     _setProgress(0, 'Submitting...');
     _setStatus('Submitting...');
 
     // Submit one job per table
-    tableEntries.forEach(function(entry) {
+    var starts = tableEntries.map(function(entry) {
       var outputName = entry.name + '-' + suffix;
       // Launch through the SDK's PluginJobs client. Attribute each job to ITS table's
       // project (entries can span projects); an explicit project_name wins, and when
       // the table is unknown PluginJobs falls back to the launch context's project.
       var _t = (typeof TlcData !== 'undefined')
         ? TlcData.getTables().find(function(t) { return t.url === entry.url; }) : null;
-      PluginJobs.start('image-metrics', {
+      return PluginJobs.start('image-metrics', {
         table_url: entry.url,
         project_name: (_t && _t.project_name) || '',
         metric_ids: metricIds,
@@ -599,14 +658,23 @@
         } else {
           currentJobId = data.job_id;
           _addLog('Queued: ' + entry.name + ' (job ' + data.job_id.substring(0, 8) + ')');
+          return true;
         }
+        return false;
       })
       .catch(function(err) {
         _addLog('Failed to submit ' + entry.name + ': ' + err.message);
+        return false;
       });
     });
 
     _setStatus('Jobs submitted');
+    // No job started at all: nothing will end the running state, so end it here.
+    Promise.all(starts).then(function(started) {
+      if (started.some(Boolean)) return;
+      _setStatus('Not started');
+      _clearRunningState();
+    });
   };
 
   function _notStartedMessage(resp) {
@@ -701,7 +769,8 @@
       notice.style.display = '';
     }
     document.getElementById('im-progress-card').style.display = '';
-    document.getElementById('im-run-btn').disabled = true;
+    imBusy = true;
+    imGate();
     document.getElementById('im-cancel-btn').style.display = '';
     _applyJobUpdate(job);
     _setStatus(job.status === 'queued' ? 'Queued' : 'Running');
@@ -740,8 +809,9 @@
     var notice = document.getElementById('im-running-notice');
     if (notice) notice.style.display = 'none';
     document.getElementById('im-cancel-btn').style.display = 'none';
-    document.getElementById('im-run-btn').disabled = false;
     currentJobId = null;
+    imBusy = false;
+    imGate();
   }
 
   // Rebuild the result banner's inputs from the generic job record: `run_url` is the

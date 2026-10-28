@@ -10,6 +10,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Actions that cannot run yet
+
+- **Export waits for what an export needs, and says so.** It stays disabled until there is a table, an
+  output path and, for CSV and Excel, a ticked column; the line under it and its tooltip name the first
+  thing missing ("Tick at least one column to enable Export."), and say to wait while the table's
+  columns are listed or while an export runs. A click no longer reports a missing field afterwards.
+- **Export's Select all and Deselect all** are disabled until the table's columns are listed, and
+  while they would change nothing ("Nothing to deselect: no column is ticked."), saying so in their
+  tooltips.
+- **Merge Tables says what it waits for.** It was already disabled until two distinct tables with the
+  same columns were chosen; the line under it and its tooltip now say which ("Choose Table B to enable
+  Merge Tables.", "Choose tables with the same columns to enable Merge Tables.", or to wait while the
+  columns are compared or the merge runs).
+- **Split Table is disabled until a table is chosen**, and while a split runs, saying why on the line
+  under it and in its tooltip, instead of answering a click with "Select a table to split."
+- **Compute Metrics says what it waits for.** It stays disabled until a table is added, the metric list
+  has loaded and a metric is selected, and while metrics are computed; the line under it and its
+  tooltip name the first ("Select at least one metric, or click Recommended, to enable Compute
+  Metrics."), also after a preset fills the form. The alerts a click raised are gone.
+- **Image Metrics' Select All, Clear and Recommended** are disabled while the metric list loads and
+  while they would change nothing ("Nothing to clear: no metric is selected."), saying so in their
+  tooltips.
+- **Import says what it waits for.** The format form's Import names the first required field left
+  empty ("Fill in Project Name to enable Import YOLO Dataset."), an annotations path with no COCO
+  annotations, detected splits all unticked, a cloud project whose alias would point at a local disk,
+  and a running import, on the line under it and in its tooltip; also after split detection or
+  "Import Next Split" fill the form.
+- **The CSV / Excel wizard's Next and Import say what they wait for.** Next (step 2) is disabled until a
+  column is ticked, instead of answering with a toast. Import (step 3) waits for a project and a dataset
+  name, or the table to extend, and is disabled while "Run on" is a GPU node ("Set Run on to this
+  computer to enable Import: …"), from the moment Run on changes rather than after a click. Select All
+  and Deselect All are disabled while they would change nothing.
+
 #### Image Metrics: presets
 
 - **The Config bar is the SDK's preset bar.** One line at the top of the page: a select with Default
@@ -107,6 +140,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Export: Deselect all no longer exports every column.** An empty column list reached the server as
+  no `columns`, which it reads as all of them; Export now waits for a ticked column. A column list read
+  for an earlier table can no longer go out with the table that replaced it.
+- **Merge: a table changed after a successful column check no longer leaves Merge Tables enabled**
+  until the new check answers, and a change while a merge runs no longer re-enables it.
+- **Split: a split cancelled from the Queue no longer leaves Split Table disabled** until the page is
+  reloaded; the page says "Split cancelled."
+- **Image Metrics: Compute Metrics stays disabled while metrics are computed.** Changing the metric or
+  table selection during a run re-enabled it. When no job could be started at all, it stayed disabled
+  until a reload; the page now says "Not started" and enables it again.
+- **Import: the CSV wizard no longer starts an import without its names.** A missing project or
+  dataset name, or table to extend, reached the job, which refused it. With a COCO annotations file
+  named directly, Import stayed disabled after detection filled the images folder, until another field
+  changed.
 - Import success messages show `initial` when the table name is left blank.
 - **Table Statistics stops polling when SDK initialization fails.** An activation or import
   failure now completes the statistics request with an error instead of leaving its spinner running.
