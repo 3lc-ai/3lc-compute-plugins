@@ -29,7 +29,7 @@ def _execute_split(form_data: dict[str, Any]) -> dict[str, Any]:
     train_pct = int(form_data.get("train_pct", 70))
     val_pct = int(form_data.get("val_pct", 20))
     test_pct = int(form_data.get("test_pct", 0) or 0)
-    seed = int(form_data.get("seed", 42) or 42)
+    seed = _seed(form_data.get("seed"))
 
     # Validate percentages
     total_pct = train_pct + val_pct + test_pct
@@ -108,6 +108,13 @@ def _execute_split(form_data: dict[str, Any]) -> dict[str, Any]:
             **{r["name"]: r["rows"] for r in results},
         },
     }
+
+
+def _seed(value: Any) -> int:
+    """The split's random seed: ``value`` as an integer, 0 included; 42 when it is missing or blank."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return 42
+    return int(value)
 
 
 def _find_label_column(table: Any) -> str | None:
