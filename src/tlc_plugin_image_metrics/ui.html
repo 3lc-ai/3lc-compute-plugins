@@ -305,13 +305,13 @@
   function imAutoName(values) {
     var d = new Date();
     var dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    return imPresetSummary(values) + ' \u00b7 ' + dateStr;
+    return (imPresetSummary(values)[0] || 'Image metrics') + ' \u00b7 ' + dateStr;
   }
 
   // What the list shows after a preset's name: "6 metrics".
   function imPresetSummary(values) {
     var n = (values.metric_ids || []).length;
-    return n + ' metric' + (n !== 1 ? 's' : '');
+    return [n ? n + ' metric' + (n !== 1 ? 's' : '') : ''];
   }
 
   var imPresets = _tlcPluginPresets({
@@ -586,6 +586,8 @@
         metric_ids: metricIds,
         image_columns: entry.imageCols,
         output_name: outputName,
+        // The preset the form is unchanged from, so the run stamps its last use; '' otherwise.
+        config_id: imPresets.presetId(),
       })
       .then(function(data) {
         if (!data || data.error) {

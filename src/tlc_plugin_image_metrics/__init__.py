@@ -13,6 +13,7 @@ the queue / cancel / generic progress, while this plugin re-emits its own
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -103,6 +104,20 @@ def _create_edited_table(
     return str(new_table.url)
 
 
+def _stamp_last_run(config_id: str) -> None:
+    """Record that the preset ``config_id`` was used for a finished run (best-effort, as the list shows it).
+
+    A worker on another machine has its own store, where the preset is not: the stamp then lands nowhere,
+    and the run is not failed for it.
+    """
+    if not config_id:
+        return
+    with contextlib.suppress(Exception):
+        from tlc_plugin_image_metrics.config_store import config_store
+
+        config_store().update_last_run(config_id)
+
+
 class ImageMetricsPlugin(ComputePlugin):
     """Compute image quality metrics for every image in a 3LC table."""
 
@@ -140,7 +155,8 @@ class ImageMetricsPlugin(ComputePlugin):
         Args:
             ctx: Host-provided job context. ``ctx.params`` carries ``table_url``,
                 ``metric_ids``, optional ``image_columns`` (auto-detected if empty),
-                and optional ``output_name``.
+                optional ``output_name``, and optional ``config_id``: the preset the run came
+                from, whose ``last_run`` a finished run stamps.
 
         """
 
@@ -153,6 +169,7 @@ class ImageMetricsPlugin(ComputePlugin):
         metric_ids = list(params.get("metric_ids", []) or [])
         image_columns = list(params.get("image_columns", []) or [])
         output_name = str(params.get("output_name", "") or "")
+        config_id = str(params.get("config_id", "") or "").strip()
 
         try:
             # Validate request params before importing the (heavy) tlc SDK.
@@ -279,6 +296,7 @@ class ImageMetricsPlugin(ComputePlugin):
             ctx.result(result_url)
             ctx.metric("rows", row_count)
             ctx.metric("metric values", len(metric_ids) * len(image_columns) * row_count)
+            _stamp_last_run(config_id)
 
             # Extract project/dataset for the "View in Project" link.
             project_name = ""
