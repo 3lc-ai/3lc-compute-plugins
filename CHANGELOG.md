@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Accepts plugin SDK 0.6 (`3lc-compute-plugin-sdk<0.7.0`), so the plugin's workers get SDK 0.6's
+  worker: a job's outcome survives a controller that disconnects or restarts mid-run.
 #### Browse panel
 
 - **The Browse panel under a path field is the SDK's file chooser.** A Location line names the place being
