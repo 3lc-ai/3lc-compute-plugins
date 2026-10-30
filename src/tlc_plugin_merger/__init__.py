@@ -103,7 +103,7 @@ def _execute_merge(data: dict[str, Any], root_url: str | None = None) -> dict[st
 
 
 class MergePlugin(ComputePlugin):
-    """Sidebar plugin for vertically joining two 3LC tables (row concatenation)."""
+    """Sidebar plugin for vertically joining two or more 3LC tables (row concatenation)."""
 
     _ui_cache: str | None = None
 

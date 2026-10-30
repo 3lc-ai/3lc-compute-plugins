@@ -116,12 +116,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   data is for the chosen machine before the run starts; older hosts ignore the keys. Table
   Statistics has no run body and declares none.
 
+#### Merge: two or more tables
+
+- **Merge takes two or more tables, as a list.** The Table A and Table B fields are now a list with an
+  add field under it, as in Image Metrics; Browse Tables marks the listed tables "Added", and a table
+  already listed is not added again. Each row shows the table's name, URL and row count; ↑ and ↓ change
+  the order the rows are stacked in, and × removes it.
+  When the columns differ, a small table under the list shows the columns that are not in every table,
+  and which tables have each of them. Each table's columns are read once, so a reorder reads nothing. The
+  output's project and dataset come from the first table. The automatic name joins the names of up to
+  three tables (`a_b_c_merged`), else is the first's name and how many more (`a_and_4_more_merged`), and
+  the empty name field shows it as it will be.
+  The Actions menu offers Merge for 2 to 10 selected tables, which it opens with, and its description
+  says it stacks rows (it said it combined columns).
 
 #### Other changes
 
 - **Merge, Split and Export use the Hub's table field (`<tlc-table-field>`).** Browse…, or a
   double-click in an empty table field, opens Browse Tables, which opens at the table the field holds.
-  In Merge it also tags the table the other field holds ("Table A"), so picking B starts where A is.
   These three now need Hub 1.2.0 (`min_frontend_version`); an older Hub shows them disabled with an
   update badge. Import renders its `table_picker` fields the same way, though no format has one yet.
 - **Image Metrics adds tables with a table field instead of "+ Add Table".** The field sits under the

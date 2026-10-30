@@ -126,17 +126,19 @@ def test_execute_merge_reports_incompatible_schemas_friendlily(monkeypatch: pyte
 
 
 def _capture_join(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    """Replace ``tlc`` with a fake whose ``join_tables`` records its kwargs."""
+    """Replace ``tlc`` with a fake whose ``join_tables`` records its kwargs, and as ``tables`` the URLs of the
+    tables it was given, in their order."""
     captured: dict[str, Any] = {}
 
     class _FakeTable:
         @staticmethod
-        def from_url(_u: str) -> object:
-            return object()
+        def from_url(u: str) -> object:
+            return type("_In", (), {"url": u})()
 
         @staticmethod
-        def join_tables(*_a: Any, **k: Any) -> object:
+        def join_tables(tables: list[Any], **k: Any) -> object:
             captured.update(k)
+            captured["tables"] = [t.url for t in tables]
             return type("_M", (), {"url": "s3://root/p/datasets/d/tables/m"})()
 
     fake_tlc = type("_T", (), {"Table": _FakeTable})()
@@ -166,3 +168,17 @@ def test_execute_merge_without_root_uses_the_configured_root(monkeypatch: pytest
     captured = _capture_join(monkeypatch)
     merger._execute_merge({"table_urls": ["a", "b"], "project_name": "p", "dataset_name": "d", "table_name": "m"})
     assert captured["root_url"] is None
+
+
+def test_run_job_joins_every_table_in_order(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Merge takes two or more tables (PBI 19068): every one is joined, in the list's order, which is the order
+    their rows are stacked."""
+    captured = _capture_join(monkeypatch)
+    params = {"table_urls": ["c", "a", "b"], "project_name": "p", "dataset_name": "d", "table_name": "m"}
+    merger.MergePlugin().run_job(_ctx([], params, tmp_path))
+    assert captured["tables"] == ["c", "a", "b"]
+
+    result = merger._execute_merge({**params, "table_urls": ["c", "a", "b", "d"]})
+    assert captured["tables"] == ["c", "a", "b", "d"]
+    assert result["message"] == "Merged 4 tables into 'm'."
+    assert result["details"]["input_count"] == 4
