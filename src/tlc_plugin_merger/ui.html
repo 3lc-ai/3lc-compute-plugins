@@ -15,10 +15,44 @@
 }
 .merger-name-separator { font-size: 12px; color: var(--text-muted); }
 
+/* The list of tables: one row each, in the order their rows are stacked. */
+.merger-table-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-bottom: 1px solid var(--border-light);
+  font-size: 11px;
+}
+.merger-table-row:last-child { border-bottom: none; }
+.merger-pos { min-width: 1.5em; text-align: right; font-weight: 600; color: var(--text-muted); }
+.merger-name {
+  max-width: 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 600; color: var(--text);
+}
+.merger-url {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 10px; color: var(--text-muted);
+}
+.merger-rows { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.merger-row-btn {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 13px; padding: 0 3px; line-height: 1; opacity: .6;
+}
+.merger-row-btn:hover:not(:disabled) { opacity: 1; color: var(--text); }
+.merger-row-btn.merger-remove:hover:not(:disabled) { color: var(--error); }
+.merger-row-btn:disabled { opacity: .2; cursor: default; }
+.merger-no-tables { padding: 12px 0; text-align: center; font-size: 11px; color: var(--text-muted); }
+
 .merger-compat { font-size: 11px; padding: 6px 10px; border-radius: 6px; margin-top: 6px; }
 .merger-compat-checking { color: var(--text-muted); }
 .merger-compat-ok { background: var(--success-bg); color: var(--success); }
 .merger-compat-err { background: var(--error-bg); color: var(--error); }
+/* The columns that differ: a row per table, a column per column; scrolls sideways when it is wider than the box. */
+.merger-grid-wrap { overflow-x: auto; margin-top: 6px; }
+.merger-grid { border-collapse: collapse; }
+.merger-grid th, .merger-grid td { padding: 2px 8px; white-space: nowrap; text-align: center; }
+.merger-grid .merger-grid-col { font-weight: 600; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 10px; }
+.merger-grid .merger-grid-table { font-weight: 600; text-align: left; color: var(--text); }
+.merger-grid-has { color: var(--success); font-weight: 700; }
+.merger-grid-lacks { color: var(--text-muted); }
 
 .merger-status { font-size: 12px; color: var(--text-muted); }
 /* One line kept free for Merge Tables' reason, so the page does not move as it comes and goes. */
@@ -42,12 +76,12 @@
 <div class="plugin-page">
   <div class="plugin-hero">
     <h2>⇌ Merge Tables</h2>
-    <p>Vertically join two 3LC tables — stack their rows into a single table with full revision history.</p>
+    <p>Vertically join two or more 3LC tables — stack their rows into a single table with full revision history.</p>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
       <div class="plugin-hero-badge">
         <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="3.5" rx="1"/><rect x="3" y="8.25" width="14" height="3.5" rx="1"/><path d="M10 14v3M8 15.5l2 1.5 2-1.5"/></svg></div>
         <div class="merger-badge-title">Vertical Join</div>
-        <div class="merger-badge-text">Stack rows from both tables</div>
+        <div class="merger-badge-text">Stack rows from every table</div>
       </div>
       <div class="plugin-hero-badge">
         <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9M8 17V5M12 17V8M16 17V3"/></svg></div>
@@ -61,7 +95,7 @@
       </div>
     </div>
     <div class="plugin-workflow" style="margin-top:10px">
-      <div class="plugin-workflow-step"><span class="num">1</span> Select 2 tables</div>
+      <div class="plugin-workflow-step"><span class="num">1</span> Select 2 or more tables</div>
       <div class="plugin-workflow-step"><span class="num">2</span> Name output</div>
       <div class="plugin-workflow-step"><span class="num">3</span> Merge</div>
     </div>
@@ -73,16 +107,19 @@
     <div class="card-header"><div class="card-title">Merge Configuration</div></div>
     <div class="card-body">
 
-      <!-- Table A -->
+      <!-- The tables, in the order their rows are stacked -->
       <div class="form-group">
-        <label class="form-label required" for="merge-table-a">Table A</label>
-        <tlc-table-field id="merge-table-a" placeholder="Select first table…" required></tlc-table-field>
+        <div class="form-label required" id="merge-tables-label">Tables</div>
+        <div id="merge-table-list" role="list" aria-labelledby="merge-tables-label"></div>
+        <div id="merge-no-tables" class="merger-no-tables">
+          No tables yet. Add two or more below, or select them on a project page and choose Merge from Actions.
+        </div>
       </div>
 
-      <!-- Table B -->
+      <!-- A table picked or pasted here goes into the list above, and the field empties for the next. -->
       <div class="form-group">
-        <label class="form-label required" for="merge-table-b">Table B</label>
-        <tlc-table-field id="merge-table-b" placeholder="Select second table…" required></tlc-table-field>
+        <label class="form-label" for="merge-add-table">Add a table</label>
+        <tlc-table-field id="merge-add-table" placeholder="Paste a table URL or click Browse…"></tlc-table-field>
       </div>
 
       <!-- Compatibility check -->
@@ -97,9 +134,9 @@
           <span class="merger-name-part" id="merge-out-dataset">—</span>
           <span class="merger-name-separator">/</span>
           <input type="text" id="merge-table-name" class="form-control"
-                 placeholder="auto: tableA_tableB_merged" style="flex:1;min-width:140px">
+                 placeholder="(Named from input tables)" style="flex:1;min-width:140px">
         </div>
-        <div class="form-help">Leave blank to auto-name from input tables. Project and dataset are inherited from the first selected table.</div>
+        <div class="form-help">Leave blank to use the name shown, made from the tables' names. Project and dataset are those of the first table.</div>
       </div>
 
       <hr class="divider">
@@ -124,8 +161,8 @@
     <div class="card-body">
       <div class="merger-about">
         <p style="margin-bottom:8px">Merge stacks the rows of the selected tables into a single new
-        table, in the order selected (a vertical join). The tables must have compatible schemas —
-        the same columns. Row counts may differ.</p>
+        table, in the order listed (a vertical join); ↑ and ↓ change the order. The tables must have
+        compatible schemas — the same columns. Row counts may differ.</p>
         <p>The merged table keeps full revision history and appears in the DAG view.</p>
       </div>
     </div>
@@ -151,20 +188,251 @@
 
   var projectName = API.context.projectName || '';
 
-  // Pre-fill from context
-  if (contextUrls.length >= 1) {
-    document.getElementById('merge-table-a').value = contextUrls[0];
-  }
-  if (contextUrls.length >= 2) {
-    document.getElementById('merge-table-b').value = contextUrls[1];
+  // ── List rules: pure, no DOM; tests/test_merger_page.py runs this block in node ──
+
+  // A table's name: its URL's last segment.
+  function tableNameOf(url) {
+    return url.replace(/\\/g, '/').replace(/\/+$/, '').split('/').pop() || url;
   }
 
-  // ── Extract metadata for output naming ─────────────────
+  // The name a merge gets when none is typed: the tables' names joined, or, for more than three, the
+  // first table's name and how many more ("a_and_4_more_merged").
+  function autoName(urls) {
+    var names = urls.map(tableNameOf);
+    if (names.length <= 3) return names.join('_') + '_merged';
+    return names[0] + '_and_' + (names.length - 1) + '_more_merged';
+  }
+
+  // The name field's placeholder: the name a merge of these tables gets when none is typed.
+  function namePlaceholder(urls) {
+    return urls.length >= 2 ? autoName(urls) : '(Named from input tables)';
+  }
+
+  // A copy of `list` with item i moved by `delta` (-1 up, +1 down); unchanged past either end.
+  function moved(list, i, delta) {
+    var out = list.slice();
+    var j = i + delta;
+    if (j < 0 || j >= list.length) return out;
+    out[i] = list[j];
+    out[j] = list[i];
+    return out;
+  }
+
+  // Every table's columns, from their /columns answers in list order. Any column difference blocks: the merge
+  // refuses it (a vertical join needs the same columns), so there is no "compatible with a warning".
+  // state: 'unreadable' (`index`: the first table that could not be read, and the others are not compared),
+  // 'differ' or 'ok'. conflicts are the columns some table lacks, in the order the tables first name them,
+  // and has[i][k] says whether table i has conflicts[k].
+  function compareColumns(answers) {
+    var bad = answers.findIndex(function(a) { return !a || a.error; });
+    if (bad >= 0) return { state: 'unreadable', index: bad, error: (answers[bad] && answers[bad].error) || '' };
+    var all = [];
+    var sets = answers.map(function(a) {
+      var set = {};
+      (a.columns || []).forEach(function(c) {
+        if (all.indexOf(c) < 0) all.push(c);
+        set[c] = true;
+      });
+      return set;
+    });
+    var conflicts = all.filter(function(c) { return sets.some(function(set) { return !set[c]; }); });
+    return {
+      state: conflicts.length ? 'differ' : 'ok',
+      conflicts: conflicts,
+      has: sets.map(function(set) { return conflicts.map(function(c) { return !!set[c]; }); }),
+      columns: (answers[0].columns || []).length,
+    };
+  }
+
+  // The line under the list for a check (compareColumns' result, or state 'none', 'checking' or 'failed'):
+  // {cls, text}, or null when there is nothing to say. When the columns differ, `grid` holds the table
+  // under the line: a row per table, a column per column that is not in every table.
+  function compatMessage(check, urls) {
+    function table(i) { return 'table ' + (i + 1) + ' (' + tableNameOf(urls[i]) + ')'; }
+    if (check.state === 'checking') {
+      return { cls: 'merger-compat-checking', text: 'Checking table compatibility…' };
+    }
+    if (check.state === 'ok') {
+      return {
+        cls: 'merger-compat-ok',
+        text: '✓ Schemas match — ' + check.columns + ' columns in all ' + urls.length + ' tables',
+      };
+    }
+    if (check.state === 'differ') {
+      return {
+        cls: 'merger-compat-err',
+        text: '✗ Schemas don\'t match — a vertical join needs the same columns in every table. These differ:',
+        grid: {
+          columns: check.conflicts,
+          rows: urls.map(function(url, i) {
+            return { label: (i + 1) + ' ' + tableNameOf(url), has: check.has[i] };
+          }),
+        },
+      };
+    }
+    if (check.state === 'unreadable') {
+      var t = table(check.index);
+      return { cls: 'merger-compat-err', text: '✗ ' + t[0].toUpperCase() + t.slice(1) + ' could not be loaded: ' +
+        check.error };
+    }
+    if (check.state === 'failed') {
+      return { cls: 'merger-compat-err', text: '✗ Could not check table compatibility: ' + check.error };
+    }
+    return null;
+  }
+
+  // Why Merge Tables cannot run yet, as what to do; '' when it can (PBI 19074). `s`: merging (a merge is
+  // running), count (the tables listed), check and index (the column check's state, and the table it
+  // names), named (the first table gives the output a project and a dataset).
+  function blocker(s) {
+    var label = ' to enable Merge Tables.';
+    if (s.merging) return 'Wait for the merge to finish' + label;
+    if (s.count === 0) return 'Add two or more tables' + label;
+    if (s.count === 1) return 'Add another table' + label;
+    if (s.check === 'checking' || s.check === 'none') {
+      return 'Wait while the tables\' columns are compared' + label;
+    }
+    if (s.check === 'unreadable') return 'Remove table ' + (s.index + 1) + ', which cannot be read,' + label;
+    if (s.check === 'failed') return 'Choose tables whose columns can be compared' + label;
+    if (s.check === 'differ') return 'Choose tables with the same columns' + label;
+    if (!s.named) return 'Choose a first table that sits in a project\'s dataset' + label;
+    return '';
+  }
+
+  // ── End of the list rules ──
+
+  // ── The list ───────────────────────────────────────────
+  var tables = [];     // the table URLs, in the order their rows are stacked
+  // URL → {promise, answer, failed} of its /columns answer: fetched once while the table is listed, so a
+  // reorder fetches nothing; dropped when it is removed, so adding it again reads it again.
+  var _columns = {};
+  // The column check: compareColumns' result, or state 'none' (fewer than 2 tables), 'checking' or 'failed'.
+  var check = { state: 'none' };
+  var _checkToken = 0;  // guards against out-of-order answers
+  var _merging = false;
+  var addField = document.getElementById('merge-add-table');
+
+  function fetchColumns(url) {
+    return API.authFetch(computeUrl + '/api/plugins/merger/columns?url=' + encodeURIComponent(url), {
+      headers: { 'Accept': 'application/json' },
+    }).then(function(r) { return r.json(); });
+  }
+
+  // The table's /columns answer, from the cache or fetched. A fetch that failed is asked again by the next
+  // check.
+  function columnsOf(url) {
+    var entry = _columns[url];
+    if (entry && !entry.failed) return entry.promise;
+    entry = _columns[url] = { answer: null, failed: false };
+    entry.promise = fetchColumns(url).then(function(answer) {
+      entry.answer = answer || {};
+      if (_columns[url] === entry) {
+        renderList();
+        if (url === tables[0]) updateOutputNaming();
+      }
+      return entry.answer;
+    }, function(e) {
+      entry.failed = true;
+      if (_columns[url] === entry) renderList();
+      throw e;
+    });
+    return entry.promise;
+  }
+
+  function addTable(url) {
+    url = (url || '').trim();
+    if (!url || tables.indexOf(url) >= 0) return;  // a listed table is not added again
+    tables.push(url);
+    columnsOf(url).catch(function() {});  // a failed read shows in the column check
+  }
+
+  function removeTable(i) {
+    delete _columns[tables[i]];
+    tables.splice(i, 1);
+    onListChanged();
+  }
+
+  function moveTable(i, delta) {
+    tables = moved(tables, i, delta);
+    onListChanged();
+  }
+
+  function onListChanged() {
+    updateOutputNaming();
+    refreshCompat();
+  }
+
+  function _el(tag, cls, text) {
+    var el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (text != null) el.textContent = text;
+    return el;
+  }
+
+  function _rowButton(text, label, cls, disabled, url, onClick) {
+    var b = _el('button', 'merger-row-btn ' + cls, text);
+    b.type = 'button';
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.disabled = disabled;
+    b.dataset.url = url;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  // The rows: position, name, URL, row count, then ↑ ↓ ×.
+  function renderList() {
+    var list = document.getElementById('merge-table-list');
+    // A re-render keeps the focus on the same table's button, so ↑ and ↓ can be pressed again.
+    var active = document.activeElement;
+    var keep = active && list.contains(active) ? { url: active.dataset.url, cls: active.className } : null;
+
+    list.textContent = '';
+    document.getElementById('merge-no-tables').style.display = tables.length ? 'none' : '';
+    // Browse Tables, opened from the add field, marks what is already in the list as its selection.
+    addField.tagged = tables.map(function(url) { return { url: url, label: 'Added' }; });
+
+    tables.forEach(function(url, i) {
+      var entry = _columns[url] || {};
+      var answer = entry.answer;
+      var row = _el('div', 'merger-table-row');
+      row.setAttribute('role', 'listitem');
+      row.appendChild(_el('span', 'merger-pos', String(i + 1)));
+      var name = _el('span', 'merger-name', tableNameOf(url));
+      name.title = tableNameOf(url);
+      row.appendChild(name);
+      var link = _el('span', 'merger-url', url);
+      link.title = url;
+      row.appendChild(link);
+      var rows = entry.failed ? '' : '…';
+      if (answer) rows = answer.error || answer.row_count == null ? '' : answer.row_count.toLocaleString() + ' rows';
+      row.appendChild(_el('span', 'merger-rows', rows));
+      row.appendChild(_rowButton('↑', 'Move up', 'merger-up', i === 0, url, function() { moveTable(i, -1); }));
+      row.appendChild(_rowButton('↓', 'Move down', 'merger-down', i === tables.length - 1, url,
+        function() { moveTable(i, 1); }));
+      row.appendChild(_rowButton('×', 'Remove', 'merger-remove', false, url, function() { removeTable(i); }));
+      list.appendChild(row);
+    });
+
+    if (keep) {
+      var buttons = Array.prototype.filter.call(list.querySelectorAll('button'), function(b) {
+        return b.dataset.url === keep.url && !b.disabled;
+      });
+      // The same button, else (↑ on the new first row, ↓ on the new last) the row's other arrow.
+      var again = buttons.filter(function(b) { return b.className === keep.cls; })[0] || buttons[0];
+      if (again) again.focus();
+    }
+  }
+
+  // ── Output naming, from the first table ────────────────
   function updateOutputNaming() {
-    var url = document.getElementById('merge-table-a').value.trim();
+    var outProj = document.getElementById('merge-out-project');
+    var outDs = document.getElementById('merge-out-dataset');
+    document.getElementById('merge-table-name').placeholder = namePlaceholder(tables);
+    var url = tables[0] || '';
     if (!url) {
-      document.getElementById('merge-out-project').textContent = '—';
-      document.getElementById('merge-out-dataset').textContent = '—';
+      outProj.textContent = '—';
+      outDs.textContent = '—';
       return;
     }
     var parts = url.replace(/\\/g, '/').split('/');
@@ -172,52 +440,87 @@
     var dsIdx = parts.indexOf('datasets');
     var proj = projIdx >= 0 && parts[projIdx + 1] ? decodeURIComponent(parts[projIdx + 1]) : projectName;
     var ds = dsIdx >= 0 && parts[dsIdx + 1] ? decodeURIComponent(parts[dsIdx + 1]) : '';
-    document.getElementById('merge-out-project').textContent = proj || '—';
-    document.getElementById('merge-out-dataset').textContent = ds || '—';
+    // The table's own names, once read: parsing the URL is only an instant first guess, and fails on real
+    // table URLs that have no literal `projects/` segment.
+    var answer = _columns[url] && _columns[url].answer;
+    if (answer && !answer.error) {
+      proj = answer.project_name || proj;
+      ds = answer.dataset_name || ds;
+    }
+    outProj.textContent = proj || '—';
+    outDs.textContent = ds || '—';
   }
 
   // ── Compatibility check + submit-button gating ─────────
-  // compatState: 'none' | 'checking' | 'ok' | 'differ' (the columns differ) | 'a-err' / 'b-err' (a table
-  // could not be read) | 'failed' (the check itself failed). Any column difference blocks: the merge
-  // refuses it (a vertical join needs the same columns), so there is no "compatible with a warning".
-  var compatState = 'none';
-  var _compatToken = 0;         // guards against out-of-order fetch responses
-  var _compatDebounce = null;
-
-  function _tableInputs() {
-    return {
-      a: document.getElementById('merge-table-a').value.trim(),
-      b: document.getElementById('merge-table-b').value.trim(),
-    };
-  }
-
-  function renderCompat(cls, html) {
+  function renderCompat() {
     var el = document.getElementById('merge-compat-check');
-    el.innerHTML = cls ? '<div class="merger-compat ' + cls + '">' + html + '</div>' : '';
+    var message = compatMessage(check, tables);
+    el.textContent = '';
+    if (!message) return;
+    var box = _el('div', 'merger-compat ' + message.cls);
+    box.appendChild(_el('div', '', message.text));
+    if (message.grid) box.appendChild(_grid(message.grid));
+    el.appendChild(box);
   }
 
-  var _merging = false;
+  // The columns that differ: ✓ where a table has the column, – where it lacks it.
+  function _grid(grid) {
+    var wrap = _el('div', 'merger-grid-wrap');
+    var t = _el('table', 'merger-grid');
+    var head = _el('tr');
+    head.appendChild(_el('th', ''));
+    grid.columns.forEach(function(c) { head.appendChild(_el('th', 'merger-grid-col', c)); });
+    t.appendChild(_el('thead')).appendChild(head);
+    var body = t.appendChild(_el('tbody'));
+    grid.rows.forEach(function(row) {
+      var tr = body.appendChild(_el('tr'));
+      tr.appendChild(_el('th', 'merger-grid-table', row.label));
+      row.has.forEach(function(has, k) {
+        var td = tr.appendChild(_el('td', has ? 'merger-grid-has' : 'merger-grid-lacks', has ? '✓' : '–'));
+        td.title = row.label + (has ? ' has ' : ' lacks ') + grid.columns[k];
+      });
+    });
+    wrap.appendChild(t);
+    return wrap;
+  }
 
-  // Why Merge Tables cannot run yet, as what to do; '' when it can (PBI 19074): two distinct
-  // tables, the same columns in both, and a project/dataset to write the result to.
-  function mergeBlocker() {
-    var label = ' to enable Merge Tables.';
-    if (_merging) return 'Wait for the merge to finish' + label;
-    var t = _tableInputs();
-    if (!t.a) return 'Choose Table A' + label;
-    if (!t.b) return 'Choose Table B' + label;
-    if (t.a === t.b) return 'Choose two different tables' + label;
-    if (compatState === 'checking' || compatState === 'none') {
-      return 'Wait while the tables\' columns are compared' + label;
+  function showCheck() {
+    renderList();
+    renderCompat();
+    updateSubmitState();
+  }
+
+  // Compare every table's columns with the first's. Until the answers are in, the last check's verdict is
+  // about another list: it no longer counts, and an answer for that list still on its way is dropped.
+  function refreshCompat() {
+    var token = ++_checkToken;
+    if (tables.length < 2) {
+      check = { state: 'none' };
+      showCheck();
+      return;
     }
-    if (compatState === 'a-err') return 'Choose a Table A that can be read' + label;
-    if (compatState === 'b-err') return 'Choose a Table B that can be read' + label;
-    if (compatState === 'failed') return 'Choose tables whose columns can be compared' + label;
-    if (compatState === 'differ') return 'Choose tables with the same columns' + label;
-    var proj = document.getElementById('merge-out-project').textContent;
-    var ds = document.getElementById('merge-out-dataset').textContent;
-    if (proj === '—' || ds === '—') return 'Choose a Table A that sits in a project\'s dataset' + label;
-    return '';
+    check = { state: 'checking' };
+    showCheck();
+    Promise.all(tables.map(columnsOf)).then(function(answers) {
+      if (token !== _checkToken) return;
+      check = compareColumns(answers);
+      showCheck();
+    }).catch(function(e) {
+      if (token !== _checkToken) return;
+      check = { state: 'failed', error: String(e) };
+      showCheck();
+    });
+  }
+
+  function mergeBlocker() {
+    return blocker({
+      merging: _merging,
+      count: tables.length,
+      check: check.state,
+      index: check.index,
+      named: document.getElementById('merge-out-project').textContent !== '—' &&
+        document.getElementById('merge-out-dataset').textContent !== '—',
+    });
   }
 
   // Merge Tables, disabled while it cannot run, with the reason in its tooltip and on the line under it.
@@ -229,127 +532,21 @@
     document.getElementById('merge-submit-why').textContent = reason;
   }
 
-  function fetchColumns(url) {
-    return API.authFetch(computeUrl + '/api/plugins/merger/columns?url=' + encodeURIComponent(url), {
-      headers: { 'Accept': 'application/json' },
-    }).then(function(r) { return r.json(); });
-  }
-
-  function refreshCompat() {
-    var t = _tableInputs();
-
-    // Fewer than 2 distinct tables — nothing to check.
-    if (!t.a || !t.b || t.a === t.b) {
-      compatState = 'none';
-      renderCompat('', '');
-      updateSubmitState();
-      return;
-    }
-
-    var token = ++_compatToken;
-    compatState = 'checking';
-    renderCompat('', '');  // neutral, no colour box
-    document.getElementById('merge-compat-check').innerHTML =
-      '<div class="merger-compat merger-compat-checking">Checking table compatibility…</div>';
-    updateSubmitState();
-
-    Promise.all([fetchColumns(t.a), fetchColumns(t.b)]).then(function(res) {
-      if (token !== _compatToken) { return; }  // superseded by a newer check
-      var ra = res[0] || {};
-      var rb = res[1] || {};
-
-      if (ra.error) {
-        compatState = 'a-err';
-        renderCompat('merger-compat-err', '✗ Table A could not be loaded: ' + _esc(ra.error));
-        updateSubmitState();
-        return;
-      }
-      if (rb.error) {
-        compatState = 'b-err';
-        renderCompat('merger-compat-err', '✗ Table B could not be loaded: ' + _esc(rb.error));
-        updateSubmitState();
-        return;
-      }
-
-      // Table A loaded OK — set the output naming from the authoritative backend
-      // values (the URL parser above is only an instant pre-fetch fallback and can
-      // fail on real table URLs that have no literal `projects/` segment).
-      var outProj = document.getElementById('merge-out-project');
-      var outDs = document.getElementById('merge-out-dataset');
-      outProj.textContent = ra.project_name || outProj.textContent;
-      outDs.textContent = ra.dataset_name || outDs.textContent;
-
-      var colsA = ra.columns || [];
-      var colsB = rb.columns || [];
-      var setA = {}, setB = {};
-      colsA.forEach(function(c) { setA[c] = true; });
-      colsB.forEach(function(c) { setB[c] = true; });
-
-      var onlyA = colsA.filter(function(c) { return !setB[c]; });
-      var onlyB = colsB.filter(function(c) { return !setA[c]; });
-      if (onlyA.length === 0 && onlyB.length === 0) {
-        compatState = 'ok';
-        renderCompat('merger-compat-ok', '✓ Schemas match — ' + colsA.length + ' columns');
-      } else {
-        // Any column difference fails a vertical join — rows can't be stacked when the
-        // tables don't share the same columns — so block rather than warn, and name the
-        // columns that differ so the mismatch is clear before pressing Merge.
-        compatState = 'differ';
-        var diff = [];
-        if (onlyA.length) { diff.push('only in A: ' + onlyA.join(', ')); }
-        if (onlyB.length) { diff.push('only in B: ' + onlyB.join(', ')); }
-        renderCompat('merger-compat-err',
-          '✗ Schemas don\'t match — vertical join needs the same columns in both tables (' +
-          diff.join('; ') + ').');
-      }
-      updateSubmitState();
-    }).catch(function(e) {
-      if (token !== _compatToken) { return; }
-      compatState = 'failed';
-      renderCompat('merger-compat-err', '✗ Could not check table compatibility: ' + _esc(String(e)));
-      updateSubmitState();
-    });
-  }
-
-  function scheduleCompat() {
-    clearTimeout(_compatDebounce);
-    _compatDebounce = setTimeout(refreshCompat, 300);
-  }
-
-  // React to any change that affects naming or compatibility. Until the debounced check answers, the
-  // last check's verdict is about other tables: it no longer counts, and an answer still on its way is
-  // dropped.
-  function onInputsChanged() {
-    var t = _tableInputs();
-    _compatToken++;
-    compatState = (t.a && t.b && t.a !== t.b) ? 'checking' : 'none';
-    updateOutputNaming();
-    updateSubmitState();
-    scheduleCompat();
-  }
-
-  var tableAEl = document.getElementById('merge-table-a');
-  var tableBEl = document.getElementById('merge-table-b');
-  tableAEl.addEventListener('change', onInputsChanged);
-  tableAEl.addEventListener('input', onInputsChanged);
-  tableBEl.addEventListener('change', onInputsChanged);
-  tableBEl.addEventListener('input', onInputsChanged);
+  // The add field: on `change` (a pick, or Enter/leaving the field after typing), not on every keystroke.
+  addField.addEventListener('change', function() {
+    var url = addField.value.trim();
+    if (!url) return;
+    addField.value = '';
+    addTable(url);
+    onListChanged();
+  });
   document.getElementById('merge-form').addEventListener('input', updateSubmitState);
   document.getElementById('merge-form').addEventListener('change', updateSubmitState);
 
   // ── Execute merge ──────────────────────────────────────
   function executeMerge() {
     if (mergeBlocker()) { updateSubmitState(); return; }
-    var tableA = document.getElementById('merge-table-a').value.trim();
-    var tableB = document.getElementById('merge-table-b').value.trim();
-    var tableName = document.getElementById('merge-table-name').value.trim();
-
-    if (!tableName) {
-      var nameA = tableA.replace(/\\/g, '/').replace(/\/+$/, '').split('/').pop();
-      var nameB = tableB.replace(/\\/g, '/').replace(/\/+$/, '').split('/').pop();
-      tableName = nameA + '_' + nameB + '_merged';
-    }
-
+    var tableName = document.getElementById('merge-table-name').value.trim() || autoName(tables);
     var proj = document.getElementById('merge-out-project').textContent;
     var ds = document.getElementById('merge-out-dataset').textContent;
 
@@ -373,7 +570,7 @@
     // The form values (proj/ds/tableName) are already in scope, so onDone
     // reconstructs the result from the final job's run_url + metrics.
     PluginJobs.run('merger', {
-      table_urls: [tableA, tableB],
+      table_urls: tables.slice(),
       project_name: proj,
       dataset_name: ds,
       table_name: tableName,
@@ -444,9 +641,8 @@
     return d.innerHTML;
   }
 
-  // ── Initial state (context may have pre-filled both tables) ──
-  updateOutputNaming();
-  updateSubmitState();
-  refreshCompat();
+  // ── Initial state (context may have pre-filled the list) ──
+  contextUrls.forEach(addTable);
+  onListChanged();
 })();
 </script>

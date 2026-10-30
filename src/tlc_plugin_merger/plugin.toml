@@ -3,7 +3,7 @@
 # register() call at import and no metadata on the plugin class.
 id = "merger"
 name = "Merge"
-description = "Combine two tables into one by merging rows or columns."
+description = "Combine two or more tables into one by stacking their rows."
 version = "0.2.4"
 min_service_version = "0.1.0"
 # <tlc-table-field> (the table fields) is defined by the Hub from 1.2.0 on.
@@ -15,13 +15,15 @@ icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewB
 display_mode = "sidebar"
 section = "Data Ops"
 compatible_with = ["table"]
-input_types = ["table", "table"]
+# 2 to 10 tables: the Hub offers Merge for that many selected (the length is the maximum).
+input_types = ["table", "table", "table", "table", "table", "table", "table", "table", "table", "table"]
+min_input_count = 2
 output_types = ["table"]
 priority = 65
 group = "Table Ops"
 quick_action = true
 quick_action_label = "Merge Tables"
-quick_action_description = "Combine columns from two tables into one"
+quick_action_description = "Stack the rows of two or more tables into one"
 
 [runtime]
 isolation = "venv"
