@@ -73,38 +73,16 @@
 @keyframes merger-progress-pulse { 0%,100% { opacity:1 } 50% { opacity:.5 } }
 </style>
 
-<div class="plugin-page">
-  <div class="plugin-hero">
-    <h2>⇌ Merge Tables</h2>
-    <p>Vertically join two or more 3LC tables — stack their rows into a single table with full revision history.</p>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="3.5" rx="1"/><rect x="3" y="8.25" width="14" height="3.5" rx="1"/><path d="M10 14v3M8 15.5l2 1.5 2-1.5"/></svg></div>
-        <div class="merger-badge-title">Vertical Join</div>
-        <div class="merger-badge-text">Stack rows from every table</div>
-      </div>
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V9M8 17V5M12 17V8M16 17V3"/></svg></div>
-        <div class="merger-badge-title">Full Lineage</div>
-        <div class="merger-badge-text">Tracks in DAG view</div>
-      </div>
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="14" rx="1"/><rect x="12" y="3" width="5" height="14" rx="1"/></svg></div>
-        <div class="merger-badge-title">Schema-Aware</div>
-        <div class="merger-badge-text">Tables must share the same columns</div>
-      </div>
-    </div>
-    <div class="plugin-workflow" style="margin-top:10px">
-      <div class="plugin-workflow-step"><span class="num">1</span> Select 2 or more tables</div>
-      <div class="plugin-workflow-step"><span class="num">2</span> Name output</div>
-      <div class="plugin-workflow-step"><span class="num">3</span> Merge</div>
-    </div>
-  </div>
+<div class="plugin-page plugin-workbench">
+  <header class="plugin-page-heading">
+  <h1>Merge tables</h1>
+  <p>Combine rows from tables with matching columns.</p>
+</header>
 
   <div id="merge-result"></div>
 
   <div class="card" id="merge-form" style="margin-bottom:16px">
-    <div class="card-header"><div class="card-title">Merge Configuration</div></div>
+    <div class="card-header"><div class="card-title">Tables &amp; output</div></div>
     <div class="card-body">
 
       <!-- The tables, in the order their rows are stacked -->
@@ -156,17 +134,7 @@
   </div>
 
   <!-- Info card -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-header"><div class="card-title">About Merging</div></div>
-    <div class="card-body">
-      <div class="merger-about">
-        <p style="margin-bottom:8px">Merge stacks the rows of the selected tables into a single new
-        table, in the order listed (a vertical join); ↑ and ↓ change the order. The tables must have
-        compatible schemas — the same columns. Row counts may differ.</p>
-        <p>The merged table keeps full revision history and appears in the DAG view.</p>
-      </div>
-    </div>
-  </div>
+  <details class="plugin-help"><summary>How tables are merged</summary><p>Rows are added in the order listed. Use the arrows to change the order. Tables must have the same columns; row counts may differ. The new table retains its source history.</p></details>
 </div>
 
 <script>

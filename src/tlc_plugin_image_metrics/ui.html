@@ -7,34 +7,32 @@
 /* Metric grid — responsive card grid */
 .im-metric-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 10px;
 }
 
 /* Metric card — selectable */
 .im-metric-card {
   display: flex; align-items: flex-start; gap: 10px;
-  padding: 10px 12px; border-radius: var(--radius, 6px);
-  border: 1.5px solid var(--border);
+  font: inherit; text-align: left;
+  padding: 14px; border-radius: var(--radius, 6px);
+  border: 1px solid var(--border);
   background: var(--bg-card); cursor: pointer;
   transition: border-color .15s, background .15s, box-shadow .15s;
   user-select: none;
 }
 .im-metric-card:hover {
   border-color: var(--accent);
-  box-shadow: 0 1px 4px rgba(42,74,97,.12);
+  background: var(--row-hover-bg);
 }
 .im-metric-card.selected {
-  border-color: var(--btn-primary-bg);
+  border-color: var(--accent);
   background: var(--accent-light, rgba(42,74,97,.06));
-  box-shadow: 0 0 0 1px var(--btn-primary-bg);
 }
-.im-metric-card .icon {
-  font-size: 20px; flex-shrink: 0; margin-top: 1px;
-}
+.im-metric-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .im-metric-card .info { flex: 1; min-width: 0; }
 .im-metric-card .name {
-  font-size: 11px; font-weight: 700; color: var(--text);
+  font-size: 12px; font-weight: 600; color: var(--text);
   display: flex; align-items: center; gap: 5px;
 }
 .im-metric-card .name .check {
@@ -49,14 +47,14 @@
   color: var(--btn-primary-text);
 }
 .im-metric-card .desc {
-  font-size: 10px; color: var(--text-muted); line-height: 1.45;
+  display: block; font-size: 11px; color: var(--text-secondary); line-height: 1.5;
   margin-top: 3px;
 }
 
 /* Category header */
 .im-category {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
-  text-transform: uppercase; color: var(--btn-primary-bg);
+  font-size: 12px; font-weight: 600;
+  color: var(--text-secondary);
   margin: 16px 0 8px; padding-bottom: 4px;
   border-bottom: 1px solid var(--border-light);
 }
@@ -64,7 +62,7 @@
 
 /* Selection bar */
 .im-select-bar {
-  display: flex; gap: 8px; align-items: center;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
   margin-bottom: 12px; font-size: 10px;
 }
 .im-select-bar .count {
@@ -112,43 +110,12 @@
 .im-run-why { margin-top: 6px; line-height: 1.5; min-height: 1.5em; }
 </style>
 
-<div class="plugin-page" id="im-page">
-<!-- ── Hero ───────────────────────────────────────────────── -->
-<div class="plugin-hero" style="padding:20px 24px">
-      <h2 style="margin-bottom:6px">Image Metrics</h2>
-      <p style="font-size:13px;color:var(--text);line-height:1.6;margin:0">
-        Compute per-image quality metrics and add them as columns to your table.
-        Cross-plot metrics in the <strong>Dashboard</strong> to find outliers — dark, blurry, or noisy images that degrade training.
-        Especially powerful after a training run: correlate image quality with per-sample loss, false positives, and embeddings to understand <em>why</em> your model struggles on certain images.
-      </p>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px">
-    <div class="plugin-hero-badge">
-      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/><path d="M10 10l3-5"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/></svg></div>
-      <div style="font-size:11px;font-weight:600;color:var(--text)">15 Metrics</div>
-      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Brightness, sharpness, noise, contrast, entropy &amp; more</div>
-    </div>
-    <div class="plugin-hero-badge">
-      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12l-2 2a2.83 2.83 0 1 1-4-4l2-2a2.83 2.83 0 0 1 4 0M12 8l2-2a2.83 2.83 0 1 1 4 4l-2 2a2.83 2.83 0 0 1-4 0"/><path d="M7 13l6-6"/></svg></div>
-      <div style="font-size:11px;font-weight:600;color:var(--text)">Full Lineage</div>
-      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Results stored as EditedTable columns preserving table history</div>
-    </div>
-    <div class="plugin-hero-badge">
-      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/><path d="M10 10l3-5"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/></svg></div>
-      <div style="font-size:11px;font-weight:600;color:var(--text)">Parallel I/O</div>
-      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Multi-threaded image loading for fast processing</div>
-    </div>
-    <div class="plugin-hero-badge">
-      <div style="margin-bottom:3px;opacity:0.6"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17V3M3 17h14"/><circle cx="7" cy="13" r="1.5" fill="currentColor" stroke="none"/><circle cx="11" cy="8" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="5" r="1.5" fill="currentColor" stroke="none"/></svg></div>
-      <div style="font-size:11px;font-weight:600;color:var(--text)">Cross-plot</div>
-      <div style="font-size:10px;color:var(--text-muted);line-height:1.4;margin-top:2px">Correlate quality with training loss, FPs, and embeddings</div>
-    </div>
-  </div>
-    <div class="plugin-workflow" style="margin-top:10px">
-      <div class="plugin-workflow-step"><span class="num">1</span> Select tables</div>
-      <div class="plugin-workflow-step"><span class="num">2</span> Choose metrics</div>
-      <div class="plugin-workflow-step"><span class="num">3</span> Compute</div>
-    </div>
-</div>
+<div class="plugin-page plugin-workbench" id="im-page">
+<!-- Workflow heading -->
+<header class="plugin-page-heading">
+  <h1>Image metrics</h1>
+  <p>Add image quality measurements to your tables.</p>
+</header>
 
 <!-- ── Running-job notice (seeded from the host's job list on mount) ── -->
 <div id="im-running-notice" class="alert alert-info" style="display:none;margin-bottom:16px"></div>
@@ -160,20 +127,20 @@
 <div class="card" style="margin-bottom:16px">
   <div class="card-header">
     <h3 style="margin:0;font-size:13px;font-weight:700">
-      <span class="plugin-section-number">1</span> Select Tables
+      <span class="plugin-section-number">1</span> Tables
     </h3>
   </div>
   <div class="card-body" style="padding:8px 16px">
     <div id="im-table-list"></div>
     <div id="im-no-tables" style="padding:12px 0;text-align:center;font-size:11px;color:var(--text-muted)">
-      No tables selected yet. Add one below, or use the action button on a table.
+      Choose your first table below.
     </div>
     <!-- A table picked or pasted here goes into the list above, and the field empties for the next. -->
     <div class="form-group" style="margin:8px 0 0">
       <label class="form-label" for="im-add-table">Add a table</label>
       <tlc-table-field id="im-add-table" placeholder="Paste a table URL or click Browse…"></tlc-table-field>
     </div>
-    <div class="form-help" style="margin-top:6px">Add one or more tables to compute metrics on. You can also launch this from the action button on any table page.</div>
+    <div class="form-help" style="margin-top:6px">Add more tables to process them together.</div>
     <div id="im-table-error" style="display:none;margin-top:8px;font-size:10px;color:var(--error)"></div>
   </div>
 </div>
@@ -182,7 +149,7 @@
 <div class="card" style="margin-bottom:16px">
   <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
     <h3 style="margin:0;font-size:13px;font-weight:700">
-      <span class="plugin-section-number">2</span> Choose Metrics
+      <span class="plugin-section-number">2</span> Metrics
     </h3>
   </div>
   <div class="card-body" style="padding:12px 16px">
@@ -405,18 +372,19 @@
       grid.className = 'im-metric-grid';
 
       categories[cat].forEach(function(m) {
-        var card = document.createElement('div');
+        var card = document.createElement('button');
+        card.type = 'button';
+        card.setAttribute('aria-pressed', String(!!selectedMetrics[m.id]));
         card.className = 'im-metric-card' + (selectedMetrics[m.id] ? ' selected' : '');
         card.dataset.metricId = m.id;
         card.onclick = function() { _toggleMetric(m.id, card); };
         card.innerHTML =
-          '<div class="icon">' + m.icon + '</div>' +
-          '<div class="info">' +
-            '<div class="name"><span class="check">&#x2713;</span> ' + _esc(m.name) +
+          '<span class="info">' +
+            '<span class="name"><span class="check" aria-hidden="true">&#x2713;</span> ' + _esc(m.name) +
               (m.unit ? ' <span style="font-size:9px;color:var(--text-muted);font-weight:400">(' + _esc(m.unit) + ')</span>' : '') +
-            '</div>' +
-            '<div class="desc">' + _esc(m.description) + '</div>' +
-          '</div>';
+            '</span>' +
+            '<span class="desc">' + _esc(m.description) + '</span>' +
+          '</span>';
         grid.appendChild(card);
       });
 
@@ -433,6 +401,7 @@
       selectedMetrics[id] = true;
       card.classList.add('selected');
     }
+    card.setAttribute('aria-pressed', String(!!selectedMetrics[id]));
     _updateState();
     imPresets.changed();
   }
@@ -520,6 +489,7 @@
     var cards = document.querySelectorAll('.im-metric-card');
     cards.forEach(function(card) {
       var id = card.dataset.metricId;
+      card.setAttribute('aria-pressed', String(!!selectedMetrics[id]));
       if (selectedMetrics[id]) {
         card.classList.add('selected');
       } else {

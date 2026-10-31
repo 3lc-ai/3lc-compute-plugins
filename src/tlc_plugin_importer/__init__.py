@@ -515,7 +515,7 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
     "yolo": {
         "name": "yolo",
         "display_name": "YOLO Dataset",
-        "description": "Import a YOLO-format dataset from a dataset.yaml file (detection, segmentation, pose, OBB).",
+        "description": "A dataset.yaml with detection, segmentation, pose or oriented box labels.",
         "icon": "⊡",
         "form_fields": [
             {
@@ -551,7 +551,7 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
                     {"value": "pose", "label": "Pose / Keypoints"},
                     {"value": "obb", "label": "Oriented Bounding Boxes (OBB)"},
                 ],
-                "help": "YOLO task type.",
+                "help": "Choose the kind of labels in this dataset.",
             },
             {
                 "id": "project_name",
@@ -583,14 +583,14 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
                 "type": "textarea",
                 "placeholder": "Optional description of this dataset...",
                 "required": False,
-                "help": "Human-readable description.",
+                "help": "",
             },
         ],
     },
     "coco": {
         "name": "coco",
         "display_name": "COCO Dataset",
-        "description": "Import a COCO-format dataset from an annotations JSON file or folder.",
+        "description": "COCO annotations in a JSON file or annotations folder.",
         "icon": "⊡",
         "form_fields": [
             {
@@ -653,14 +653,14 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
                 "type": "textarea",
                 "placeholder": "Optional description...",
                 "required": False,
-                "help": "Human-readable description.",
+                "help": "",
             },
         ],
     },
     "folder": {
         "name": "folder",
         "display_name": "Image Folder",
-        "description": "Import an image folder dataset (ImageNet/ImageFolder style with class subdirectories, or flat folder).",  # noqa: E501
+        "description": "Images organized in class folders, or a single folder.",
         "icon": "⊡",
         "form_fields": [
             {
@@ -702,14 +702,14 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
                 "type": "textarea",
                 "placeholder": "Optional description...",
                 "required": False,
-                "help": "Human-readable description.",
+                "help": "",
             },
         ],
     },
     "unlabeled": {
         "name": "unlabeled",
         "display_name": "Unlabeled Images",
-        "description": "Create a table from an image folder with empty annotations and weight=0 (for labeling later).",
+        "description": "Images to label later. Starts with empty annotations and zero weights.",
         "icon": "⊡",
         "form_fields": [
             {
@@ -763,14 +763,14 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
                 "type": "textarea",
                 "placeholder": "Optional description...",
                 "required": False,
-                "help": "Human-readable description.",
+                "help": "",
             },
         ],
     },
     "csv_detection": {
         "name": "csv_detection",
         "display_name": "CSV Detection",
-        "description": "Import bounding box annotations from a CSV with ImageId, class, and bbox columns + an image folder.",  # noqa: E501
+        "description": "Bounding boxes in a CSV, with ImageId, class and bbox columns, plus images.",
         "icon": "⊡",
         "form_fields": [
             {
@@ -823,14 +823,14 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
                 "type": "textarea",
                 "placeholder": "Optional description...",
                 "required": False,
-                "help": "Human-readable description.",
+                "help": "",
             },
         ],
     },
     "csv": {
         "name": "csv",
         "display_name": "CSV / Excel",
-        "description": "Import from a CSV or Excel file — create a new table or extend an existing one with new columns.",  # noqa: E501
+        "description": "Create a table from a spreadsheet, or add columns to an existing table.",
         "icon": "⊡",
         "custom_ui": True,
         "form_fields": [],
