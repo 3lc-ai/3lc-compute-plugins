@@ -346,12 +346,11 @@
     html += '</div></div>';
     html += '<div class="card-body">';
     html += '<form id="import-exec-form" onsubmit="return false;" novalidate>';
-    html += '<div class="form-row">';
+    html += '<div class="plugin-import-fields">';
 
     var fields = fmt.form_fields || [];
     for (var i = 0; i < fields.length; i++) {
       var f = fields[i];
-      if (i % 2 === 0) html += '<div>';
 
       html += '<div class="form-group">';
       html += '<label class="form-label' + (f.required ? ' required' : '') + '" for="import-' + f.id + '">';
@@ -396,7 +395,6 @@
       }
       html += '</div>';
 
-      if (i % 2 === 1 || i === fields.length - 1) html += '</div>';
     }
 
     html += '</div>';

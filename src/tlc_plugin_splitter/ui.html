@@ -88,6 +88,8 @@
     <div class="card-header"><div class="card-title">Table &amp; splits</div></div>
     <div class="card-body">
 
+      <div class="plugin-form-columns">
+      <div>
       <!-- Table URL -->
       <div class="form-group">
         <label class="form-label required" for="split-table-url">Source Table</label>
@@ -105,6 +107,8 @@
         <div class="form-help">Stratified sampling ensures each split has the same class ratio as the original.</div>
       </div>
 
+      </div>
+      <div>
       <!-- Visual split bar -->
       <div class="form-group">
         <label class="form-label">Split Ratio</label>
@@ -154,6 +158,8 @@
         <div class="form-help">Fixed seed for reproducible splits. Change to get a different random ordering.</div>
       </div>
 
+      </div>
+      </div><!-- /plugin-form-columns -->
       <hr class="divider">
       <div style="display:flex;gap:10px;align-items:center">
         <button type="button" class="btn btn-primary btn-lg" id="split-submit-btn"
