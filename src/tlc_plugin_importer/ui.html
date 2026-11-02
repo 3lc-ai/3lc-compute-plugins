@@ -81,33 +81,11 @@
 .format-selected-banner .fmt-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 </style>
 
-<div class="plugin-page">
-  <div class="plugin-hero">
-    <h2>↑ Import Dataset</h2>
-    <p>Create a 3LC table from your data — YOLO, COCO, image folders, CSV/Excel, or unlabeled collections.</p>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l7-4 7 4v8l-7 4-7-4V7z"/><path d="M3 7l7 4 7-4M10 11v8"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Multiple Formats</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">YOLO, COCO, CSV & more</div>
-      </div>
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12l-2 2a2.83 2.83 0 1 1-4-4l2-2a2.83 2.83 0 0 1 4 0M12 8l2-2a2.83 2.83 0 1 1 4 4l-2 2a2.83 2.83 0 0 1-4 0"/><path d="M7 13l6-6"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Full Lineage</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Revision history from day one</div>
-      </div>
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2L5 11h5l-1 7 6-9h-5l1-7z"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Instant Access</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Browse & explore immediately</div>
-      </div>
-    </div>
-    <div class="plugin-workflow" style="margin-top:10px">
-      <div class="plugin-workflow-step"><span class="num">1</span> Pick format</div>
-      <div class="plugin-workflow-step"><span class="num">2</span> Fill details</div>
-      <div class="plugin-workflow-step"><span class="num">3</span> Import</div>
-    </div>
-  </div>
+<div class="plugin-page plugin-workbench">
+  <header class="plugin-page-heading">
+  <h1>Import dataset</h1>
+  <p>Create a table from your source files.</p>
+</header>
 
   <!-- Format selector -->
   <div class="format-grid" id="format-grid">
@@ -281,12 +259,14 @@
     var grid = document.getElementById('format-grid');
     grid.innerHTML = '';
     formats.forEach(function(fmt) {
-      var card = document.createElement('div');
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.setAttribute('aria-pressed', String(selectedFormat === fmt.name));
+      card.dataset.format = fmt.name;
       card.className = 'format-card' + (selectedFormat === fmt.name ? ' active' : '');
       card.innerHTML =
-        '<div class="format-card-icon">' + (fmt.icon || '⊡') + '</div>' +
-        '<div class="format-card-name">' + _esc(fmt.display_name) + '</div>' +
-        '<div class="format-card-desc">' + _esc(fmt.description) + '</div>';
+        '<span class="format-card-name">' + _esc(fmt.display_name) + '</span>' +
+        '<span class="format-card-desc">' + _esc(fmt.description) + '</span>';
       card.onclick = function() { selectFormat(fmt.name); };
       grid.appendChild(card);
     });
@@ -306,10 +286,8 @@
     if (fmt) {
       grid.innerHTML =
         '<div class="format-selected-banner">' +
-          '<span class="fmt-icon">' + (fmt.icon || '') + '</span>' +
           '<div style="flex:1">' +
             '<div class="fmt-name">' + _esc(fmt.display_name) + '</div>' +
-            '<div class="fmt-desc">' + _esc(fmt.description) + '</div>' +
           '</div>' +
           '<button class="btn btn-secondary btn-sm" id="change-format-btn">Change Format</button>' +
         '</div>';
@@ -364,17 +342,15 @@
 
     var html = '<div class="card">';
     html += '<div class="card-header"><div>';
-    html += '<div class="card-title">' + (fmt.icon || '') + ' ' + _esc(fmt.display_name) + '</div>';
-    html += '<div class="card-subtitle">' + _esc(fmt.description) + '</div>';
+    html += '<div class="card-title">Source &amp; output</div>';
     html += '</div></div>';
     html += '<div class="card-body">';
     html += '<form id="import-exec-form" onsubmit="return false;" novalidate>';
-    html += '<div class="form-row">';
+    html += '<div class="plugin-import-fields">';
 
     var fields = fmt.form_fields || [];
     for (var i = 0; i < fields.length; i++) {
       var f = fields[i];
-      if (i % 2 === 0) html += '<div>';
 
       html += '<div class="form-group">';
       html += '<label class="form-label' + (f.required ? ' required' : '') + '" for="import-' + f.id + '">';
@@ -419,7 +395,6 @@
       }
       html += '</div>';
 
-      if (i % 2 === 1 || i === fields.length - 1) html += '</div>';
     }
 
     html += '</div>';

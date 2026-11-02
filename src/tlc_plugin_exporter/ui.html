@@ -26,47 +26,37 @@
   color: var(--text-muted); font-weight: 500; }
 .export-col-actions button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .export-col-actions button:disabled { opacity: .5; cursor: not-allowed; }
+/* Keep the destination and column selection visible together on wide screens. */
+#export-details { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px 32px; }
+#export-details > * { min-width: 0; grid-column: 1 / -1; }
+#export-details > .form-group { margin-bottom: 0; }
+#export-format-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px 24px; }
+#export-format-options .format-options-label { grid-column: 1 / -1; margin-bottom: 0; }
+#export-format-options .form-group { margin-bottom: 0; min-width: 0; }
+@container plugin-card (min-width: 1000px) {
+  #export-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #export-details:has(#export-column-section:not([style*="none"])) > .export-destination,
+  #export-column-section { grid-column: auto; }
+}
 </style>
 
-<div class="plugin-page">
-  <div class="plugin-hero">
-    <h2>↓ Export Dataset</h2>
-    <p>Export a 3LC table to CSV, Excel, YOLO, COCO, or other formats for use in external tools and pipelines.</p>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l7-4 7 4v8l-7 4-7-4V7z"/><path d="M3 7l7 4 7-4M10 11v8"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Multiple Formats</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">CSV, Excel, YOLO, COCO</div>
-      </div>
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h12M3 10h14M4 6h12"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Column Selection</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Choose which columns to export</div>
-      </div>
-      <div class="plugin-hero-badge">
-        <div style="margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="4" cy="10" r="2"/><circle cx="16" cy="10" r="2"/><path d="M6 10h8"/><path d="M12 6l4 4-4 4"/></svg></div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;color:var(--text-muted)">Pipeline Ready</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Feed into any ML workflow</div>
-      </div>
-    </div>
-    <div class="plugin-workflow" style="margin-top:10px">
-      <div class="plugin-workflow-step"><span class="num">1</span> Select table</div>
-      <div class="plugin-workflow-step"><span class="num">2</span> Pick format</div>
-      <div class="plugin-workflow-step"><span class="num">3</span> Export</div>
-    </div>
-  </div>
+<div class="plugin-page plugin-workbench">
+  <header class="plugin-page-heading">
+  <h1>Export dataset</h1>
+  <p>Choose a table, an export format and a destination.</p>
+</header>
 
   <div id="export-result"></div>
 
   <div class="card" id="export-form">
-    <div class="card-header"><div class="card-title">Export Configuration</div></div>
+    <div class="card-header"><div class="card-title">Table &amp; output</div></div>
     <div class="card-body">
 
       <!-- Table URL -->
       <div class="form-group">
         <label class="form-label required" for="export-table-url">Table URL</label>
         <tlc-table-field id="export-table-url" placeholder="Paste table URL or click Browse…" required></tlc-table-field>
-        <div class="form-help">Select a table from your projects, or paste a URL directly.</div>
+
       </div>
 
       <!-- Format selector -->
@@ -79,7 +69,7 @@
 
       <!-- Details (hidden until format selected) -->
       <div id="export-details" style="display:none">
-        <div class="form-group">
+        <div class="form-group export-destination">
           <label class="form-label required">Output Path</label>
           <div id="export-output-ds"></div>
           <div class="form-help" id="export-output-help"></div>
@@ -158,12 +148,14 @@
     var grid = document.getElementById('export-format-grid');
     grid.innerHTML = '';
     formats.forEach(function(fmt) {
-      var card = document.createElement('div');
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.setAttribute('aria-pressed', String(selectedFormat === fmt.name));
+      card.dataset.format = fmt.name;
       card.className = 'format-card' + (selectedFormat === fmt.name ? ' active' : '');
       card.innerHTML =
-        '<div class="format-card-icon">' + (fmt.icon || '') + '</div>' +
-        '<div class="format-card-name">' + _esc(fmt.display_name) + '</div>' +
-        '<div class="format-card-desc">' + _esc(fmt.description) + '</div>';
+        '<span class="format-card-name">' + _esc(fmt.display_name) + '</span>' +
+        '<span class="format-card-desc">' + _esc(fmt.description) + '</span>';
       card.onclick = function() { selectFormat(fmt.name); };
       grid.appendChild(card);
     });
@@ -173,6 +165,8 @@
     var before = selectedFormatDef();
     selectedFormat = name;
     renderFormatGrid();
+    var selectedCard = document.querySelector('#export-format-grid .format-card.active');
+    if (selectedCard) selectedCard.focus({preventScroll: true});
     document.getElementById('export-details').style.display = '';
     renderFormatOptions();
     followFormat(before);
