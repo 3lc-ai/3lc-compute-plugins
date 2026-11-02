@@ -30,14 +30,14 @@
   font-weight: 600; border-bottom: 2px solid var(--border); white-space: nowrap; z-index: 1;
 }
 .csv-preview-table td { padding: 4px 8px; border-bottom: 1px solid var(--border-light, rgba(0,0,0,.04)); white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-.csv-preview-table tr:hover td { background: var(--golden-light); }
+.csv-preview-table tr:hover td { background: var(--row-hover-bg); }
 
 .csv-col-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .csv-col-card {
   border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
   display: flex; align-items: flex-start; gap: 10px; transition: border-color .15s;
 }
-.csv-col-card.selected { border-color: var(--accent); background: var(--accent-light, rgba(42,74,97,.04)); }
+.csv-col-card.selected { border-color: var(--selection-border, var(--golden-border)); background: var(--row-selected-bg, var(--accent-light)); }
 .csv-col-card .col-header { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .csv-col-card .col-name { font-weight: 600; font-size: 12px; }
 .csv-col-card .col-type-badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--bg-secondary, #f0f0f0); color: var(--text-muted); }
@@ -58,7 +58,7 @@
   border: 1px solid var(--border); cursor: pointer; transition: all .15s; background: var(--bg-card); color: var(--text-secondary); }
 .csv-mode-btn:first-child { border-radius: 6px 0 0 6px; }
 .csv-mode-btn:last-child { border-radius: 0 6px 6px 0; border-left: none; }
-.csv-mode-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.csv-mode-btn.active { background: var(--row-selected-bg, var(--accent-light)); color: var(--text); border-color: var(--selection-border, var(--golden-border)); }
 
 /* A wizard step's buttons. The main button's reason has its own line under them, starting under that
    button, and always one line high, so nothing moves as it comes and goes (PBI 19074). The reason line
