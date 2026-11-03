@@ -655,7 +655,7 @@
     var state = prov.state || resp.status || 'unknown';
     if (state === 'failed') {
       return 'plugin environment build failed' + (prov.error ? ' (' + prov.error + ')' : '') +
-        ' — see Settings → Plugins';
+        ' — see the Plugins page';
     }
     if (state === 'provisioning' || state === 'unprovisioned') {
       return 'plugin environment is still being set up (' + state + ') — try again in a moment';
