@@ -26,8 +26,8 @@
   background: var(--row-hover-bg);
 }
 .im-metric-card.selected {
-  border-color: var(--accent);
-  background: var(--accent-light, rgba(42,74,97,.06));
+  border-color: var(--selection-border, var(--golden-border));
+  background: var(--row-selected-bg, var(--accent-light));
 }
 .im-metric-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .im-metric-card .info { flex: 1; min-width: 0; }
@@ -43,8 +43,8 @@
   flex-shrink: 0;
 }
 .im-metric-card.selected .name .check {
-  background: var(--btn-primary-bg); border-color: var(--btn-primary-bg);
-  color: var(--btn-primary-text);
+  background: var(--accent); border-color: var(--accent);
+  color: var(--bg-card);
 }
 .im-metric-card .desc {
   display: block; font-size: 11px; color: var(--text-secondary); line-height: 1.5;
