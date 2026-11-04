@@ -601,7 +601,9 @@ IMPORT_STEPS: dict[str, dict[str, Any]] = {
                 "required": True,
                 "help": "Path to a JSON file, or an annotations folder to auto-detect splits.",
                 "accept": "*.json",
-                "mode": "folder",
+                # A file or a folder. An SDK without "any" (before 0.7) treats it as "file": the JSON can be
+                # picked, and a folder typed in.
+                "mode": "any",
             },
             {
                 "id": "image_folder",

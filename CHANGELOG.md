@@ -172,6 +172,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Import: COCO's Annotations Path can pick a .json file in Browse again.** The field takes a JSON file
+  or a folder of them, but it was a folder picker, and since the Browse panel became a file chooser a
+  folder picker dims its files. It now asks for either (`mode: "any"`): on SDK 0.6 a click on the file
+  picks it, and a folder can be typed in. With an SDK that knows `"any"` (0.7), "Select this folder"
+  picks a folder too.
 - **Export: Deselect all no longer exports every column.** An empty column list reached the server as
   no `columns`, which it reads as all of them; Export now waits for a ticked column. A column list read
   for an earlier table can no longer go out with the table that replaced it.
