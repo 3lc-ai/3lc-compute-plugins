@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Import stops before creating a table when its requested project URL alias cannot be registered.
+  Unlabeled Images and the other import formats no longer silently report success with full source
+  paths after an alias conflict or configuration-write failure. URL encoding remains handled by 3LC.
+
 ### Changed
 
 - Accepts plugin SDK 0.6 (`3lc-compute-plugin-sdk<0.7.0`), so the plugin's workers get SDK 0.6's
