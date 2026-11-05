@@ -961,7 +961,8 @@ def _maybe_register_alias(
 
     Raises:
         JobFailed: The alias covers a parent of the source folder, and the folder this
-            run reads is not laid out the same way below it (the SDK's ``register_source_alias``).
+            run reads is not laid out the same way below it (the SDK's ``register_source_alias``),
+            or the requested project alias could not be registered.
 
     """
     _reject_legacy_copy(form_data)
@@ -983,7 +984,7 @@ def _maybe_register_alias(
     if source_folder and image_folder and source_folder != image_folder and ctx is not None:
         ctx.log(f"Reading the data from {image_folder}; <{token}> keeps pointing at {folder}.")
 
-    return register_source_alias(
+    result = register_source_alias(
         project_name,
         image_folder or folder,
         source_folder=source_folder or image_folder or folder,
@@ -991,6 +992,16 @@ def _maybe_register_alias(
         alias_token=token,
         root_url=_root(form_data),
     )
+    # TableWriter applies registered aliases automatically. Continuing after a failed
+    # registration would silently save full source paths instead of the requested alias.
+    if result.get("error"):
+        msg = (
+            f"{result['error']}. Import stopped before creating a table. "
+            "Check that the alias name is not already used for a different source "
+            "and that the project's configuration can be written."
+        )
+        raise JobFailed(msg)
+    return result
 
 
 def _submitted_image_folder(format_name: str, form_data: dict[str, Any]) -> str | None:
