@@ -55,7 +55,7 @@ additive-only — see its README → Status).
 
 ## Dev setup
 
-The POC lockfile resolves the staged 3lc core and SDK 0.5 from the private staging index (the explicit `staging` index
+The POC lockfile resolves the staged 3lc core and SDK 0.7 from the private staging index (the explicit `staging` index
 in pyproject.toml); other dependencies use PyPI. Set `UV_INDEX_STAGING_USERNAME` /
 `UV_INDEX_STAGING_PASSWORD` as shown in README.md. For local SDK development,
 use an uncommitted editable overlay. Do not commit path sources or credentials.
@@ -74,6 +74,6 @@ how to build a plugin against the contract.
 
 ## Conventions
 
-Python 3.10+, uv, Hatchling, Litestar route handlers (`get_route_handlers()`), Ruff (line-length
+Python 3.11+, uv, Hatchling, Litestar route handlers (`get_route_handlers()`), Ruff (line-length
 120), mypy `--strict` where deps allow. Google-style docstrings. SPDX header on new files
 (`# Copyright <year> 3LC Inc.` / `# SPDX-License-Identifier: Apache-2.0`).
