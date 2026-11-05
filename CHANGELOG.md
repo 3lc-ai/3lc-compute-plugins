@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Compute Service implements an older SDK line and would refuse these workers, so it keeps offering the
   plugins' earlier catalog versions instead. The pages need no change: they use the flat `PLUGIN_API`
   members, `PluginJobs` and `TlcData`, which SDK 0.7's frame runtime keeps.
+- Requires Python 3.11 or newer, as the SDK always has (3.10 could never resolve it). The lock takes the
+  staged SDK 0.7.0 and the staged 3lc core it needs.
 #### Browse panel
 
 - **The Browse panel under a path field is the SDK's file chooser.** A Location line names the place being

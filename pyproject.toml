@@ -13,7 +13,7 @@ name = "3lc-compute-plugins"
 version = "0.2.4"
 description = "Open, first-party plugins for the 3LC compute service."
 readme = "README-wheel.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 # Apache-2.0, matching 3lc-compute-plugin-sdk. Full text in ./LICENSE.
 license = { text = "Apache-2.0" }
 classifiers = ["License :: OSI Approved :: Apache Software License"]
@@ -102,7 +102,7 @@ testpaths = ["tests"]
 # standalone (uvx) — linting must not require resolving the heavy per-plugin ML stacks.
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 exclude = [".git", ".mypy_cache", ".ruff_cache", ".venv", "build", "dist"]
 
 [tool.ruff.lint]

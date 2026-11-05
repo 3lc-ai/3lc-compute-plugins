@@ -12,16 +12,11 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
 import pytest
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib  # type: ignore[no-redef]
 
 merger = pytest.importorskip("tlc_plugin_merger")
 
