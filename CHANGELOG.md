@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- CSV/Excel Import hands uploaded bytes directly to isolated job processes on the same machine,
+  so concurrent imports keep working without routing file contents through another node.
+
 - Import stops before creating a table when its requested project URL alias cannot be registered.
   Unlabeled Images and the other import formats no longer silently report success with full source
   paths after an alias conflict or configuration-write failure. URL encoding remains handled by 3LC.

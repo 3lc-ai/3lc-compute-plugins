@@ -129,3 +129,15 @@ def test_csv_upload_not_held_here_says_why(tmp_path: Path) -> None:
     # The fragment refuses up front: Import is disabled, with the reason, while "Run on" is a node.
     assert "PLUGIN_API.getRunTarget()" in UI and "PLUGIN_API.onRunTargetChange(_csvGate)" in UI
     assert "a CSV import runs where the file was uploaded" in UI
+
+
+def test_csv_upload_handoff_stays_local_and_is_authoritative(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    upload = {"bytes": b"image,label\na.jpg,cat", "filename": "data.csv"}
+    monkeypatch.setitem(imp._parsed_csv_files, "session-a", upload)
+    ctx = _ctx({"format": "csv", "session_id": "session-a", "_csv_upload": {"bytes": b"spoof"}}, tmp_path)
+    imp.ImportPlugin().prepare_job(ctx)
+    assert ctx.params["_csv_upload"] == upload
+    assert "session-a" not in imp._parsed_csv_files
+    other = _ctx({"format": "csv", "session_id": "unknown", "_csv_upload": upload}, tmp_path)
+    imp.ImportPlugin().prepare_job(other)
+    assert "_csv_upload" not in other.params
