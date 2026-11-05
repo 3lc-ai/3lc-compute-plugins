@@ -73,7 +73,7 @@ uv sync --extra importer     # one plugin's deps (exactly what the host provisio
 uv run ruff check .
 ```
 
-The lockfile selects tested staged 3lc core and SDK 0.5 snapshots from the private staging index
+The lockfile selects tested staged 3lc core and SDK 0.7 snapshots from the private staging index
 (`pypi.3lc.ai/repositories/prereleases`), declared as the explicit `staging` index in
 `pyproject.toml`; everything else comes from PyPI. uv reads the index credentials from
 `UV_INDEX_STAGING_USERNAME` / `UV_INDEX_STAGING_PASSWORD`; nothing else needs setting and no
@@ -90,7 +90,7 @@ retains artifacts without uploading. Set `publish=true` to upload to the private
 Catalog entries should name that exact version in both `version` and the install requirement.
 Each new snapshot then appears as an update in the Hub. The source checkout keeps its normal
 three-part version. Public PyPI publication uses a matching `vX.Y.Z` tag and verifies
-distribution/manifest agreement; the SDK 0.5 line these plugins require is not on PyPI yet.
+distribution/manifest agreement; the SDK 0.7 line these plugins require is not on PyPI yet.
 
 ### Editor autocomplete for `ui.html` (the JS bridge)
 

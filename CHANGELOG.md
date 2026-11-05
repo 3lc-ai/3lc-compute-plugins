@@ -10,8 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Accepts plugin SDK 0.6 (`3lc-compute-plugin-sdk<0.7.0`), so the plugin's workers get SDK 0.6's
-  worker: a job's outcome survives a controller that disconnects or restarts mid-run.
+- Requires plugin SDK 0.7 (`3lc-compute-plugin-sdk>=0.7.0,<0.8.0`), so the plugins' workers get its
+  worker (a job's outcome survives a controller that disconnects or restarts mid-run) and its Browse
+  panel (`mode: "any"` picks a file or a folder). Every plugin's `min_service_version` is 1.2.0: a 1.1
+  Compute Service implements an older SDK line and would refuse these workers, so it keeps offering the
+  plugins' earlier catalog versions instead. The pages need no change: they use the flat `PLUGIN_API`
+  members, `PluginJobs` and `TlcData`, which SDK 0.7's frame runtime keeps.
 #### Browse panel
 
 - **The Browse panel under a path field is the SDK's file chooser.** A Location line names the place being
@@ -174,9 +178,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Import: COCO's Annotations Path can pick a .json file in Browse again.** The field takes a JSON file
   or a folder of them, but it was a folder picker, and since the Browse panel became a file chooser a
-  folder picker dims its files. It now asks for either (`mode: "any"`): on SDK 0.6 a click on the file
-  picks it, and a folder can be typed in. With an SDK that knows `"any"` (0.7), "Select this folder"
-  picks a folder too.
+  folder picker dims its files. It now asks for either (`mode: "any"`): a click on a file picks it, and
+  "Select this folder" picks the folder shown.
 - **Export: Deselect all no longer exports every column.** An empty column list reached the server as
   no `columns`, which it reads as all of them; Export now waits for a ticked column. A column list read
   for an earlier table can no longer go out with the table that replaced it.
