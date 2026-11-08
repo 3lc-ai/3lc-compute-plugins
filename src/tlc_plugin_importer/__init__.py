@@ -1355,6 +1355,11 @@ def _execute_yolo(form_data: dict[str, Any]) -> dict[str, Any]:
         dataset_name=form_data["dataset_name"].strip(),
         table_name=form_data.get("table_name", "").strip() or "initial",
         description=form_data.get("description", "").strip() or None,
+        # tlc refuses a YOLO table whose source is remote unless this is set, and checks it on every
+        # load, not only while building rows. The source is remote for an S3 import, and also for a
+        # local import whose alias points at a bucket: such a table was written, then refused by
+        # every reader ("malformed data" in the Dashboard). The flag is saved with the table.
+        allow_fetch_remote_data=True,
     )
 
     return {
