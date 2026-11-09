@@ -1934,10 +1934,9 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
 def _run_csv_import(ctx: JobContext) -> None:
     """Run a CSV/Excel import.
 
-    The uploaded file bytes are looked up from the in-process ``_parsed_csv_files``
-    store by the ``session_id`` carried in ``ctx.params`` — bytes never travel
-    through params. Host-only (in-process), so the store written by ``/csv/parse``
-    is visible here.
+    Isolated jobs receive uploaded bytes through the SDK's private local handoff.
+    Legacy workers read the serving process's session store directly. In either
+    case the upload stays on the node where it was parsed.
 
     Raises:
         JobFailed: The upload is not held here (a node run, or a restarted worker), no
@@ -1947,7 +1946,7 @@ def _run_csv_import(ctx: JobContext) -> None:
     params = ctx.params
     _reject_legacy_copy(params)
     session_id = params.get("session_id", "")
-    file_data = _parsed_csv_files.get(session_id)
+    file_data = params.pop("_csv_upload", None) or _parsed_csv_files.get(session_id)
     if not file_data:
         # The parsed upload lives in the memory of the worker that answered /csv/parse — the one on
         # the compute-service host. A node's worker never has it, and a restarted worker lost it.
@@ -2049,6 +2048,14 @@ class ImportPlugin(ComputePlugin):
     def compute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Return import format definitions (used by discovery, not execution)."""
         return {"formats": list(IMPORT_STEPS.values())}
+
+    def prepare_job(self, ctx: JobContext) -> None:
+        """Transfer a parsed upload to its job process without another network hop."""
+        ctx.params.pop("_csv_upload", None)  # only worker-held uploads are authoritative
+        if ctx.params.get("format") == "csv":
+            upload = _parsed_csv_files.pop(str(ctx.params.get("session_id", "")), None)
+            if upload is not None:
+                ctx.params["_csv_upload"] = upload
 
     def run_job(self, ctx: JobContext) -> None:
         """Run one import as a host job (CpuQueue-serialized via the JobManager).
