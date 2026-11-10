@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Merge and Export no longer report a stopped job as finished. A merge or export stopped before it ran says it
+  was cancelled (an export killed partway says its output may hold part of the export), and one stopped too
+  late to prevent its output says it finished before it could be stopped. A merge stopped while its tables load
+  now writes nothing. Before, Merge said "Merge complete." and Export "Export completed." for every stop.
+
+- Export says "Exporting…" again for every export after the first, until the export's first progress
+  label. The status line was cleared when an export ended and stayed empty for the next one.
+
 - CSV/Excel Import hands uploaded bytes directly to isolated job processes on the same machine,
   so concurrent imports keep working without routing file contents through another node.
 

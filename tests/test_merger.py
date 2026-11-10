@@ -79,7 +79,7 @@ def test_run_job_reports_result_on_success(monkeypatch: pytest.MonkeyPatch, tmp_
     monkeypatch.setattr(
         merger,
         "_execute_merge",
-        lambda data, root_url=None: {
+        lambda data, root_url=None, cancelled=None: {
             "success": True,
             "message": "Merged",
             "table_url": table_url,
@@ -182,3 +182,46 @@ def test_run_job_joins_every_table_in_order(monkeypatch: pytest.MonkeyPatch, tmp
     assert captured["tables"] == ["c", "a", "b", "d"]
     assert result["message"] == "Merged 4 tables into 'm'."
     assert result["details"]["input_count"] == 4
+
+
+def _stop_when(monkeypatch: pytest.MonkeyPatch, step: str, cancel: threading.Event) -> None:
+    """Make the fake ``tlc`` (from ``_capture_join``) set ``cancel`` when it runs ``step``, as a Stop clicked
+    while that step runs."""
+    import sys
+
+    table = sys.modules["tlc"].Table
+    original = getattr(table, step)
+
+    def stopped(*args: Any, **kwargs: Any) -> object:
+        cancel.set()
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(table, step, staticmethod(stopped))
+
+
+def test_a_stop_while_the_tables_load_writes_nothing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A stop that comes before the join (Bug 19272): no table is written and none is reported, so the job ends
+    "cancelled" with nothing to show."""
+    captured = _capture_join(monkeypatch)
+    cancel = threading.Event()
+    _stop_when(monkeypatch, "from_url", cancel)
+    events: list[dict[str, Any]] = []
+    params = {"table_urls": ["a", "b"], "project_name": "p", "dataset_name": "d", "table_name": "m"}
+    merger.MergePlugin().run_job(JobContext("job-1", params, tmp_path, sink=events.append, cancel_event=cancel))
+    assert "tables" not in captured
+    assert not any(e["event"] == "result" for e in events)
+
+
+def test_a_stop_during_the_join_is_too_late_and_the_table_is_reported(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The join is one call that writes the table, so a stop during it cannot undo it: the table is reported,
+    and the page says the merge finished before it could be stopped."""
+    captured = _capture_join(monkeypatch)
+    cancel = threading.Event()
+    _stop_when(monkeypatch, "join_tables", cancel)
+    events: list[dict[str, Any]] = []
+    params = {"table_urls": ["a", "b"], "project_name": "p", "dataset_name": "d", "table_name": "m"}
+    merger.MergePlugin().run_job(JobContext("job-1", params, tmp_path, sink=events.append, cancel_event=cancel))
+    assert captured["tables"] == ["a", "b"]
+    assert [e["run_url"] for e in events if e["event"] == "result"] == ["s3://root/p/datasets/d/tables/m"]
