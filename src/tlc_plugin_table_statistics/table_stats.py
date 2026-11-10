@@ -63,7 +63,7 @@ class _ColAccum:
             return  # nothing to accumulate
 
         if self.kind == "bool":
-            for v in pc.value_counts(arr):
+            for v in pc.value_counts(_flatten_lists(arr)):
                 self._value_counts[str(v["values"].as_py())] += v["counts"].as_py()
             return
 
@@ -91,7 +91,9 @@ class _ColAccum:
             return
 
         if self.kind in ("categorical", "label"):
-            for v in pc.value_counts(arr):
+            # A list-valued label column (multi-label, or one label per instance) counts every label
+            # in every row, as the Dashboard's filter histograms count per-instance labels.
+            for v in pc.value_counts(_flatten_lists(arr)):
                 raw = v["values"].as_py()
                 if self._value_map and raw is not None:
                     label = self._value_map.get(float(raw), str(raw))
@@ -353,6 +355,13 @@ def _get_value_map(table: Any, col_name: str) -> dict[float, str] | None:
     from tlc_plugin_sdk.shared.labels import get_display_value_map
 
     return get_display_value_map(table, col_name)
+
+
+def _flatten_lists(arr: pa.Array) -> pa.Array:
+    """Return the items of a (possibly nested) list array, one element per list item; other arrays as they are."""
+    while pa.types.is_list(arr.type) or pa.types.is_large_list(arr.type) or pa.types.is_fixed_size_list(arr.type):
+        arr = pc.list_flatten(arr)
+    return arr
 
 
 def _safe_scalar(scalar: Any) -> float | None:

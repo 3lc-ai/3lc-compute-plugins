@@ -149,3 +149,44 @@ def test_successful_stats_still_process_batches(monkeypatch: pytest.MonkeyPatch,
     assert column["kind"] == "numeric"
     assert (column["min"], column["max"], column["mean"]) == (1.0, 3.0, 2.0)
     assert sum(column["histogram"]["counts"]) == 3
+
+
+def _table_with(columns: dict[str, pa.Array]) -> MagicMock:
+    table = MagicMock()
+    table.__len__.return_value = len(next(iter(columns.values())))
+    table.rows_schema = SimpleNamespace(values=dict.fromkeys(columns, object()))
+    table.get_column_as_pyarrow_array.side_effect = lambda name, combine_chunks=True: columns[name]
+    return table
+
+
+def test_list_valued_label_column_counts_every_label(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A multi-label column: classified as a label column by its value map, but each row holds a list.
+    labels = pa.array([[0, 1], [1], [], None, [2, 1]], type=pa.list_(pa.int32()))
+    table = _table_with({"labels": labels})
+    _fake_tlc(monkeypatch, lambda url: table)
+    monkeypatch.setattr(
+        modality, "detect_modality_from_table", lambda table: modality.ModalityInfo(classification_columns=["labels"])
+    )
+    monkeypatch.setattr(table_stats, "BATCH_SIZE", 2)
+
+    result = _wait_for_stats()
+
+    assert result["error"] is None
+    assert result["complete"] is True
+    column = result["columns"][0]
+    assert column["kind"] == "label"
+    assert column["total_count"] == 5
+    assert column["null_count"] == 1
+    assert column["value_counts"] == {"1": 3, "0": 1, "2": 1}
+    assert column["unique_count"] == 3
+
+
+def test_nested_list_labels_are_flattened_and_mapped() -> None:
+    # Per-instance labels inside a per-row list are flattened all the way down, then named by the value map.
+    labels = pa.array([[[0.0], [1.0]], [[1.0]], None], type=pa.list_(pa.list_(pa.float32())))
+    accum = table_stats._ColAccum(name="labels", kind="categorical", _value_map={0.0: "cat", 1.0: "dog"})
+
+    accum.update(labels)
+
+    assert dict(accum._value_counts) == {"cat": 1, "dog": 2}
+    assert (accum.count, accum.null_count) == (3, 1)
