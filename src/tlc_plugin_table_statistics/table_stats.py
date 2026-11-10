@@ -304,15 +304,7 @@ def _compute_progressive(session: StatsSession) -> None:
                 if name not in session._accums:
                     continue
                 batch = arr.slice(processed, batch_len)
-                accum = session._accums[name]
-                try:
-                    accum.update(batch)
-                except Exception:
-                    # One column PyArrow cannot count must not fail the statistics of the whole table.
-                    logger.warning("Table statistics skip column %s (%s) of %s", name, accum.dtype, url, exc_info=True)
-                    session._accums[name] = _ColAccum(
-                        name=name, kind="unknown", dtype=accum.dtype, count=accum.count, null_count=accum.null_count
-                    )
+                session._accums[name].update(batch)
 
             processed = end
             session.rows_processed = processed

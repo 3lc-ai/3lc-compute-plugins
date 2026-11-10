@@ -199,8 +199,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Table Statistics counts list-valued label columns.** A label column whose rows hold lists (multi-label,
   or one label per instance) failed the whole table with "Function 'value_counts' has no kernel matching
   input types (list)". Its value counts now count every label in every row, as the Dashboard's filter
-  histograms count per-instance labels. A column that still cannot be counted is shown as `unknown`
-  instead of failing the other columns' statistics.
+  histograms count per-instance labels.
 - **Image Metrics imports on a worker without a home directory.** Its legacy config folder is resolved
   when a config store is built, not at import, as the SDK resolves its own config root; without a home
   the store raises the SDK's `ConfigRootUnavailable` instead of the plugin failing to load.

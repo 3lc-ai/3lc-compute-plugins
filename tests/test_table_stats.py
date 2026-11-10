@@ -190,30 +190,3 @@ def test_nested_list_labels_are_flattened_and_mapped() -> None:
 
     assert dict(accum._value_counts) == {"cat": 1, "dog": 2}
     assert (accum.count, accum.null_count) == (3, 1)
-
-
-def test_column_that_cannot_be_counted_does_not_fail_the_table(
-    monkeypatch: pytest.MonkeyPatch, plain_columns: None
-) -> None:
-    table = _table_with({"score": pa.array([1.0, 2.0, 3.0]), "odd": pa.array([1, 2, 3])})
-    _fake_tlc(monkeypatch, lambda url: table)
-    original_update = table_stats._ColAccum.update
-
-    def update(self: table_stats._ColAccum, arr: pa.Array) -> None:
-        if self.name == "odd" and self.kind != "unknown":
-            self.count += len(arr)
-            msg = "Function 'value_counts' has no kernel matching input types"
-            raise pa.ArrowNotImplementedError(msg)
-        original_update(self, arr)
-
-    monkeypatch.setattr(table_stats._ColAccum, "update", update)
-
-    result = _wait_for_stats()
-
-    assert result["error"] is None
-    assert result["complete"] is True
-    columns = {c["name"]: c for c in result["columns"]}
-    assert columns["score"]["kind"] == "numeric"
-    assert columns["score"]["mean"] == 2.0
-    assert columns["odd"]["kind"] == "unknown"
-    assert columns["odd"]["total_count"] == 3
