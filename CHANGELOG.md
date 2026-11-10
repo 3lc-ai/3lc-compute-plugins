@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Import stops before creating a table when its requested project URL alias cannot be registered.
   Unlabeled Images and the other import formats no longer silently report success with full source
   paths after an alias conflict or configuration-write failure. URL encoding remains handled by 3LC.
+- A YOLO import can be read where its data lives. tlc refuses a YOLO table whose source is remote
+  unless the table allows fetching it, and checks this whenever the table is loaded. A local import
+  whose URL alias points at a bucket was written, then refused by every reader ("malformed data" in
+  the Dashboard), and an import straight from a bucket failed. The importer now allows it.
 
 ### Changed
 
