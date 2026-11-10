@@ -273,6 +273,28 @@
     return '';
   }
 
+  // The result box for a merge job that ended without failing: PluginJobs calls onDone for 'completed' and for
+  // 'cancelled'. `out`: {project, dataset}, the names the output was given. A merge stopped too late has written
+  // its table: the job still ends 'cancelled', but it carries the table's URL.
+  function resultOfJob(job, out) {
+    var written = {
+      success: true,
+      table_url: job.run_url,
+      project_name: out.project,
+      dataset_name: out.dataset,
+      details: {},
+    };
+    (job.metrics || []).forEach(function(m) { written.details[m.label] = m.value; });
+    if (job.status !== 'cancelled') {
+      written.message = (job.progress && job.progress.label) || 'Merge complete.';
+      return written;
+    }
+    if (!job.run_url) return { success: false, message: 'Merge cancelled.' };
+    written.message = 'The merge finished before it could be stopped: \'' + tableNameOf(job.run_url) +
+      '\' was written.';
+    return written;
+  }
+
   // ── End of the list rules ──
 
   // ── The list ───────────────────────────────────────────
@@ -542,7 +564,7 @@
 
     // Drive the merge over the generic job_update channel (window.PluginJobs).
     // The form values (proj/ds/tableName) are already in scope, so onDone
-    // reconstructs the result from the final job's run_url + metrics.
+    // reconstructs the result from the final job's status, run_url and metrics.
     PluginJobs.run('merger', {
       table_urls: tables.slice(),
       project_name: proj,
@@ -556,16 +578,7 @@
       onDone: function(job) {
         clearInterval(elapsedTimer);
         resetUI();
-        var details = {};
-        (job.metrics || []).forEach(function(m) { details[m.label] = m.value; });
-        showResult({
-          success: true,
-          message: (job.progress && job.progress.label) || 'Merge complete.',
-          table_url: job.run_url,
-          project_name: proj,
-          dataset_name: ds,
-          details: details,
-        });
+        showResult(resultOfJob(job, { project: proj, dataset: ds }));
       },
       onError: function(job) {
         clearInterval(elapsedTimer);

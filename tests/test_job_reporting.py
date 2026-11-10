@@ -37,7 +37,7 @@ def test_merger_reports_table_via_result(monkeypatch: pytest.MonkeyPatch, tmp_pa
     monkeypatch.setattr(
         merger,
         "_execute_merge",
-        lambda data, root_url=None: {
+        lambda data, root_url=None, cancelled=None: {
             "success": True,
             "message": "Merged",
             "table_url": table_url,

@@ -429,6 +429,32 @@
   var _resultUnsub = null;
   var _resultShown = false;
 
+  // ── Job outcome: pure, no DOM; tests/test_exporter_page.py runs this block in node ──
+
+  // What the status line says while an export runs, until its first progress label.
+  var EXPORTING = 'Exporting… this may take a moment.';
+
+  // The result box for an export job that ended without failing: PluginJobs calls onDone for 'completed' and
+  // for 'cancelled'. `exported`: the job's export_result, or null when none came. An export stopped too late has
+  // written its output and sent its export_result; the job still ends 'cancelled'. One stopped after it started
+  // and killed before it finished may have written part of it.
+  function exportOutcome(job, exported, outputPath) {
+    var cancelled = !!job && job.status === 'cancelled';
+    if (exported) {
+      if (!cancelled || !exported.success) return exported;
+      var late = Object.assign({}, exported);
+      late.message = 'The export finished before it could be stopped. ' + (exported.message || '');
+      return late;
+    }
+    if (!cancelled) return { success: true, message: 'Export completed. Output at: ' + outputPath };
+    if (job.progress && job.progress.label) {
+      return { success: false, message: 'Export stopped. ' + outputPath + ' may hold part of the export.' };
+    }
+    return { success: false, message: 'Export cancelled.' };
+  }
+
+  // ── End of the job outcome ──
+
   function executeExport() {
     if (exportBlocker()) { gate(); return; }
     var tableUrl = currentTableUrl();
@@ -456,6 +482,7 @@
     _exporting = true;
     gate();
     spinner.style.display = 'inline-block';
+    status.textContent = EXPORTING;  // cleared when the previous export ended
     status.style.display = 'inline';
     _resultShown = false;
 
@@ -470,12 +497,21 @@
 
     // Subscribe to the rich result before starting, so a fast export can't
     // finish between the /run response and the subscription.
+    // The export_result and the job's end can come in either order: a buffered end is replayed before run()
+    // resolves with the job's id, and so before a buffered export_result can be matched to it.
     var jobId = null;
     var pendingResult = null;
+    var exported = null;  // this job's export_result
+    var ended = null;     // this job's last update, once it ended without failing
+    function showExported(payload) {
+      exported = payload;
+      _resultShown = true;
+      showResult(ended ? exportOutcome(ended, payload, outputPath) : payload);
+    }
     if (_resultUnsub) _resultUnsub();
     _resultUnsub = PluginJobs.on('/exporter', 'export_result', function(payload) {
       if (jobId === null) { pendingResult = payload; return; }
-      if (payload && payload.job_id === jobId) { _resultShown = true; showResult(payload); }
+      if (payload && payload.job_id === jobId) showExported(payload);
     });
 
     PluginJobs.run('exporter', body, {
@@ -483,11 +519,11 @@
         var label = job && job.progress && job.progress.label;
         if (label) status.textContent = label;
       },
-      onDone: function() {
+      onDone: function(job) {
+        ended = job;
         cleanup();
-        if (!_resultShown) {
-          showResult({ success: true, message: 'Export completed. Output at: ' + outputPath });
-        }
+        var outcome = exportOutcome(job, exported, outputPath);
+        if (outcome !== exported) showResult(outcome);  // a completed export's own result is already shown
       },
       onError: function(job) {
         cleanup();
@@ -499,10 +535,7 @@
       },
     }).then(function(resp) {
       jobId = resp && resp.job_id;
-      if (pendingResult && pendingResult.job_id === jobId) {
-        _resultShown = true;
-        showResult(pendingResult);
-      }
+      if (pendingResult && pendingResult.job_id === jobId) showExported(pendingResult);
       pendingResult = null;
     }).catch(function(err) {
       cleanup();

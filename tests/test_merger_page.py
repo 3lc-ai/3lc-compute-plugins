@@ -173,6 +173,51 @@ def test_merge_tables_says_what_it_waits_for(tmp_path: Path) -> None:
     assert reasons == [reason for _, reason in cases]
 
 
+@needs_node
+def test_a_stopped_merge_is_not_reported_as_complete(tmp_path: Path) -> None:
+    """PluginJobs calls onDone for "cancelled" too (Bug 19272). Stopped before the join, nothing was written;
+    stopped during it, the table was, and the result says so."""
+    table = "s3://b/projects/p/datasets/d/tables/a_b_merged"
+    metrics = [{"label": "inputs", "value": 2}]
+    jobs = [
+        {
+            "status": "completed",
+            "run_url": table,
+            "metrics": metrics,
+            "progress": {"label": "Merged 2 tables into 'a_b_merged'."},
+        },
+        {"status": "completed", "run_url": table},
+        {"status": "cancelled", "run_url": None, "progress": {"label": ""}},
+        {"status": "cancelled", "run_url": None, "progress": {"label": "Merging tables"}},
+        {
+            "status": "cancelled",
+            "run_url": table,
+            "metrics": metrics,
+            "progress": {"label": "Merged 2 tables into 'a_b_merged'."},
+        },
+    ]
+    results = _js(
+        tmp_path,
+        json.dumps(jobs) + ".map(function (job) { return resultOfJob(job, {project: 'p', dataset: 'd'}); })",
+    )
+    written = {"success": True, "table_url": table, "project_name": "p", "dataset_name": "d"}
+    assert results == [
+        {**written, "details": {"inputs": 2}, "message": "Merged 2 tables into 'a_b_merged'."},
+        {**written, "details": {}, "message": "Merge complete."},
+        {"success": False, "message": "Merge cancelled."},
+        {"success": False, "message": "Merge cancelled."},
+        {
+            **written,
+            "details": {"inputs": 2},
+            "message": "The merge finished before it could be stopped: 'a_b_merged' was written.",
+        },
+    ]
+
+
+def test_the_result_box_follows_the_jobs_status() -> None:
+    assert "showResult(resultOfJob(job, { project: proj, dataset: ds }));" in UI
+
+
 def test_the_page_runs_the_list_in_its_order() -> None:
     assert "merge-table-a" not in UI and "merge-table-b" not in UI
     assert "table_urls: tables.slice()," in UI

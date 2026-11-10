@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 from tlc_plugin_sdk import ComputePlugin, JobContext, JobFailed
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from litestar.handlers import BaseRouteHandler
 
 logger = logging.getLogger(__name__)
@@ -21,7 +23,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _execute_merge(data: dict[str, Any], root_url: str | None = None) -> dict[str, Any]:
+def _execute_merge(
+    data: dict[str, Any], root_url: str | None = None, cancelled: Callable[[], bool] | None = None
+) -> dict[str, Any]:
     """Execute a vertical table merge (row concatenation).
 
     Stacks the rows of the input tables into a single new table, in the order
@@ -34,11 +38,14 @@ def _execute_merge(data: dict[str, Any], root_url: str | None = None) -> dict[st
             ``table_name``.
         root_url: The project root the merged table is written under; ``None`` uses tlc's
             configured root.
+        cancelled: Whether the job has been stopped, asked once the input tables are
+            loaded, before anything is written; ``None`` never stops.
 
     Returns:
         A result dict with ``success`` and a human-readable ``message``; on
         success it also carries ``table_url``, ``project_name``, ``dataset_name``,
-        and ``details``.
+        and ``details``. A merge stopped before the join returns ``cancelled: True``
+        and writes nothing.
     """
     table_urls = data["table_urls"]
     project_name = data["project_name"].strip()
@@ -56,6 +63,10 @@ def _execute_merge(data: dict[str, Any], root_url: str | None = None) -> dict[st
     except Exception as e:
         logger.exception("Failed to load input tables")
         return {"success": False, "message": f"Could not load input tables: {e}", "details": {}}
+
+    # The last point a stop can still prevent the table: the join is one call, and it writes the table.
+    if cancelled is not None and cancelled():
+        return {"success": False, "cancelled": True, "message": "Merge cancelled.", "details": {}}
 
     try:
         merged = tlc.Table.join_tables(
@@ -133,7 +144,9 @@ class MergePlugin(ComputePlugin):
         performs the vertical join (row concatenation), and reports the merged
         table URL. Validation and execution failures are raised so the host marks
         the job failed and the message reaches the UI via the generic
-        ``job_update`` channel.
+        ``job_update`` channel. A stop that comes before the join returns without
+        writing a table; one that comes during it is too late, and the table is
+        written and reported.
 
         Args:
             ctx: Host-provided job context. ``ctx.params`` carries ``table_urls``,
@@ -156,7 +169,9 @@ class MergePlugin(ComputePlugin):
         # The root the host stamped for this job; getattr keeps an SDK that predates it working.
         root = ctx.project_root_url or None
         ctx.progress(percent=10, label="Merging tables")
-        result = _execute_merge(data, root_url=root)
+        result = _execute_merge(data, root_url=root, cancelled=lambda: ctx.cancelled)
+        if result.get("cancelled"):
+            return  # stopped before the join: no table, and the worker ends the job "cancelled"
         if not result.get("success"):
             raise JobFailed(result.get("message") or "Merge failed")
 
