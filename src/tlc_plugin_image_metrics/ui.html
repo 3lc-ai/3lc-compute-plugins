@@ -228,6 +228,7 @@
   var earlyEvents = [];   // the plugin's events for a job no record knows the id of yet
   var metricsState = 'loading';  // the metric list: 'loading', 'ok' or 'error'
   var imBusy = false;            // a job of this plugin runs, started here or found running on mount
+  var presetsOpen = false;       // the preset bar has opened the form; until then it is told no changes
 
   /* ── Recommended metrics for "quick start" ── */
   var RECOMMENDED = ['brightness', 'sharpness', 'contrast', 'noise_estimate', 'entropy', 'saturation'];
@@ -340,8 +341,13 @@
         imGate();
         // The preset bar opens the form once the metric cards exist: as it was last left in this
         // browser, else on Default settings (the recommended metrics), with the tables the plugin
-        // was opened with in place of its own.
-        imPresets.init();
+        // was opened with in place of its own. Opening replaces the table list, so the tables added
+        // while the metrics were listed are added again once it has opened.
+        var early = tableEntries.map(function(e) { return e.url; });
+        imPresets.init().then(function() {
+          presetsOpen = true;
+          early.forEach(_addTableUrl);  // one already in the opened form is skipped
+        });
       })
       .catch(function(err) {
         console.error('Failed to load metrics:', err);
@@ -407,7 +413,9 @@
   }
 
   function _updateState() {
-    if (imPresets) imPresets.changed();
+    // Before the bar has opened the form, a change would be kept as a draft the page then reopens on
+    // (a table added while the metrics are listed: no metrics). Opening reads the form itself.
+    if (presetsOpen) imPresets.changed();
     var count = Object.keys(selectedMetrics).length;
     var el = document.getElementById('im-selected-count');
     if (el) el.textContent = count;
@@ -528,7 +536,11 @@
         }
         _renderTableList();
       })
-      .catch(function() {});
+      .catch(function() {
+        // The job detects the image columns itself when it runs.
+        entry.detectFailed = true;
+        _renderTableList();
+      });
   }
 
   function _removeTable(idx) {
@@ -557,7 +569,8 @@
       row.className = 'im-table-row';
       var colChips = entry.imageCols.length > 0
         ? entry.imageCols.map(function(c) { return '<span class="im-col-chip">' + _esc(c) + '</span>'; }).join(' ')
-        : '<span style="font-size:9px;color:var(--text-muted)">detecting...</span>';
+        : '<span style="font-size:9px;color:var(--text-muted)">' +
+          (entry.detectFailed ? 'detected at run' : 'detecting...') + '</span>';
       row.innerHTML =
         '<span class="url" title="' + _esc(entry.url) + '">' + _esc(entry.url) + '</span>' +
         '<span class="cols">' + colChips + '</span>' +

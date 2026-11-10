@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Unlabeled Images and the other import formats no longer silently report success with full source
   paths after an alias conflict or configuration-write failure. URL encoding remains handled by 3LC.
 
+- Image Metrics no longer opens with no metrics selected after a table was added while the metric list
+  loaded. The page kept the form as it was then, with no metrics, and opened on it, then and after every
+  reload. It now opens as usual (as last left, else on the recommended metrics), with the table in the list.
+  A table whose image columns could not be detected says "detected at run" instead of "detecting..."
+  for good: the job detects them when it runs.
+
 ### Changed
 
 - Requires plugin SDK 0.7 (`3lc-compute-plugin-sdk>=0.7.0,<0.8.0`), so the plugins' workers get its
