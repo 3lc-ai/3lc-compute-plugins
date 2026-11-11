@@ -159,6 +159,30 @@ class MergePlugin(ComputePlugin):
 
         """
         data = ctx.params
+        if data.get("operation") in {"intake_prepare", "intake_publish"}:
+            from tlc_plugin_merger.intake import execute
+
+            if not ctx.project_root_url:
+                msg = "Choose the project's storage location before preparing incoming data."
+                raise JobFailed(msg)
+            ctx.progress(percent=5, label="Checking incoming data")
+            try:
+                result = execute(
+                    data,
+                    root=ctx.project_root_url,
+                    state=ctx.state_dir / "intake" / "journal.sqlite3",
+                    tenant=ctx.identity.org_id or "local",
+                    cancelled=lambda: ctx.cancelled,
+                )
+            except ValueError as error:
+                raise JobFailed(str(error)) from None
+            ctx.output("intake", result)
+            ctx.output("table_url", result["table_url"])
+            ctx.result(result["table_url"])
+            ctx.progress(
+                percent=100, label="Dataset ready" if data["operation"] == "intake_publish" else "Batch checked"
+            )
+            return
         if len(data.get("table_urls", [])) < 2:
             msg = "Select at least 2 tables to merge."
             raise JobFailed(msg)

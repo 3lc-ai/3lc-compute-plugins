@@ -65,4 +65,10 @@ def get_route_handlers() -> list[BaseRouteHandler]:
             "dataset_name": dataset_name,
         })
 
-    return [columns]
+    @get("/intake/inspect", sync_to_thread=True)
+    def intake_inspect(table_url: str) -> dict[str, Any]:
+        from tlc_plugin_merger.intake import inspect
+
+        return inspect(table_url)
+
+    return [columns, intake_inspect]

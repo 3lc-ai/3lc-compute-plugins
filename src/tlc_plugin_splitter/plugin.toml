@@ -39,6 +39,12 @@ data_inputs = ["table_url"]
 knowledge = ["docs/mcp/*.md"]
 
 [[mcp.tools]]
+name = "grouped_split"
+description = "Split a first dataset reproducibly into train/validation and optional test native revisions. All samples sharing group_column stay together (video, patient or capture session). Without a group column, samples must be independent; duplicate images must first be removed using Merge intake. Never re-split an existing evaluation set when appending training data. Uses the same native Split job logic, no model call."
+job = { body = { operation = "grouped_split", table_url = "{{table_url}}", group_column = "{{group_column}}", train_pct = "{{train_pct}}", val_pct = "{{val_pct}}", test_pct = "{{test_pct}}", seed = "{{seed}}" }, outputs = ["splits"], wait = true }
+input_schema = { type = "object", additionalProperties = false, required = ["table_url"], properties = { table_url = { type = "string", minLength = 1 }, group_column = { type = "string", default = "" }, train_pct = { type = "integer", minimum = 1, maximum = 99, default = 80 }, val_pct = { type = "integer", minimum = 1, maximum = 99, default = 20 }, test_pct = { type = "integer", minimum = 0, maximum = 98, default = 0 }, seed = { type = "integer", minimum = 0, default = 42 } } }
+
+[[mcp.tools]]
 name = "weighted_subset"
 description = "Publish an EditedTable revision keeping keep_count randomly selected positive-weight samples from the exact source revision. Sets only excluded positive weights to zero; preserves existing zero weights, kept weights, all physical rows and revision history. CPU only: pass node_id=local to use this deployment; no cloud node or GPU is required. Never infer eligible count from the run name or total rows; use table_weight_summary first."
 job = { body = { operation = "weighted_subset", table_url = "{{table_url}}", keep_count = "{{keep_count}}", seed = "{{seed}}", table_name = "{{table_name}}", project_name = "{{project_name}}" }, outputs = ["table_url", "subset"], wait = true }

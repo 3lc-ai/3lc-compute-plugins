@@ -196,6 +196,11 @@ class SplitterPlugin(ComputePlugin):
             msg = "Table URL is required."
             raise ValueError(msg)
         operation = data.get("operation", "split")
+        if operation == "grouped_split":
+            from .grouped import run_grouped_split
+
+            run_grouped_split(ctx)
+            return
         if operation == "binary_sweep":
             from .binary_sweep import run_binary_sweep
 
