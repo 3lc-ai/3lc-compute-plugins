@@ -1888,6 +1888,7 @@ def _report_result(ctx: JobContext, result: dict[str, Any]) -> None:
     table_url = result.get("table_url")
     if table_url:
         ctx.result(str(table_url))
+        ctx.output("table_url", str(table_url))
     ctx.progress(percent=100, label=message)
     if message:
         ctx.log(message)
@@ -1924,11 +1925,26 @@ def _run_format_import(ctx: JobContext, format_name: str) -> None:
     alias_result = _maybe_register_alias(
         form_data, input_path, ctx, source_folder=_submitted_image_folder(format_name, form_data)
     )
+    # The YOLO reader tokenizes absolute discovery URLs before a table-relative
+    # writer runs. Keep the portable project alias, but match absolute paths in
+    # this job while its immutable row cache is populated.
+    restore_alias_path = None
     try:
+        if format_name == "yolo" and alias_result and str(alias_result.get("path", "")).startswith("../"):
+            import tlc
+
+            restore_alias_path = alias_result["path"]
+            project = form_data["project_name"].strip()
+            root = _root(form_data) or str(tlc.config.project_root_url)
+            table_parent = f"{root.rstrip('/')}/{project}/datasets/_/tables/_"
+            absolute_path = str(tlc.Url(restore_alias_path).to_absolute(table_parent))
+            tlc.url.register_url_alias(alias_result["token"], absolute_path, force=True)
         result = executor(form_data)
     except Exception as exc:
         raise JobFailed(_enhance_error_message(str(exc), input_path=input_path)) from exc
     finally:
+        if restore_alias_path is not None and alias_result:
+            tlc.url.register_url_alias(alias_result["token"], restore_alias_path, force=True)
         _unregister_primary_alias(alias_result)
 
     if not result.get("success"):
@@ -2087,7 +2103,11 @@ class ImportPlugin(ComputePlugin):
         if not format_name:
             msg = "Import job is missing a 'format'"
             raise ValueError(msg)
-        if format_name == "csv":
+        if format_name == "benchmark":
+            from .benchmarks import prepare
+
+            prepare(ctx)
+        elif format_name == "csv":
             _run_csv_import(ctx)
         else:
             _run_format_import(ctx, format_name)

@@ -195,6 +195,20 @@ class SplitterPlugin(ComputePlugin):
         if not (data.get("table_url") or "").strip():
             msg = "Table URL is required."
             raise ValueError(msg)
+        operation = data.get("operation", "split")
+        if operation == "binary_sweep":
+            from .binary_sweep import run_binary_sweep
+
+            run_binary_sweep(ctx)
+            return
+        if operation == "weighted_subset":
+            from .weighted_subset import run_weighted_subset
+
+            run_weighted_subset(ctx)
+            return
+        if operation != "split":
+            msg_0 = "Unknown split operation"
+            raise ValueError(msg_0)
         train_pct = int(data.get("train_pct", 70))
         val_pct = int(data.get("val_pct", 20))
         test_pct = int(data.get("test_pct", 0) or 0)

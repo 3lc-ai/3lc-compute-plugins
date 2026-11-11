@@ -10,7 +10,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "3lc-compute-plugins"
-version = "0.2.4"
+version = "0.2.5"
 description = "Open, first-party plugins for the 3LC compute service."
 readme = "README-wheel.md"
 requires-python = ">=3.11"
@@ -24,7 +24,7 @@ classifiers = ["License :: OSI Approved :: Apache Software License"]
 # requirement that names one.
 dependencies = [
     "3lc>=3.5.0.dev149866,<4.0.0",
-    "3lc-compute-plugin-sdk>=0.7.0,<0.8.0",
+    "3lc-compute-plugin-sdk>=0.7.5,<0.8.0",
 ]
 
 # Per-plugin extras — installed ONLY into that plugin's provisioned venv. Provisioning opts into

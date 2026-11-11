@@ -120,6 +120,45 @@ def test_unlabeled_tablewriter_persists_project_alias(tmp_path: Path, monkeypatc
 
 
 @_real_writer
+@pytest.mark.parametrize(
+    "task,label", [("detect", "0 0.5 0.5 0.5 0.5"), ("segment", "0 0.1 0.1 0.9 0.1 0.9 0.9 0.1 0.9")]
+)
+def test_yolo_inside_project_keeps_portable_alias_after_job(tmp_path, task, label):
+    import pyarrow.parquet as pq
+    import tlc
+    import yaml
+    from PIL import Image
+
+    root = tmp_path / "projects"
+    source = root / "Images" / "source"
+    (source / "images/train").mkdir(parents=True)
+    (source / "labels/train").mkdir(parents=True)
+    Image.new("RGB", (16, 16)).save(source / "images/train/one.png")
+    (source / "labels/train/one.txt").write_text(label + "\n")
+    (source / "data.yaml").write_text("train: images/train\nnames: [cat]\n")
+    token = "YOLO_IMPORT_" + uuid4().hex.upper()
+    params = {
+        "dataset_yaml": str(source / "data.yaml"),
+        "split": "train",
+        "task": task,
+        "project_name": "Images",
+        "dataset_name": "train",
+        "project_root_url": str(root),
+        "alias_token": token,
+        "alias_folder": str(source),
+    }
+    ctx = JobContext("alias-test", params, tmp_path / "job", sink=lambda e: None, cancel_event=threading.Event())
+    imp._run_format_import(ctx, "yolo")
+    parquet = next(root.rglob("row_cache.parquet"))
+    assert pq.read_table(parquet).to_pylist()[0]["image"] == f"<{token}>/images/train/one.png"
+    config = yaml.safe_load(next(root.rglob("default_aliases.3lc.yaml")).read_text())
+    assert config["aliases"][token] == "../../../../source"
+    # Resolve the stored token using the durable project mapping, after job cleanup.
+    table = tlc.Table.from_url(str(parquet.parent))
+    assert str(tlc.Url(table.table_rows[0]["image"]).to_absolute(table.url)) == str(source / "images/train/one.png")
+
+
+@_real_writer
 def test_real_alias_conflict_does_not_create_a_table(tmp_path: Path):
     import tlc
     from PIL import Image

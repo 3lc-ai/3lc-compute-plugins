@@ -141,3 +141,29 @@ def test_csv_upload_handoff_stays_local_and_is_authoritative(tmp_path: Path, mon
     other = _ctx({"format": "csv", "session_id": "unknown", "_csv_upload": upload}, tmp_path)
     imp.ImportPlugin().prepare_job(other)
     assert "_csv_upload" not in other.params
+
+
+def test_cloud_yolo_import_reads_selected_source_and_preserves_masks(monkeypatch: pytest.MonkeyPatch) -> None:
+    import sys
+    from types import SimpleNamespace
+
+    received = {}
+
+    def from_yolo(url, **kwargs):
+        received.update(url=url, **kwargs)
+        return SimpleNamespace(url="s3://bucket/projects/P/datasets/train/tables/initial", row_count=4)
+
+    monkeypatch.setitem(sys.modules, "tlc", SimpleNamespace(Table=SimpleNamespace(from_yolo_url=from_yolo)))
+    monkeypatch.setattr(imp, "_parse_yolo_yaml_for_split", lambda *_: ("s3://bucket/source/images/train", {0: "cat"}))
+    monkeypatch.setattr(imp, "_root", lambda _: "s3://bucket/projects")
+    result = imp._execute_yolo({
+        "dataset_yaml": "s3://bucket/source/dataset.yaml",
+        "split": "train",
+        "task": "segmentation",
+        "project_name": "P",
+        "dataset_name": "train",
+    })
+    assert received["allow_fetch_remote_data"] is True
+    assert received["task"] == "segment"
+    assert received["url"] == "s3://bucket/source/images/train"
+    assert result["details"]["row_count"] == 4

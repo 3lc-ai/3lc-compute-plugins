@@ -2,7 +2,7 @@
 id = "importer"
 name = "Import"
 description = "Import datasets from CSV, Excel, COCO, YOLO, and image folders into 3LC projects."
-version = "0.2.4"
+version = "0.2.5"
 min_service_version = "1.2.0"
 icon = "↑"
 icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V2M4.5 6l3.5-4 3.5 4"/><path d="M2 14h12"/></svg>'
@@ -32,3 +32,144 @@ remote_capable = true
 # the format; an empty or missing key is skipped. ``alias_folder`` is deliberately not here: it is
 # the durable place the persisted alias points at, never rewritten for one run.
 data_inputs = ["dataset_yaml", "annotations_file", "image_folder", "folder_path", "csv_path", "table_url"]
+
+[mcp]
+
+[[mcp.tools]]
+name = "prepare_benchmark"
+title = "Prepare eight benchmark images"
+description = "Download a checksum-pinned public eight-image smoke-test dataset into this project's source folder: coco8 for bounding-box detection or coco8-seg for instance segmentation. Four train and four validation images. Creates no table or training run. Poll this job, then use its exact dataset_yaml output with import_yolo for each split. Sources stay in the selected project storage, usable across nodes. Existing changed files are never overwritten."
+annotations = { readOnlyHint = false, destructiveHint = false, idempotentHint = true, openWorldHint = true }
+job = { body = { format = "benchmark", benchmark = "{{benchmark}}", project_name = "{{project_name}}" }, outputs = ["dataset_yaml", "task", "train_images", "validation_images", "sha256"], wait = false }
+[mcp.tools.input_schema]
+type = "object"
+additionalProperties = false
+required = ["benchmark", "project_name"]
+[mcp.tools.input_schema.properties.benchmark]
+type = "string"
+enum = ["coco8", "coco8-seg"]
+[mcp.tools.input_schema.properties.project_name]
+type = "string"
+minLength = 1
+maxLength = 160
+
+[[mcp.tools]]
+name = "import_folder"
+title = "Import a classification image folder"
+description = "Create a 3LC classification table from a folder containing one subfolder per class. Source must be accessible on the selected node; returns a job and resulting table URL. Use project_root_url to keep the selected project location."
+job = { body = { format = "folder", folder_path = "{{folder_path}}", project_name = "{{project_name}}", dataset_name = "{{dataset_name}}", table_name = "{{table_name}}", description = "{{description}}" }, outputs = ["table_url"], wait = false }
+
+[mcp.tools.input_schema]
+type = "object"
+additionalProperties = false
+required = ["folder_path", "project_name", "dataset_name"]
+
+[mcp.tools.input_schema.properties.folder_path]
+type = "string"
+description = "Absolute local path or configured storage URL; classes are subfolder names"
+
+[mcp.tools.input_schema.properties.project_name]
+type = "string"
+description = "Destination project"
+
+[mcp.tools.input_schema.properties.dataset_name]
+type = "string"
+description = "Dataset name, for example train or validation"
+
+[mcp.tools.input_schema.properties.table_name]
+type = "string"
+description = "Initial revision name; default initial"
+
+[mcp.tools.input_schema.properties.description]
+type = "string"
+description = "Dataset provenance or purpose"
+
+[[mcp.tools]]
+name = "import_coco"
+title = "Import COCO annotations"
+description = "Import an existing COCO dataset through Data Ops into a native 3LC table. Set task explicitly to preserve boxes or instance masks. Starts an import job; inspect table_info on the resulting table URL before training. Use project_root_url to preserve the selected project location."
+job = { body = { format = "coco", annotations_file = "{{annotations_file}}", image_folder = "{{image_folder}}", task = "{{task}}", project_name = "{{project_name}}", dataset_name = "{{dataset_name}}", table_name = "{{table_name}}", description = "{{description}}", alias_enabled = "{{alias_enabled}}", alias_token = "{{alias_token}}", alias_folder = "{{alias_folder}}" }, outputs = ["table_url"], wait = false }
+
+[mcp.tools.input_schema]
+type = "object"
+additionalProperties = false
+required = ["annotations_file","image_folder","task","project_name","dataset_name"]
+
+[mcp.tools.input_schema.properties.annotations_file]
+type = "string"
+description = "COCO annotations JSON path"
+
+[mcp.tools.input_schema.properties.image_folder]
+type = "string"
+description = "Image folder matching the annotation filenames"
+
+[mcp.tools.input_schema.properties.task]
+type = "string"
+enum = ["detection","segmentation"]
+
+[mcp.tools.input_schema.properties.project_name]
+type = "string"
+
+[mcp.tools.input_schema.properties.dataset_name]
+type = "string"
+
+[mcp.tools.input_schema.properties.table_name]
+type = "string"
+
+[mcp.tools.input_schema.properties.description]
+type = "string"
+
+[mcp.tools.input_schema.properties.alias_enabled]
+type = "boolean"
+
+[mcp.tools.input_schema.properties.alias_token]
+type = "string"
+
+[mcp.tools.input_schema.properties.alias_folder]
+type = "string"
+description = "Durable image source; never a temporary staging directory"
+
+[[mcp.tools]]
+name = "import_yolo"
+title = "Import YOLO annotations"
+description = "Import an existing YOLO dataset through Data Ops into a native 3LC table. Set task explicitly to preserve boxes or instance masks. Cloud sources read each image and label using the node's storage access. A cloud project needs a durable cloud source. Starts an import job; inspect table_info on the resulting table URL before training. Use project_root_url to preserve the selected project location."
+job = { body = { format = "yolo", dataset_yaml = "{{dataset_yaml}}", split = "{{split}}", task = "{{task}}", project_name = "{{project_name}}", dataset_name = "{{dataset_name}}", table_name = "{{table_name}}", description = "{{description}}", alias_enabled = "{{alias_enabled}}", alias_token = "{{alias_token}}", alias_folder = "{{alias_folder}}" }, outputs = ["table_url"], wait = false }
+
+[mcp.tools.input_schema]
+type = "object"
+additionalProperties = false
+required = ["dataset_yaml","split","task","project_name","dataset_name"]
+
+[mcp.tools.input_schema.properties.dataset_yaml]
+type = "string"
+description = "Absolute YAML path or cloud URL accessible on the selected node"
+
+[mcp.tools.input_schema.properties.split]
+type = "string"
+enum = ["train","val","test"]
+
+[mcp.tools.input_schema.properties.task]
+type = "string"
+enum = ["detection","segmentation","pose","obb"]
+
+[mcp.tools.input_schema.properties.project_name]
+type = "string"
+
+[mcp.tools.input_schema.properties.dataset_name]
+type = "string"
+
+[mcp.tools.input_schema.properties.table_name]
+type = "string"
+
+[mcp.tools.input_schema.properties.description]
+type = "string"
+
+[mcp.tools.input_schema.properties.alias_enabled]
+type = "boolean"
+
+[mcp.tools.input_schema.properties.alias_token]
+type = "string"
+
+[mcp.tools.input_schema.properties.alias_folder]
+type = "string"
+description = "Durable image source; never a temporary staging directory"
