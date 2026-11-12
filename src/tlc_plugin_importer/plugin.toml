@@ -37,17 +37,17 @@ data_inputs = ["dataset_yaml", "annotations_file", "image_folder", "folder_path"
 
 [[mcp.tools]]
 name = "prepare_benchmark"
-title = "Prepare eight benchmark images"
-description = "Download a checksum-pinned public eight-image smoke-test dataset into this project's source folder: coco8 for bounding-box detection or coco8-seg for instance segmentation. Four train and four validation images. Creates no table or training run. Poll this job, then use its exact dataset_yaml output with import_yolo for each split. Sources stay in the selected project storage, usable across nodes. Existing changed files are never overwritten."
+title = "Prepare a public benchmark dataset"
+description = "Download a checksum-pinned public benchmark into this project's source folder. coco8 (detection) and coco8-seg (instance segmentation) contain four train and four validation images. coco128 (detection) contains 128 unique images with the original 80 COCO classes; train and val reference the SAME images, not independent splits. For collect-only on COCO128, import just one split to avoid duplicate tables. Creates no table or training run. Poll this job, then use its exact dataset_yaml output with import_yolo for each split. Sources stay in the selected project storage, usable across nodes. Existing changed files are never overwritten."
 annotations = { readOnlyHint = false, destructiveHint = false, idempotentHint = true, openWorldHint = true }
-job = { body = { format = "benchmark", benchmark = "{{benchmark}}", project_name = "{{project_name}}" }, outputs = ["dataset_yaml", "task", "train_images", "validation_images", "sha256"], wait = false }
+job = { body = { format = "benchmark", benchmark = "{{benchmark}}", project_name = "{{project_name}}" }, outputs = ["dataset_yaml", "task", "train_images", "validation_images", "unique_images", "shared_train_validation", "sha256"], wait = false }
 [mcp.tools.input_schema]
 type = "object"
 additionalProperties = false
 required = ["benchmark", "project_name"]
 [mcp.tools.input_schema.properties.benchmark]
 type = "string"
-enum = ["coco8", "coco8-seg"]
+enum = ["coco8", "coco8-seg", "coco128"]
 [mcp.tools.input_schema.properties.project_name]
 type = "string"
 minLength = 1

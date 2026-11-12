@@ -24,6 +24,14 @@ if TYPE_CHECKING:
 BENCHMARKS = {
     "coco8": "54c67fe9ef88313e021ec0e92b73c200167bb0a86633e8df8658d832cca828c9",
     "coco8-seg": "82c651abd01d556c77769ea834ebff1e77f76a291463e987fb69b63a87e8eb80",
+    "coco128": "61e5e3028863d8ffc3b81d6a514603954889f0edd5e4b44c4ce60b2da99aeb8e",
+}
+# COCO128 intentionally uses the same 128 images for train and validation.
+# Preserve the vendor layout without duplicating the images or claiming a held-out split.
+SPLITS = {
+    "coco8": {"train": ("train", 4), "val": ("val", 4)},
+    "coco8-seg": {"train": ("train", 4), "val": ("val", 4)},
+    "coco128": {"train": ("train2017", 128), "val": ("train2017", 128)},
 }
 MAX_BYTES = 16 * 1024 * 1024
 NAMES = [
@@ -141,10 +149,12 @@ def download(name: str) -> bytes:
 
 
 def archive_files(data: bytes, name: str) -> dict[str, bytes]:
+    splits = set(SPLITS[name].values())
+    directories = {directory for directory, _ in splits}
     files: dict[str, bytes] = {}
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         entries = archive.infolist()
-        if len(entries) > 100 or sum(entry.file_size for entry in entries) > MAX_BYTES:
+        if len(entries) > 300 or sum(entry.file_size for entry in entries) > MAX_BYTES:
             msg = "Benchmark archive exceeds its file or size limit"
             raise ValueError(msg)
         for entry in entries:
@@ -168,16 +178,20 @@ def archive_files(data: bytes, name: str) -> dict[str, bytes]:
             if relative not in {"LICENSE", "README.md", "README.txt"} and not (
                 len(path.parts) == 4
                 and path.parts[1] in {"images", "labels"}
-                and path.parts[2] in {"train", "val"}
-                and path.suffix in {".jpg", ".txt"}
+                and path.parts[2] in directories
+                and path.suffix == (".jpg" if path.parts[1] == "images" else ".txt")
             ):
                 continue
             files[relative] = archive.read(entry)
-    for split in ("train", "val"):
+    for split, count in splits:
         images = {PurePosixPath(p).stem for p in files if p.startswith(f"images/{split}/")}
         labels = {PurePosixPath(p).stem for p in files if p.startswith(f"labels/{split}/")}
-        if len(images) != 4 or images != labels:
-            msg = "Expected exactly four labeled images in each benchmark split"
+        # Preserve the pinned vendor archive: COCO128 includes two background
+        # images without label files and two orphan labels without images.
+        missing = {"000000000250", "000000000508"} if name == "coco128" else set()
+        orphaned = {"000000000656", "000000000659"} if name == "coco128" else set()
+        if len(images) != count or images - labels != missing or labels - images != orphaned:
+            msg = f"Expected exactly {count} images with the original labels in benchmark split {split}"
             raise ValueError(msg)
     return files
 
@@ -187,7 +201,7 @@ def prepare(ctx: JobContext) -> None:
 
     name = str(ctx.params.get("benchmark") or "")
     if name not in BENCHMARKS:
-        msg = "Choose coco8 for bounding boxes or coco8-seg for instance segmentation"
+        msg = "Choose coco8 or coco128 for bounding boxes, or coco8-seg for instance segmentation"
         raise ValueError(msg)
     project = str(ctx.params.get("project_name") or "").strip()
     if not project or project in {".", ".."} or any(c in project for c in "/\\%?#\x00"):
@@ -197,16 +211,20 @@ def prepare(ctx: JobContext) -> None:
     if not root:
         msg = "Choose the project storage location first"
         raise ValueError(msg)
-    ctx.progress(percent=0, label="Downloading eight public benchmark images")
+    splits = SPLITS[name]
+    unique_images = sum(count for _, count in set(splits.values()))
+    ctx.progress(percent=0, label=f"Downloading {unique_images} public benchmark images")
     files = archive_files(download(name), name)
     destination = f"{root}/{project}/source/benchmarks/{name}-{BENCHMARKS[name][:12]}"
     # JSON is YAML-compatible. Absolute cloud paths keep tables usable from another node.
-    config = {"path": destination, "train": "images/train", "val": "images/val", "names": NAMES}
+    config = {"path": destination, "names": NAMES}
+    config.update({split: f"images/{directory}" for split, (directory, _) in splits.items()})
     files["provenance.json"] = json.dumps(
         {
             "source": f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{name}.zip",
             "sha256": BENCHMARKS[name],
-            "images": 8,
+            "images": unique_images,
+            "shared_train_validation": splits["train"][0] == splits["val"][0],
             "purpose": "workflow smoke test",
         },
         indent=2,
@@ -229,7 +247,9 @@ def prepare(ctx: JobContext) -> None:
             target.write_bytes(data, if_exists="raise")
         ctx.progress(percent=round(100 * (index + 1) / len(files)), label="Preparing project source")
     ctx.output("dataset_yaml", destination + "/dataset.yaml")
-    ctx.output("task", "detection" if name == "coco8" else "segmentation")
-    ctx.output("train_images", 4)
-    ctx.output("validation_images", 4)
+    ctx.output("task", "segmentation" if name == "coco8-seg" else "detection")
+    ctx.output("train_images", splits["train"][1])
+    ctx.output("validation_images", splits["val"][1])
+    ctx.output("unique_images", unique_images)
+    ctx.output("shared_train_validation", splits["train"][0] == splits["val"][0])
     ctx.output("sha256", BENCHMARKS[name])

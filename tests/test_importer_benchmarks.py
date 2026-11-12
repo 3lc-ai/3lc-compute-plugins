@@ -14,13 +14,19 @@ import pytest
 from tlc_plugin_importer import benchmarks as b
 
 
-def archive(extra=None):
+def archive(extra=None, name="coco8"):
+    splits = set(b.SPLITS[name].values())
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
-        for split in ("train", "val"):
-            for index in range(4):
-                z.writestr(f"coco8/images/{split}/{index}.jpg", b"image")
-                z.writestr(f"coco8/labels/{split}/{index}.txt", b"0 .5 .5 .2 .2")
+        for split, count in splits:
+            for index in range(count - 2 if name == "coco128" else count):
+                z.writestr(f"{name}/images/{split}/{index}.jpg", b"image")
+                z.writestr(f"{name}/labels/{split}/{index}.txt", b"0 .5 .5 .2 .2")
+            if name == "coco128":
+                for stem in ("000000000250", "000000000508"):
+                    z.writestr(f"{name}/images/{split}/{stem}.jpg", b"background")
+                for stem in ("000000000656", "000000000659"):
+                    z.writestr(f"{name}/labels/{split}/{stem}.txt", b"0 .5 .5 .2 .2")
         if extra:
             z.writestr(*extra)
     return buf.getvalue()
@@ -52,7 +58,7 @@ def test_archive_rejects_links_and_missing_pairs():
     link.external_attr = (stat.S_IFLNK | 0o777) << 16
     with pytest.raises(ValueError, match="links"):
         b.archive_files(archive((link, b"target")), "coco8")
-    with pytest.raises(ValueError, match="four labeled"):
+    with pytest.raises(ValueError, match="4 images"):
         b.archive_files(archive(("coco8/images/train/extra.jpg", b"image")), "coco8")
 
 
@@ -108,3 +114,46 @@ def test_prepare_keeps_cloud_paths_reuses_exact_files_and_refuses_changed_files(
         ctx.params["project_name"] = invalid
         with pytest.raises(ValueError, match="project name"):
             b.prepare(ctx)
+
+
+@pytest.mark.parametrize("name,count", [("coco8", 8), ("coco8-seg", 8), ("coco128", 128)])
+def test_all_benchmark_layouts_have_exact_unique_images(name, count):
+    files = b.archive_files(archive(name=name), name)
+    assert len([p for p in files if p.startswith("images/")]) == count
+    assert len([p for p in files if p.startswith("labels/")]) == count
+
+
+def test_coco128_shared_split_has_no_duplicate_uploads(monkeypatch):
+    objects, outputs = {}, {}
+
+    class Url:
+        def __init__(self, path):
+            self.path = path
+
+        def exists(self):
+            return False
+
+        def write_bytes(self, data, *, if_exists):
+            assert if_exists == "raise"
+            assert self.path not in objects
+            objects[self.path] = data
+
+    monkeypatch.setitem(sys.modules, "tlc", SimpleNamespace(Url=Url))
+    monkeypatch.setattr(b, "download", lambda name: archive(name=name))
+    ctx = SimpleNamespace(
+        params={"benchmark": "coco128", "project_name": "COCO128"},
+        project_root_url="s3://bucket/projects",
+        cancelled=False,
+        progress=lambda **kw: None,
+        output=lambda key, value: outputs.update({key: value}),
+    )
+    b.prepare(ctx)
+    config = json.loads(objects[outputs["dataset_yaml"]])
+    assert config["train"] == config["val"] == "images/train2017"
+    assert outputs["task"] == "detection"
+    assert outputs["train_images"] == outputs["validation_images"] == outputs["unique_images"] == 128
+    assert outputs["shared_train_validation"] is True
+    assert len([p for p in objects if "/images/" in p]) == 128
+    assert len(config["names"]) == 80
+    with pytest.raises(ValueError, match="128 images"):
+        b.archive_files(archive(("coco128/images/train2017/extra.jpg", b"image"), name="coco128"), "coco128")
