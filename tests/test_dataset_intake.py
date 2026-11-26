@@ -335,3 +335,41 @@ def test_adding_data_preserves_validation_and_source_tables(tmp_path):
         if path.is_file()
     }
     assert before == after
+
+
+def test_intake_reads_new_project_alias_without_waiting_for_index(tmp_path):
+    import json
+    from uuid import uuid4
+
+    import tlc
+    from PIL import Image
+
+    root = tmp_path / "projects"
+    images = tmp_path / "images"
+    images.mkdir()
+    image = images / "one.png"
+    Image.new("RGB", (16, 16), (80, 90, 120)).save(image)
+    token = "INTAKE_" + uuid4().hex.upper()
+    tlc.url.register_url_alias(token, str(images))
+    try:
+        writer = tlc.TableWriter(
+            root_url=str(root),
+            project_name="Intake",
+            dataset_name="incoming",
+            table_name="fresh-alias",
+            schema={
+                "image": tlc.schemas.ImageSchema(sample_type="url"),
+                "label": tlc.schemas.CategoricalLabelSchema(classes=["cat", "dog"]),
+            },
+        )
+        writer.add_row({"image": f"<{token}>/one.png", "label": 0})
+        source = writer.finalize()
+    finally:
+        tlc.url.unregister_url_alias(token)
+    assert f"<{token}>" in source.table_rows[0]["image"]
+    assert tlc.url.get_alias_path(token) is None
+    config = root / "Intake" / "default_aliases.3lc.yaml"
+    config.write_text(json.dumps({"aliases": {token: str(images)}}))
+    result = run(root, source)
+    assert result["rows"] == 1
+    assert len(tlc.Table.from_url(result["table_url"])) == 1

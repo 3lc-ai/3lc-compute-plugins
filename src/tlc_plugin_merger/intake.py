@@ -350,6 +350,16 @@ def execute(data: dict, *, root: str, state: Path, tenant: str, cancelled=lambda
     normalize_configuration(parameters, schema)
 
     source = tlc.Table.from_url(data["table_url"])
+    # Explicit intake can follow an import before this worker's project index
+    # notices its new alias file. Read that project's data configuration now;
+    # native data-tier loading preserves higher-priority staging overrides.
+    from tlc.helpers.project_layout import ProjectLayout
+
+    alias_config = ProjectLayout.default_project_aliases_config_url(
+        project_name=source.project_name, root_url=source.root_url
+    )
+    if alias_config.exists():
+        tlc.config.load_data_config(str(alias_config))
     project = data.get("project_name") or source.project_name
     if project != source.project_name:
         msg = "Incoming data must belong to the selected project."
